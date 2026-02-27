@@ -350,16 +350,9 @@
 
   <script>
     // Key variables
-    const userGistMap = {
-      lefa: { id: "02e300379f8b968942ac67379f5bc831", file: "gist_1.json" },
-      jonas: { id: "69f058ad6bcb25e41d8b797dc7395c6d", file: "gist_2.json" },
-      owami: { id: "6c9e9fcda5ed38f9839c9ac8bc147ba7", file: "gist_3.json" },
-      preasx24: { id: "50e60ff2c3bc108d63038c8eb6c26e8d", file: "gist_4.json" }
-    };
+    const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
 
-    const GIST_TOKEN_URL = "https://gist.githubusercontent.com/Preasx24/e8b6e2c45a6963ef3c5f4a24704ab5fb/raw/gistfile1.txt";
-
-    let token = null, player = null, gistInfo = null, playerData = null;
+    let player = null, playerData = null;
 
     // DOM elements
     const statusDiv = document.getElementById("status");
@@ -379,7 +372,7 @@
     function initGame() {
       // Check if we have a saved player
       const savedPlayer = localStorage.getItem('rpsPlayer');
-      if (savedPlayer && userGistMap[savedPlayer]) {
+      if (savedPlayer) {
         playerSelect.value = savedPlayer;
         startGame();
       }
@@ -402,10 +395,7 @@
       // Save to local storage
       localStorage.setItem('rpsPlayer', player);
       
-      gistInfo = userGistMap[player];
-      
       try {
-        token = await fetchToken();
         await loadPlayerData();
 
         // init dailyGames tracker if missing
@@ -528,27 +518,44 @@
       }, 2500);
     }
 
-    // --- GIST FUNCTIONS ---
-    async function fetchToken() {
-      const res = await fetch(GIST_TOKEN_URL);
-      return res.text();
-    }
-
+    // --- API FUNCTIONS ---
     async function loadPlayerData() {
-      const res = await fetch(`https://api.github.com/gists/${gistInfo.id}`, {
-        headers: { "Authorization": `token ${token}` }
-      });
-      const gist = await res.json();
-      playerData = JSON.parse(gist.files[gistInfo.file].content);
+      try {
+        const res = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(player)}`);
+        const data = await res.json();
+        if (data && data.gameData) {
+            playerData = data;
+        } else {
+            throw new Error("No game data");
+        }
+      } catch (error) {
+        console.error("Error loading player data:", error);
+        playerData = {
+          name: player,
+          gameData: {
+            rps: {
+              score: 0,
+              dailyGames: { date: new Date().toDateString(), count: 0 },
+            },
+            totalScore: 0
+          }
+        };
+      }
+      if (!playerData.gameData.rps) {
+         playerData.gameData.rps = { score: 0, dailyGames: { date: new Date().toDateString(), count: 0 } };
+      }
     }
 
     async function savePlayerData() {
-      const body = { files: { [gistInfo.file]: { content: JSON.stringify(playerData, null, 2) } } };
-      await fetch(`https://api.github.com/gists/${gistInfo.id}`, {
-        method: "PATCH",
-        headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
+      try {
+        await fetch(`${API_URL}/api/user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(playerData)
+        });
+      } catch (error) {
+        console.error("Error saving player data:", error);
+      }
     }
 
     // Initialize the game when page loads
