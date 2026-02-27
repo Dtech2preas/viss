@@ -346,24 +346,10 @@
   <div class="container">
     <header>
       <h1>💖 Our Love Game Stats 💖</h1>
-      <p id="titleLine">Select your names to begin ✨</p>
+      <p id="titleLine">Loading... ✨</p>
     </header>
 
-    <div class="selector-container">
-      <div class="selector" id="selectorBox">
-        <div class="selector-row">
-          <label for="userSelect">Choose Yourself:</label>
-          <select id="userSelect"></select>
-        </div>
-        <div class="selector-row">
-          <label for="opponentSelect">Choose Partner:</label>
-          <select id="opponentSelect"></select>
-        </div>
-        <button class="btn-primary" onclick="startComparison()">Compare Love Scores</button>
-      </div>
-    </div>
-
-    <div class="dashboard" id="dashboard">
+    <div class="dashboard" id="dashboard" style="display: block;">
       <div class="matchup-header">
         <h2 id="matchup"></h2>
         <div class="refresh-indicator">
@@ -402,83 +388,22 @@
   </div>
 
   <script>
-    const userGistMap = {
-      lefa: "02e300379f8b968942ac67379f5bc831",
-      jonas: "69f058ad6bcb25e41d8b797dc7395c6d",
-      owami: "6c9e9fcda5ed38f9839c9ac8bc147ba7",
-      preasx24: "50e60ff2c3bc108d63038c8eb6c26e8d"
-    };
-
-    const GIST_TOKEN_URL = "https://gist.githubusercontent.com/Preasx24/e8b6e2c45a6963ef3c5f4a24704ab5fb/raw/gistfile1.txt";
-    let GIST_TOKEN = "";
+    const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
     let currentUser = "";
     let currentOpponent = "";
 
-    // 🔹 Load token
-    async function fetchToken() {
-      try {
-        const res = await fetch(GIST_TOKEN_URL);
-        GIST_TOKEN = (await res.text()).trim();
-      } catch (error) {
-        console.error("Failed to fetch token:", error);
-        alert("Failed to initialize. Please refresh the page.");
-      }
-    }
-
     // 🔹 Fetch game data
-    async function fetchGameData(gistId) {
+    async function fetchGameData(username) {
       try {
-        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-          headers: { Authorization: `token ${GIST_TOKEN}` }
-        });
+        const res = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(username)}`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         
-        const gist = await res.json();
-        const fileName = Object.keys(gist.files)[0];
-        return JSON.parse(gist.files[fileName].content);
+        const data = await res.json();
+        return data.gameData || { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
       } catch (error) {
         console.error("Failed to fetch game data:", error);
-        return { gameData: { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } } };
+        return { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
       }
-    }
-
-    // 🔹 Populate selectors
-    function populateSelectors() {
-      const userSelect = document.getElementById("userSelect");
-      const opponentSelect = document.getElementById("opponentSelect");
-      
-      // Add default option
-      const defaultOption = new Option("Select a player", "");
-      userSelect.add(defaultOption);
-      opponentSelect.add(defaultOption.cloneNode(true));
-      
-      Object.keys(userGistMap).forEach(user => {
-        userSelect.add(new Option(user, user));
-        opponentSelect.add(new Option(user, user));
-      });
-    }
-
-    // 🔹 Save choice and load dashboard
-    function startComparison() {
-      currentUser = document.getElementById("userSelect").value;
-      currentOpponent = document.getElementById("opponentSelect").value;
-      
-      if (!currentUser || !currentOpponent) {
-        alert("Please select both players!");
-        return;
-      }
-      
-      if (currentUser === currentOpponent) {
-        alert("Choose different players!");
-        return;
-      }
-      
-      localStorage.setItem("user", currentUser);
-      localStorage.setItem("opponent", currentOpponent);
-      document.getElementById("selectorBox").style.display = "none";
-      document.getElementById("dashboard").style.display = "block";
-      loadStats();
-      setInterval(loadStats, 15000); // auto refresh
     }
 
     // 🔹 Format game name for display
@@ -495,8 +420,8 @@
     async function loadStats() {
       try {
         const [userData, oppData] = await Promise.all([
-          fetchGameData(userGistMap[currentUser]),
-          fetchGameData(userGistMap[currentOpponent])
+          fetchGameData(currentUser),
+          fetchGameData(currentOpponent)
         ]);
 
         // Top line
@@ -504,7 +429,7 @@
           `💖 ${currentUser} vs ${currentOpponent} 💖`;
 
         // Leader summary
-        const diff = userData.gameData.totalScore - oppData.gameData.totalScore;
+        const diff = (userData.totalScore || 0) - (oppData.totalScore || 0);
         let leaderSummary = "";
         if (diff > 0) leaderSummary = `${currentUser} is winning by ${diff} points 👑`;
         else if (diff < 0) leaderSummary = `${currentOpponent} is winning by ${Math.abs(diff)} points 👑`;
@@ -514,8 +439,8 @@
         // Game stats
         let statsHtml = "";
         ["ticTacToe", "rps", "memory"].forEach(game => {
-          const userScore = userData.gameData[game].score;
-          const oppScore = oppData.gameData[game].score;
+          const userScore = userData[game]?.score || 0;
+          const oppScore = oppData[game]?.score || 0;
           
           statsHtml += `
             <div class="card">
@@ -551,21 +476,20 @@
 
     // 🔹 Init
     (async () => {
-      await fetchToken();
-      populateSelectors();
-      // Restore saved players
-      const savedUser = localStorage.getItem("user");
-      const savedOpponent = localStorage.getItem("opponent");
-      if (savedUser && savedOpponent && savedUser !== savedOpponent) {
-        currentUser = savedUser;
-        currentOpponent = savedOpponent;
-        document.getElementById("userSelect").value = currentUser;
-        document.getElementById("opponentSelect").value = currentOpponent;
-        document.getElementById("selectorBox").style.display = "none";
-        document.getElementById("dashboard").style.display = "block";
-        loadStats();
-        setInterval(loadStats, 15000);
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const userData = JSON.parse(savedProfile);
+        if (userData.partner) {
+          currentUser = userData.name;
+          currentOpponent = userData.partner.name;
+          document.getElementById('titleLine').textContent = "May the best lover win ✨";
+          loadStats();
+          setInterval(loadStats, 15000);
+          return;
+        }
       }
+      document.getElementById('titleLine').textContent = "Please pair with your partner on the home page first.";
+      document.getElementById('dashboard').style.display = 'none';
     })();
   </script>
 </body>

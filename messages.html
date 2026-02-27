@@ -327,22 +327,8 @@
     </div>
 
     <script>
-        // Gist URLs
-        const gistUrls = {
-            messages: 'https://gist.githubusercontent.com/Preasx24/7c024dffd3ab26c772ffd786885e66e6/raw/gistfile1.txt',
-            token: 'https://gist.githubusercontent.com/Preasx24/e8b6e2c45a6963ef3c5f4a24704ab5fb/raw/gistfile1.txt'
-        };
-
-        // Map usernames to their personal message gists
-        const userGistMap = {
-            lefa: "https://gist.githubusercontent.com/Preasx24/02e300379f8b968942ac67379f5bc831/raw/gist_1.json",
-            jonas: "https://gist.githubusercontent.com/Preasx24/69f058ad6bcb25e41d8b797dc7395c6d/raw/gist_2.json",
-            owami: "https://gist.githubusercontent.com/Preasx24/6c9e9fcda5ed38f9839c9ac8bc147ba7/raw/gist_3.json",
-            preasx24: "https://gist.githubusercontent.com/Preasx24/50e60ff2c3bc108d63038c8eb6c26e8d/raw/gist_4.json"
-        };
-
+        const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
         let userData = null;
-        let personalGistUser = null;
         let messageCheckInterval = null;
 
         function initApp() {
@@ -354,133 +340,17 @@
             }
 
             userData = JSON.parse(savedProfile);
-            loadGithubToken();
             loadMessages();
             updateMessageCountdown();
 
-            // Load personal gist user selection
-            const savedPersonalGistUser = localStorage.getItem('togetherMessageGistUser');
-            if (savedPersonalGistUser) {
-                personalGistUser = savedPersonalGistUser;
-                renderPersonalGistSection();
-            } else {
-                renderUserSelection();
-            }
+            document.getElementById('personalGistCard').style.display = 'none';
 
             if (messageCheckInterval) clearInterval(messageCheckInterval);
             messageCheckInterval = setInterval(loadMessages, 30000);
         }
 
-        // Render user selection UI
-        function renderUserSelection() {
-            const container = document.getElementById('userSelectionContainer');
-            container.innerHTML = `
-                <p>Select your username to update your personal message gist:</p>
-                <div class="user-selection">
-                    <div class="user-card" onclick="selectUser('lefa')">
-                        <h3>lefa</h3>
-                        <p>Personal Gist Available</p>
-                    </div>
-                    <div class="user-card" onclick="selectUser('jonas')">
-                        <h3>jonas</h3>
-                        <p>Personal Gist Available</p>
-                    </div>
-                    <div class="user-card" onclick="selectUser('owami')">
-                        <h3>owami</h3>
-                        <p>Personal Gist Available</p>
-                    </div>
-                    <div class="user-card" onclick="selectUser('preasx24')">
-                        <h3>preasx24</h3>
-                        <p>Personal Gist Available</p>
-                    </div>
-                </div>
-            `;
-            updateStatus('loading', 'Select your username to enable personal gist updates');
-        }
-
-        // Render personal gist section with selected user
-        function renderPersonalGistSection() {
-            const container = document.getElementById('userSelectionContainer');
-            container.innerHTML = `
-                <div class="selected-user-display">
-                    <div>
-                        <strong>Personal Gist User:</strong> ${personalGistUser}
-                    </div>
-                    <button class="change-user-btn" onclick="changeUser()">
-                        Change
-                    </button>
-                </div>
-            `;
-            updateStatus('connected', `Personal gist updates enabled for ${personalGistUser}`);
-        }
-
-        // Change user selection
-        function changeUser() {
-            if (confirm("Change personal gist user? This will clear your current selection.")) {
-                localStorage.removeItem('togetherMessageGistUser');
-                personalGistUser = null;
-                renderUserSelection();
-            }
-        }
-
         function goBack() {
             window.location.href = 'index.html';
-        }
-
-        async function loadGithubToken() {
-            try {
-                const response = await fetch(gistUrls.token + '?t=' + new Date().getTime());
-                const token = await response.text();
-                userData.gistToken = token.trim();
-                
-                if (personalGistUser) {
-                    updateStatus('connected', `Personal gist updates enabled for ${personalGistUser}`);
-                } else {
-                    updateStatus('connected', 'GitHub token loaded successfully');
-                }
-            } catch (error) {
-                console.error('Error loading GitHub token:', error);
-                showNotification('Error loading GitHub token');
-                updateStatus('disconnected', 'Failed to load GitHub token');
-            }
-        }
-
-        // Update status display
-        function updateStatus(status, message) {
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            
-            statusDot.className = 'status-dot';
-            switch(status) {
-                case 'connected':
-                    statusDot.classList.add('status-connected');
-                    break;
-                case 'disconnected':
-                    statusDot.classList.add('status-disconnected');
-                    break;
-                case 'loading':
-                    statusDot.classList.add('status-loading');
-                    break;
-            }
-            
-            statusText.textContent = message;
-        }
-
-        // Select user for personal gist
-        function selectUser(username) {
-            // Update UI
-            const userCards = document.querySelectorAll('.user-card');
-            userCards.forEach(card => card.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
-            
-            // Set personal gist user
-            personalGistUser = username;
-            localStorage.setItem('togetherMessageGistUser', username);
-            
-            // Update UI to show selected user
-            renderPersonalGistSection();
-            
-            showNotification(`Personal gist updates enabled for ${username}`);
         }
 
         async function sendDailyMessage() {
@@ -511,7 +381,7 @@
             userData.messages.push({
                 text: messageText,
                 timestamp: new Date().toISOString(),
-                sender: userData.userKey
+                sender: userData.name
             });
 
             if (userData.messages.length > 50) {
@@ -522,31 +392,17 @@
             localStorage.setItem('togetherProfile', JSON.stringify(userData));
 
             try {
-                // Update main message gist (original functionality)
-                const mainGistSuccess = await updateGistData({
-                    [userData.userKey]: {
-                        messages: userData.messages,
-                        lastMessageDate: userData.lastMessageDate,
-                        updated: new Date().toISOString()
-                    }
+                const res = await fetch(`${API_URL}/api/user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
                 });
 
-                // Update personal gist if user is selected
-                let personalGistSuccess = true;
-                if (personalGistUser) {
-                    personalGistSuccess = await updatePersonalMessageGist(messageText);
-                }
-
-                if (mainGistSuccess && personalGistSuccess) {
+                if (res.ok) {
                     document.getElementById('dailyMessage').value = '';
                     updateMessageCountdown();
                     loadMessages();
                     showNotification('Message sent to your partner!');
-                } else if (mainGistSuccess) {
-                    document.getElementById('dailyMessage').value = '';
-                    updateMessageCountdown();
-                    loadMessages();
-                    showNotification('Message shared to main feed' + (personalGistUser ? ', but personal gist update failed' : ''));
                 } else {
                     showNotification('Failed to share message');
                 }
@@ -556,77 +412,6 @@
             } finally {
                 sendBtn.innerHTML = originalText;
                 sendBtn.disabled = false;
-            }
-        }
-
-        // Update personal message gist
-        async function updatePersonalMessageGist(message) {
-            if (!personalGistUser || !userGistMap[personalGistUser]) {
-                console.log('No personal gist user selected or no gist URL available');
-                return false;
-            }
-
-            try {
-                const personalGistUrl = userGistMap[personalGistUser];
-                const parts = personalGistUrl.split('/');
-                const gistId = parts[4];
-                const fileName = parts[parts.length - 1];
-
-                const currentResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    headers: { 'Authorization': `token ${userData.gistToken}` }
-                });
-
-                if (!currentResponse.ok) {
-                    throw new Error(`HTTP error! status: ${currentResponse.status}`);
-                }
-
-                const currentGist = await currentResponse.json();
-                let currentContent = {};
-                
-                try {
-                    const content = currentGist.files[fileName].content;
-                    // Handle both array format (legacy) and object format
-                    if (content.trim() === '[]') {
-                        // Empty array - convert to object format
-                        currentContent = { message: null };
-                    } else {
-                        currentContent = JSON.parse(content);
-                        // If it's an array, convert to object format
-                        if (Array.isArray(currentContent)) {
-                            currentContent = { message: null };
-                        }
-                    }
-                } catch (e) {
-                    console.log('Starting fresh personal Gist content');
-                    currentContent = { message: null };
-                }
-
-                // Update only the message field
-                currentContent.message = message;
-
-                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${userData.gistToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: {
-                            [fileName]: { content: JSON.stringify(currentContent, null, 2) }
-                        }
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                console.log('Personal message gist updated successfully');
-                return true;
-            } catch (error) {
-                console.error("Error updating personal message gist:", error);
-                showNotification("Error updating personal message gist: " + error.message);
-                return false;
             }
         }
 
@@ -661,18 +446,21 @@
 
         async function loadMessages() {
             try {
-                const response = await fetch(gistUrls.messages + '?t=' + new Date().getTime());
-                const data = await response.json();
-
                 const messageHistory = document.getElementById('messageHistory');
                 let allMessages = [];
 
-                if (data && data[userData.userKey] && data[userData.userKey].messages) {
-                    allMessages = allMessages.concat(data[userData.userKey].messages.map(msg => ({...msg, isOwn: true})));
+                if (userData.messages) {
+                    allMessages = allMessages.concat(userData.messages.map(msg => ({...msg, isOwn: true})));
                 }
 
-                if (data && data[userData.partnerKey] && data[userData.partnerKey].messages) {
-                    allMessages = allMessages.concat(data[userData.partnerKey].messages.map(msg => ({...msg, isOwn: false})));
+                if (userData.partner) {
+                    const partnerRes = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
+                    if (partnerRes.ok) {
+                        const partnerData = await partnerRes.json();
+                        if (partnerData && partnerData.messages) {
+                            allMessages = allMessages.concat(partnerData.messages.map(msg => ({...msg, isOwn: false})));
+                        }
+                    }
                 }
 
                 allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -706,57 +494,6 @@
             }
         }
 
-        async function updateGistData(data) {
-            if (!userData.gistToken) {
-                showNotification('GitHub token is required to update Gists');
-                return false;
-            }
-
-            try {
-                const gistId = gistUrls.messages.split('/')[4];
-                const currentResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    headers: { 'Authorization': `token ${userData.gistToken}` }
-                });
-
-                if (!currentResponse.ok) {
-                    throw new Error(`HTTP error! status: ${currentResponse.status}`);
-                }
-
-                const currentGist = await currentResponse.json();
-                let currentContent = {};
-
-                try {
-                    currentContent = JSON.parse(currentGist.files['gistfile1.txt'].content);
-                } catch (e) {}
-
-                const newContent = {...currentContent, ...data};
-
-                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${userData.gistToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: {
-                            'gistfile1.txt': {
-                                content: JSON.stringify(newContent, null, 2)
-                            }
-                        }
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                return true;
-            } catch (error) {
-                console.error('Error updating Gist:', error);
-                showNotification('Error updating Gist: ' + error.message);
-                return false;
-            }
-        }
 
         function showNotification(message) {
             const notification = document.getElementById('notification');

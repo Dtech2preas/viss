@@ -359,12 +359,7 @@
     </div>
 
     <script>
-        // Gist URLs
-        const gistUrls = {
-            activities: 'https://gist.githubusercontent.com/Preasx24/4f0b769f591da88eb60147bd5a3d044c/raw/gistfile1.txt',
-            location: 'https://gist.githubusercontent.com/Preasx24/c257b4b817361f2ccc22a60388784986/raw/gistfile1.txt',
-            token: 'https://gist.githubusercontent.com/Preasx24/e8b6e2c45a6963ef3c5f4a24704ab5fb/raw/gistfile1.txt'
-        };
+        const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
 
         let userData = null;
         let currentPeriod = 'day';
@@ -379,24 +374,12 @@
             }
 
             userData = JSON.parse(savedProfile);
-            loadGithubToken();
             loadPartnerActivities();
             loadRelationshipStats();
         }
 
         function goBack() {
             window.location.href = 'index.html';
-        }
-
-        async function loadGithubToken() {
-            try {
-                const response = await fetch(gistUrls.token + '?t=' + new Date().getTime());
-                const token = await response.text();
-                userData.gistToken = token.trim();
-            } catch (error) {
-                console.error('Error loading GitHub token:', error);
-                showNotification('Error loading GitHub token');
-            }
         }
 
         function changePeriod(period, element) {
@@ -413,11 +396,13 @@
 
         async function loadPartnerActivities() {
             try {
-                const response = await fetch(gistUrls.activities + '?t=' + new Date().getTime());
+                if(!userData.partner) return;
+                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
+                if(!response.ok) throw new Error("Partner not found");
                 const data = await response.json();
 
-                if (data && data[userData.partnerKey] && data[userData.partnerKey].activities) {
-                    partnerActivities = data[userData.partnerKey].activities;
+                if (data && data.activities) {
+                    partnerActivities = data.activities;
                     updateActivityStats();
                 }
             } catch (error) {
@@ -428,19 +413,18 @@
 
         async function loadRelationshipStats() {
             try {
-                const response = await fetch(gistUrls.location + '?t=' + new Date().getTime());
+                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.name)}`);
                 const data = await response.json();
 
-                if (data && data[userData.userKey]) {
-                    const userLocationData = data[userData.userKey];
-                    if (userLocationData.closestDistance) {
-                        document.getElementById('closestDistance').textContent = userLocationData.closestDistance.toFixed(2) + ' km';
+                if (data) {
+                    if (data.closestDistance) {
+                        document.getElementById('closestDistance').textContent = data.closestDistance.toFixed(2) + ' km';
                     }
-                    if (userLocationData.furthestDistance) {
-                        document.getElementById('furthestDistance').textContent = userLocationData.furthestDistance.toFixed(2) + ' km';
+                    if (data.furthestDistance) {
+                        document.getElementById('furthestDistance').textContent = data.furthestDistance.toFixed(2) + ' km';
                     }
-                    if (userLocationData.timesTogether) {
-                        document.getElementById('timesTogether').textContent = userLocationData.timesTogether;
+                    if (data.timesTogether) {
+                        document.getElementById('timesTogether').textContent = data.timesTogether;
                     }
                 }
             } catch (error) {
