@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Timer - Together Forever</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff7eb9;
+            --secondary-color: #7e57c2;
+            --accent-color: #ff4d8d;
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --study-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: var(--secondary-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 8px 20px rgba(166, 94, 166, 0.3);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease-out;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+        }
+
+        .timer-section {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            width: 100%;
+            box-shadow: 0 15px 40px rgba(166, 94, 166, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .timer-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--study-gradient);
+        }
+
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 20px;
+            min-height: 30px;
+            transition: color 0.3s ease;
+        }
+
+        .status-text.active {
+            color: #4facfe;
+            animation: pulse-text 2s infinite;
+        }
+
+        .timer-display {
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+
+        .timer-display.active {
+            color: #4facfe;
+            text-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .btn-start {
+            background: var(--study-gradient);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+            display: none;
+        }
+
+        .btn-circle:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
+        .btn-circle:active {
+            transform: scale(0.95);
+        }
+
+        .btn-circle::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(30deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .btn-circle:hover::after {
+            opacity: 1;
+            transform: rotate(30deg) translate(10%, 10%);
+        }
+
+        .btn-dashboard {
+            background: white;
+            color: var(--secondary-color);
+            border: 2px solid var(--secondary-color);
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 250px;
+        }
+
+        .btn-dashboard:hover {
+            background: var(--secondary-color);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(126, 87, 194, 0.3);
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.5s ease;
+            z-index: 1000;
+            border-left: 5px solid #4facfe;
+        }
+
+        #notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .loader {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            position: absolute;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-text {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Floating elements for background */
+        .book-icon {
+            position: absolute;
+            opacity: 0.1;
+            font-size: 2rem;
+            z-index: -1;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        @media (max-width: 600px) {
+            .timer-display {
+                font-size: 4rem;
+            }
+            .timer-section {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="you.html" class="back-btn">← Back</a>
+
+    <!-- Background decorations -->
+    <div class="book-icon" style="top: 20%; left: 10%; animation-delay: 0s;">📚</div>
+    <div class="book-icon" style="top: 70%; right: 15%; animation-delay: 1s; font-size: 3rem;">📖</div>
+    <div class="book-icon" style="top: 40%; right: 10%; animation-delay: 2s;">✏️</div>
+    <div class="book-icon" style="top: 80%; left: 20%; animation-delay: 3s; font-size: 2.5rem;">🧠</div>
+
+    <div class="container">
+        <header>
+            <h1>Study Time</h1>
+            <p>Focus on your goals together</p>
+        </header>
+
+        <div class="timer-section">
+            <div id="statusText" class="status-text">Ready to focus?</div>
+
+            <div id="timerDisplay" class="timer-display">00:00:00</div>
+
+            <button id="startBtn" class="btn-circle btn-start" onclick="startTimer()">
+                <span class="btn-text">Start</span>
+            </button>
+
+            <button id="stopBtn" class="btn-circle btn-stop" onclick="stopTimer()">
+                <span class="btn-text">Stop</span>
+                <div class="loader" id="stopLoader"></div>
+            </button>
+
+            <a href="study-dashboard.html" class="btn-dashboard">View Dashboard</a>
+        </div>
+    </div>
+
+    <div id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
+        let timerInterval;
+        let startTime;
+        let elapsedSeconds = 0;
+        let isRunning = false;
+        let userData = null;
+
+        window.onload = function() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (savedProfile) {
+                userData = JSON.parse(savedProfile);
+            } else {
+                window.location.href = 'you.html';
+            }
+
+            // Check if there's an ongoing session saved locally in case of accidental refresh
+            const savedSession = localStorage.getItem('currentStudySession');
+            if (savedSession) {
+                const session = JSON.parse(savedSession);
+                const now = new Date().getTime();
+                elapsedSeconds = Math.floor((now - session.startTime) / 1000);
+                startTime = session.startTime;
+
+                // Resume UI state
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'flex';
+                document.getElementById('statusText').textContent = 'Studying...';
+                document.getElementById('statusText').classList.add('active');
+                document.getElementById('timerDisplay').classList.add('active');
+
+                updateDisplay();
+                timerInterval = setInterval(updateTimer, 1000);
+                isRunning = true;
+            }
+        };
+
+        function startTimer() {
+            if (isRunning) return;
+
+            if (!startTime) {
+                startTime = new Date().getTime();
+                // Save to local storage to recover if accidentally refreshed
+                localStorage.setItem('currentStudySession', JSON.stringify({
+                    startTime: startTime
+                }));
+            }
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'flex';
+            document.getElementById('statusText').textContent = 'Studying...';
+            document.getElementById('statusText').classList.add('active');
+            document.getElementById('timerDisplay').classList.add('active');
+
+            timerInterval = setInterval(updateTimer, 1000);
+            isRunning = true;
+        }
+
+        async function stopTimer() {
+            // Remove check for isRunning because on 'Retry' isRunning is false
+
+            // Show loader
+            document.querySelector('#stopBtn .btn-text').style.opacity = '0';
+            document.getElementById('stopLoader').style.display = 'block';
+            document.getElementById('stopBtn').disabled = true;
+
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+            }
+
+            const endTime = new Date().getTime();
+            const durationSeconds = elapsedSeconds;
+
+            // Format date as YYYY-MM-DD for grouping
+            const dateObj = new Date(startTime);
+            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+
+            const sessionData = {
+                id: startTime.toString(), // unique id
+                date: dateStr,
+                startTime: startTime,
+                endTime: endTime,
+                durationSeconds: durationSeconds
+            };
+
+            try {
+                // Fetch current user data from backend first to append to array
+                const response = await fetch(`${API_URL}/api/couple`);
+                const coupleData = await response.json();
+
+                const userName = userData.name;
+                const userObj = coupleData[userName] || {};
+                const studyLogs = userObj.studyLogs || [];
+
+                // Add new log
+                studyLogs.push(sessionData);
+
+                // Update backend
+                await fetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        [userName]: { ...userObj, studyLogs: studyLogs }
+                    })
+                });
+
+                showNotification(`Great job! Logged ${formatTime(durationSeconds)} of study time.`);
+
+            } catch (e) {
+                console.error("Failed to save study log", e);
+                showNotification("Failed to save session. Please try again.");
+                // Reset UI so they can try stopping again, without resuming the timer
+                document.querySelector('#stopBtn .btn-text').style.opacity = '1';
+                document.getElementById('stopLoader').style.display = 'none';
+                document.getElementById('stopBtn').disabled = false;
+                document.querySelector('#stopBtn .btn-text').textContent = 'Retry';
+                // Note: isRunning is already false, timerInterval is cleared, so we don't start it again.
+                // We keep startTime and elapsedSeconds as they are.
+                return;
+            }
+
+            // Cleanup after successful save
+            localStorage.removeItem('currentStudySession');
+            elapsedSeconds = 0;
+            startTime = null;
+            updateDisplay();
+
+            // Reset UI
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('startBtn').style.display = 'flex';
+            document.getElementById('statusText').textContent = 'Ready to focus?';
+            document.getElementById('statusText').classList.remove('active');
+            document.getElementById('timerDisplay').classList.remove('active');
+
+            // Reset button state for next time
+            document.querySelector('#stopBtn .btn-text').style.opacity = '1';
+            document.querySelector('#stopBtn .btn-text').textContent = 'Stop';
+            document.getElementById('stopLoader').style.display = 'none';
+            document.getElementById('stopBtn').disabled = false;
+        }
+
+        function updateTimer() {
+            const now = new Date().getTime();
+            elapsedSeconds = Math.floor((now - startTime) / 1000);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('timerDisplay').textContent = formatTime(elapsedSeconds);
+        }
+
+        function formatTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+
+            notificationText.textContent = message;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
