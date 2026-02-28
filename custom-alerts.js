@@ -88,7 +88,7 @@ window.appPrompt = async function(message, defaultValue) {
 };
 
 const style = document.createElement('style');
-style.innerHTML = \`
+style.innerHTML = `
 .custom-modal {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -147,5 +147,5 @@ style.innerHTML = \`
 .custom-modal-btn.cancel:hover {
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
-\`;
+`;
 document.head.appendChild(style);
