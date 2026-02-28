@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Together Forever - Our Anniversary App</title>
@@ -374,6 +375,7 @@
             }
         }
     </style>
+<script src="custom-alerts.js"></script>
 </head>
 <body>
     <div class="hearts-container" id="hearts"></div>
@@ -534,11 +536,11 @@
             window.location.href = page;
         }
 
-        function promptPasscode() {
-            const passcode = prompt("Enter passcode to access Private section:");
+        async function promptPasscode() {
+            const passcode = await appPrompt("Enter passcode to access Private section:");
             if (passcode === "hoohaa") {
                 navigateTo('private.html');
-            } else if (passcode !== null) {
+            } else if (passcode !== null && passcode !== '') {
                 showNotification("Incorrect passcode.");
             }
         }

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Hub - Play Games</title>
@@ -443,6 +444,7 @@
             margin-top: 10px;
         }
     </style>
+<script src="custom-alerts.js"></script>
 </head>
 <body>
     <div class="container">
@@ -746,7 +748,7 @@
             }
 
             if (gameData[gameType].playsToday >= 10) {
-                alert(`You've reached the daily limit of 10 games for ${gameType.replace(/([A-Z])/g, ' $1').trim()}!`);
+                appAlert(`You've reached the daily limit of 10 games for ${gameType.replace(/([A-Z])/g, ' $1').trim()}!`);
                 return false;
             }
 

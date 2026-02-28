@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coupons - Together Forever</title>
@@ -97,13 +98,46 @@
 
         .loader { text-align: center; padding: 20px; }
 
+        /* Certificate Modal */
+        .certificate { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 1001; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb911' /%3E%3C/svg%3E"); }
+        .cert-inner { border: 10px solid #f9e5ec; padding: 40px 20px; border-radius: 10px; max-width: 600px; width: 100%; position: relative; background: rgba(255,255,255,0.9); box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .cert-header { font-family: 'Dancing Script', cursive; font-size: 3rem; color: #ff7eb9; margin-bottom: 10px; }
+        .cert-sub { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 30px; }
+        .cert-body { font-size: 1.2rem; line-height: 1.8; color: var(--dark-color); margin-bottom: 30px; }
+        .cert-task { font-size: 1.8rem; color: var(--accent-color); font-weight: bold; margin: 20px 0; border-bottom: 2px dashed #ff7eb9; padding-bottom: 10px; display: inline-block; }
+        .cert-footer { font-size: 0.9rem; color: #666; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; justify-content: space-between;}
+        .cert-close { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 2rem; color: #aaa; cursor: pointer; }
+        .cert-btn { margin-top: 20px; background: var(--gradient); color: white; border: none; padding: 12px 30px; border-radius: 50px; cursor: pointer; font-size: 1.1rem; font-family: 'Montserrat'; font-weight: bold;}
+
         @media (max-width: 600px) {
             .input-group { flex-direction: column; }
             .coupon-grid { grid-template-columns: 1fr; }
+            .cert-header { font-size: 2.2rem; }
+            .cert-task { font-size: 1.4rem; }
+            .cert-inner { padding: 30px 15px; }
+            .cert-footer { flex-direction: column; gap: 10px; text-align: center; }
         }
     </style>
+<script src="custom-alerts.js"></script>
 </head>
 <body>
+    <div id="certModal" class="certificate">
+        <div class="cert-inner">
+            <button class="cert-close" onclick="closeCert()">×</button>
+            <div class="cert-header">Official Love Coupon</div>
+            <div class="cert-sub">Redeemable upon presentation</div>
+            <div class="cert-body">
+                This certificate entitles <strong id="certOwner"></strong> to:<br>
+                <span class="cert-task" id="certTask"></span><br>
+                Provided by their loving partner, <strong id="certPartner"></strong>.
+            </div>
+            <div class="cert-footer">
+                <div>Issued: <span id="certIssueDate"></span></div>
+                <div>Expires: <span id="certExpDate"></span></div>
+            </div>
+            <button class="cert-btn" id="certRedeemBtn" onclick="">Redeem Now</button>
+        </div>
+    </div>
     <div class="container">
         <header>
             <a href="private.html" class="back-btn">← Back</a>
@@ -117,13 +151,9 @@
 
             <div class="section">
                 <div class="balance-board">
-                    <div class="balance-item">
+                    <div class="balance-item" style="width: 100%;">
                         <div class="balance-title">My Balance</div>
                         <div class="balance-amount" id="myBalance">0</div>
-                    </div>
-                    <div class="balance-item">
-                        <div class="balance-title">Partner's Balance</div>
-                        <div class="balance-amount" id="partnerBalance">0</div>
                     </div>
                 </div>
 
@@ -239,7 +269,7 @@
 
             } catch (e) {
                 console.error("Error loading coupon data", e);
-                alert("Failed to load. Try again.");
+                appAlert("Failed to load. Try again.");
             } finally {
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
@@ -260,7 +290,8 @@
 
         function updateUI() {
             document.getElementById('myBalance').innerText = couponState.balances[userData.name] || 0;
-            document.getElementById('partnerBalance').innerText = couponState.balances[userData.partner.name] || 0;
+            const partnerBalElem = document.getElementById('partnerBalance');
+            if(partnerBalElem) partnerBalElem.innerText = couponState.balances[userData.partner.name] || 0;
 
             renderStore();
             renderInventory();
@@ -279,13 +310,13 @@
 
         async function awardPoints() {
             const amount = parseInt(document.getElementById('awardAmount').value);
-            if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount");
+            if (isNaN(amount) || amount <= 0) return appAlert("Enter a valid amount");
 
             couponState.balances[userData.partner.name] += amount;
             document.getElementById('awardAmount').value = 10;
             updateUI();
             await saveData();
-            alert(`Awarded ${amount} points to ${userData.partner.name}!`);
+            appAlert(`Awarded ${amount} points to ${userData.partner.name}!`);
         }
 
         function renderStore() {
@@ -320,14 +351,14 @@
             // Special logic for steal points
             if (id === 'hard4') {
                 if (couponState.balances[userData.partner.name] < 100) {
-                    return alert("Your partner doesn't have 100 points to steal!");
+                    return appAlert("Your partner doesn't have 100 points to steal!");
                 }
                 couponState.balances[userData.partner.name] -= 100;
                 couponState.balances[userData.name] += 100;
                 // Pay the cost
                 couponState.balances[userData.name] -= price;
 
-                alert("You stole 100 points!");
+                appAlert("You stole 100 points!");
                 updateUI();
                 await saveData();
                 return;
@@ -345,7 +376,7 @@
 
             updateUI();
             await saveData();
-            alert("Coupon purchased successfully! It's in your inventory.");
+            appAlert("Coupon purchased successfully! It's in your inventory.");
         }
 
         function renderInventory() {
@@ -361,17 +392,43 @@
 
             myInventory.forEach(item => {
                 const dynamicTitle = item.title.replace('{partner}', userData.partner.name).replace('{other partner}', userData.partner.name);
+                // We use escape to handle special chars in titles when passing to onclick
+                const safeTitle = escape(dynamicTitle);
+                const issueDate = item.id.split('_')[0]; // The timestamp when it was bought
                 list.innerHTML += `
-                    <div class="inventory-item">
+                    <div class="inventory-item" style="cursor: pointer;" onclick="viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">
                         <div style="font-weight:600;">🎟️ ${dynamicTitle}</div>
-                        <button class="btn-redeem" onclick="redeemCoupon('${item.id}')">Redeem</button>
+                        <button class="btn-redeem" onclick="event.stopPropagation(); viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">View</button>
                     </div>
                 `;
             });
         }
 
+        function viewCoupon(inventoryId, encodedTitle, issueDateTs) {
+            const task = unescape(encodedTitle);
+            const issueDate = new Date(parseInt(issueDateTs));
+            const expDate = new Date(issueDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // +7 days
+
+            document.getElementById('certOwner').innerText = userData.name;
+            document.getElementById('certPartner').innerText = userData.partner.name;
+            document.getElementById('certTask').innerText = task;
+
+            document.getElementById('certIssueDate').innerText = issueDate.toLocaleDateString();
+            document.getElementById('certExpDate').innerText = expDate.toLocaleDateString();
+
+            const btn = document.getElementById('certRedeemBtn');
+            btn.onclick = () => redeemCoupon(inventoryId);
+
+            document.getElementById('certModal').style.display = 'flex';
+        }
+
+        function closeCert() {
+            document.getElementById('certModal').style.display = 'none';
+        }
+
         async function redeemCoupon(inventoryId) {
-            if (!confirm("Are you sure you want to redeem this now? It will notify your partner and be removed from your inventory.")) return;
+            const result = await appConfirm("Are you sure you want to redeem this now? It will notify your partner and be removed from your inventory.");
+            if (!result) return;
 
             const myInventory = couponState.inventory[userData.name];
             const itemIndex = myInventory.findIndex(i => i.id === inventoryId);
@@ -380,10 +437,10 @@
                 const item = myInventory[itemIndex];
                 myInventory.splice(itemIndex, 1);
 
-                // Add a notification / log somewhere if we had a global feed, for now just remove and save
+                closeCert();
                 updateUI();
                 await saveData();
-                alert(`Coupon Redeemed! Make sure to tell ${userData.partner.name} to fulfill it!`);
+                appAlert(`Coupon Redeemed! Make sure to tell ${userData.partner.name} to fulfill it!`);
             }
         }
 
@@ -396,7 +453,7 @@
             const price = parseInt(priceInput.value);
 
             if (!task || isNaN(price) || price <= 0) {
-                alert("Please enter a valid description and price.");
+                appAlert("Please enter a valid description and price.");
                 return;
             }
 
@@ -415,7 +472,7 @@
 
             updateUI();
             await saveData();
-            alert("Proposed! Waiting for partner to approve.");
+            appAlert("Proposed! Waiting for partner to approve.");
         }
 
         async function acceptProposal(id) {
@@ -435,7 +492,7 @@
 
                 updateUI();
                 await saveData();
-                alert("Added to store!");
+                appAlert("Added to store!");
             }
         }
 
@@ -446,7 +503,7 @@
                 const newPrice = parseInt(document.getElementById(inputId).value);
 
                 if (isNaN(newPrice) || newPrice <= 0) {
-                    alert("Enter a valid price.");
+                    appAlert("Enter a valid price.");
                     return;
                 }
 

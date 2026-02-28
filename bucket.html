@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shared Bucket List - Together Forever</title>
@@ -116,6 +117,7 @@
             .status-area { flex-direction: column; gap: 15px; }
         }
     </style>
+<script src="custom-alerts.js"></script>
 </head>
 <body>
     <div class="container">
@@ -170,7 +172,7 @@
                 renderList();
             } catch (e) {
                 console.error("Error loading bucket list", e);
-                alert("Failed to load list. Try again.");
+                appAlert("Failed to load list. Try again.");
             } finally {
                 document.getElementById('loader').style.display = 'none';
             }
@@ -185,7 +187,7 @@
                 });
             } catch (e) {
                 console.error("Error saving data", e);
-                alert("Failed to save changes.");
+                appAlert("Failed to save changes.");
             }
         }
 
