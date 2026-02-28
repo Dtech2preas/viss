@@ -464,6 +464,18 @@
         Not for long 😏
     </div>
 
+    <!-- Static HTML Modal for Passcode -->
+    <div id="passcode-modal" class="custom-modal" style="display: none;">
+        <div class="custom-modal-content">
+            <p class="custom-modal-text">Enter passcode to access Private section:</p>
+            <input type="text" id="passcode-input" class="custom-modal-input">
+            <div class="custom-modal-buttons">
+                <button class="custom-modal-btn cancel" onclick="closePasscodeModal()">Cancel</button>
+                <button class="custom-modal-btn confirm" onclick="submitPasscode()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
 
@@ -536,8 +548,21 @@
             window.location.href = page;
         }
 
-        async function promptPasscode() {
-            const passcode = await appPrompt("Enter passcode to access Private section:");
+        function promptPasscode() {
+            const modal = document.getElementById('passcode-modal');
+            const input = document.getElementById('passcode-input');
+            input.value = '';
+            modal.style.display = 'flex';
+            input.focus();
+        }
+
+        function closePasscodeModal() {
+            document.getElementById('passcode-modal').style.display = 'none';
+        }
+
+        function submitPasscode() {
+            const passcode = document.getElementById('passcode-input').value;
+            closePasscodeModal();
             if (passcode === "hoohaa") {
                 navigateTo('private.html');
             } else if (passcode !== null && passcode !== '') {
