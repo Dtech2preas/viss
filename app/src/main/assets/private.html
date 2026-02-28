@@ -189,6 +189,10 @@
             const savedProfile = localStorage.getItem('togetherProfile');
             if (savedProfile) {
                 userData = JSON.parse(savedProfile);
+                const passcode = prompt("Enter passcode to access Private section:");
+                if (passcode !== "hoohaa") {
+                    window.location.href = 'you.html';
+                }
             } else {
                 window.location.href = 'you.html';
             }
