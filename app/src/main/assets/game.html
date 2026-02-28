@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Games - Together</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 i {
+            margin-right: 15px;
+            color: #ff4b90;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-title i {
+            margin-right: 10px;
+            color: #ff4b90;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .game-card:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-5px);
+        }
+
+        .game-card i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #ff4b90;
+        }
+
+        .game-card h3 {
+            margin-bottom: 10px;
+        }
+
+        .game-card p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .game-container {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .question {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .option {
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn {
+            background: #ff4b90;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn:hover {
+            background: #ff2d78;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ff4b90;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        @media (max-width: 600px) {
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="goBack()">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-gamepad"></i> Games</h1>
+            <p class="subtitle">Play fun games with your partner</p>
+        </header>
+
+        <div id="games-menu">
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-dice"></i> Choose a Game</h2>
+                <div class="games-grid">
+                    <div class="game-card" onclick="startGame('loveQuiz')">
+                        <i class="fas fa-question-circle"></i>
+                        <h3>Love Quiz</h3>
+                        <p>Test how well you know your partner</p>
+                    </div>
+
+                    <div class="game-card" onclick="startGame('truthDare')">
+                        <i class="fas fa-theater-masks"></i>
+                        <h3>Truth or Dare</h3>
+                        <p>Romantic and fun challenges</p>
+                    </div>
+
+                    <div class="game-card" onclick="startGame('memoryGame')">
+                        <i class="fas fa-brain"></i>
+                        <h3>Memory Game</h3>
+                        <p>Match pairs of couple-themed cards</p>
+                    </div>
+
+                    <div class="game-card" onclick="startGame('wouldYouRather')">
+                        <i class="fas fa-balance-scale"></i>
+                        <h3>Would You Rather</h3>
+                        <p>Make tough choices together</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-container" class="game-container">
+            <!-- Game content will be loaded here -->
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        let userData = null;
+
+        // Games data
+        const games = {
+            loveQuiz: {
+                questions: [
+                    {
+                        question: "What is your partner's favorite food?",
+                        options: ["Pizza", "Sushi", "Pasta", "Burger"],
+                        answer: 1
+                    },
+                    {
+                        question: "Where did you first meet your partner?",
+                        options: ["School", "Work", "Party", "Online"],
+                        answer: 2
+                    },
+                    {
+                        question: "What is your partner's dream vacation?",
+                        options: ["Beach", "Mountains", "City", "Countryside"],
+                        answer: 0
+                    }
+                ],
+                currentQuestion: 0,
+                score: 0
+            },
+            truthDare: {
+                truths: [
+                    "What's the most embarrassing thing you've done in front of your partner?",
+                    "When did you know you were in love with your partner?",
+                    "What's your partner's most annoying habit?",
+                    "What's the sweetest thing your partner has done for you?"
+                ],
+                dares: [
+                    "Send a voice message saying 'I love you' in a funny voice",
+                    "Plan a surprise virtual date for your partner",
+                    "Write a short poem about your partner and share it",
+                    "Share a childhood photo with your partner"
+                ]
+            },
+            wouldYouRather: {
+                questions: [
+                    {
+                        question: "Would you rather...",
+                        options: ["Never use social media again", "Never watch movies/TV shows again"],
+                    },
+                    {
+                        question: "Would you rather...",
+                        options: ["Have a romantic beach vacation", "Have an adventurous mountain vacation"],
+                    },
+                    {
+                        question: "Would you rather...",
+                        options: ["Always know what your partner is thinking", "Always know what your partner is feeling"],
+                    }
+                ],
+                currentQuestion: 0
+            }
+        };
+
+        // Initialize the app
+        function initApp() {
+            // Load user data
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (!savedProfile) {
+                showNotification('Please set up your profile first');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            userData = JSON.parse(savedProfile);
+        }
+
+        // Go back to main page
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
+        // Start a game
+        function startGame(gameType) {
+            const gamesMenu = document.getElementById('games-menu');
+            const gameContainer = document.getElementById('game-container');
+
+            gamesMenu.style.display = 'none';
+            gameContainer.style.display = 'block';
+            gameContainer.innerHTML = '';
+
+            switch(gameType) {
+                case 'loveQuiz':
+                    startLoveQuiz();
+                    break;
+                case 'truthDare':
+                    startTruthDare();
+                    break;
+                case 'memoryGame':
+                    startMemoryGame();
+                    break;
+                case 'wouldYouRather':
+                    startWouldYouRather();
+                    break;
+            }
+        }
+
+        // Start Love Quiz game
+        function startLoveQuiz() {
+            const gameContainer = document.getElementById('game-container');
+            games.loveQuiz.currentQuestion = 0;
+            games.loveQuiz.score = 0;
+
+            showQuestion();
+
+            function showQuestion() {
+                if (games.loveQuiz.currentQuestion >= games.loveQuiz.questions.length) {
+                    // End of quiz
+                    gameContainer.innerHTML = `
+                        <div class="card">
+                            <h2 class="card-title"><i class="fas fa-trophy"></i> Quiz Completed!</h2>
+                            <p>Your score: ${games.loveQuiz.score} out of ${games.loveQuiz.questions.length}</p>
+                            <button class="btn" onclick="startGame('loveQuiz')">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                            <button class="btn" onclick="exitGame()">
+                                <i class="fas fa-home"></i> Back to Games
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const question = games.loveQuiz.questions[games.loveQuiz.currentQuestion];
+
+                const questionEl = document.createElement('div');
+                questionEl.className = 'question';
+                questionEl.textContent = question.question;
+
+                const optionsEl = document.createElement('div');
+                optionsEl.className = 'options';
+
+                question.options.forEach((option, index) => {
+                    const optionEl = document.createElement('div');
+                    optionEl.className = 'option';
+                    optionEl.textContent = option;
+                    optionEl.onclick = () => checkAnswer(index);
+                    optionsEl.appendChild(optionEl);
+                });
+
+                gameContainer.innerHTML = '';
+                gameContainer.appendChild(questionEl);
+                gameContainer.appendChild(optionsEl);
+            }
+
+            function checkAnswer(selectedIndex) {
+                const question = games.loveQuiz.questions[games.loveQuiz.currentQuestion];
+
+                if (selectedIndex === question.answer) {
+                    games.loveQuiz.score++;
+                    showNotification('Correct! 🎉');
+                } else {
+                    showNotification('Wrong answer 😢');
+                }
+
+                games.loveQuiz.currentQuestion++;
+                showQuestion();
+            }
+        }
+
+        // Start Truth or Dare game
+        function startTruthDare() {
+            const gameContainer = document.getElementById('game-container');
+
+            gameContainer.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title"><i class="fas fa-theater-masks"></i> Truth or Dare</h2>
+                    <p>Choose your challenge:</p>
+                    <div class="options">
+                        <div class="option" onclick="showTruth()">Truth</div>
+                        <div class="option" onclick="showDare()">Dare</div>
+                    </div>
+                    <div id="challengeResult" style="margin-top: 20px;"></div>
+                </div>
+            `;
+        }
+
+        function showTruth() {
+            const challengeResult = document.getElementById('challengeResult');
+            const randomTruth = games.truthDare.truths[Math.floor(Math.random() * games.truthDare.truths.length)];
+
+            challengeResult.innerHTML = `
+                <div class="question">${randomTruth}</div>
+                <button class="btn" onclick="startTruthDare()">
+                    <i class="fas fa-redo"></i> New Challenge
+                </button>
+                <button class="btn" onclick="exitGame()">
+                    <i class="fas fa-home"></i> Back to Games
+                </button>
+            `;
+        }
+
+        function showDare() {
+            const challengeResult = document.getElementById('challengeResult');
+            const randomDare = games.truthDare.dares[Math.floor(Math.random() * games.truthDare.dares.length)];
+
+            challengeResult.innerHTML = `
+                <div class="question">${randomDare}</div>
+                <button class="btn" onclick="startTruthDare()">
+                    <i class="fas fa-redo"></i> New Challenge
+                </button>
+                <button class="btn" onclick="exitGame()">
+                    <i class="fas fa-home"></i> Back to Games
+                </button>
+            `;
+        }
+
+        // Start Memory Game (simplified version)
+        function startMemoryGame() {
+            const gameContainer = document.getElementById('game-container');
+
+            gameContainer.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title"><i class="fas fa-brain"></i> Memory Game</h2>
+                    <p>This game would require a more complex implementation with card matching.</p>
+                    <p>For now, enjoy this placeholder and imagine matching cute couple-themed cards! 💕</p>
+                    <button class="btn" onclick="startGame('memoryGame')">
+                        <i class="fas fa-redo"></i> Play Anyway
+                    </button>
+                    <button class="btn" onclick="exitGame()">
+                        <i class="fas fa-home"></i> Back to Games
+                    </button>
+                </div>
+            `;
+        }
+
+        // Start Would You Rather game
+        function startWouldYouRather() {
+            const gameContainer = document.getElementById('game-container');
+            games.wouldYouRather.currentQuestion = 0;
+
+            showQuestion();
+
+            function showQuestion() {
+                if (games.wouldYouRather.currentQuestion >= games.wouldYouRather.questions.length) {
+                    // End of game
+                    gameContainer.innerHTML = `
+                        <div class="card">
+                            <h2 class="card-title"><i class="fas fa-star"></i> Game Completed!</h2>
+                            <p>You've answered all the questions!</p>
+                            <button class="btn" onclick="startGame('wouldYouRather')">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                            <button class="btn" onclick="exitGame()">
+                                <i class="fas fa-home"></i> Back to Games
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const question = games.wouldYouRather.questions[games.wouldYouRather.currentQuestion];
+
+                gameContainer.innerHTML = `
+                    <div class="card">
+                        <h2 class="card-title"><i class="fas fa-balance-scale"></i> Would You Rather</h2>
+                        <div class="question">${question.question}</div>
+                        <div class="options">
+                            <div class="option" onclick="nextQuestion()">${question.options[0]}</div>
+                            <div class="option" onclick="nextQuestion()">${question.options[1]}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function nextQuestion() {
+                games.wouldYouRather.currentQuestion++;
+                showQuestion();
+            }
+        }
+
+        // Exit game and return to games menu
+        function exitGame() {
+            const gamesMenu = document.getElementById('games-menu');
+            const gameContainer = document.getElementById('game-container');
+
+            gamesMenu.style.display = 'block';
+            gameContainer.style.display = 'none';
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+
+            notificationText.textContent = message;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize the app when page loads
+        window.onload = initApp;
+    </script>
+</body>
+</html>

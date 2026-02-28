@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Hub - Play Games</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 50px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .user-badge.lefa .user-avatar { background: #e74c3c; }
+        .user-badge.owami .user-avatar { background: #2ecc71; }
+        .user-badge.jonas .user-avatar { background: #9b59b6; }
+        .user-badge.preasx24 .user-avatar { background: #f39c12; }
+
+        .vs {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .leaderboard {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .leaderboard h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .user-score {
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .score-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+
+        .difference {
+            text-align: center;
+            padding: 15px;
+            margin: 20px 0;
+            background: #ecf0f1;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .difference.positive {
+            color: #27ae60;
+        }
+
+        .difference.negative {
+            color: #e74c3c;
+        }
+
+        .games-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .games-panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .game-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .game-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+
+        .game-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .game-desc {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .play-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .play-btn:hover {
+            background: #2980b9;
+        }
+
+        .game-container {
+            display: none;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-container.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .back-btn {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: #7f8c8d;
+        }
+
+        /* Tic Tac Toe Styles */
+        .tic-tac-toe-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 10px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: #3498db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .cell.x {
+            background: #e74c3c;
+        }
+
+        .cell.o {
+            background: #2ecc71;
+        }
+
+        .cell:hover {
+            background: #2980b9;
+        }
+
+        /* Rock Paper Scissors Styles */
+        .rps-options {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .rps-option {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5rem;
+            background: #9b59b6;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .rps-option:hover {
+            transform: scale(1.1);
+            background: #8e44ad;
+        }
+
+        .rps-result {
+            text-align: center;
+            font-size: 1.5rem;
+            margin: 20px 0;
+            min-height: 40px;
+        }
+
+        /* Memory Game Styles */
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-gap: 10px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+
+        .memory-card {
+            width: 100px;
+            height: 100px;
+            background: #3498db;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            position: relative;
+        }
+
+        .memory-card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .memory-card.matched {
+            background: #2ecc71;
+            cursor: default;
+        }
+
+        .memory-card .front,
+        .memory-card .back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 5px;
+        }
+
+        .memory-card .front {
+            background: #3498db;
+        }
+
+        .memory-card .back {
+            background: #f1c40f;
+            transform: rotateY(180deg);
+        }
+
+        .game-status {
+            text-align: center;
+            margin: 15px 0;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .game-limit {
+            text-align: center;
+            margin: 10px 0;
+            color: #7f8c8d;
+        }
+
+        footer {
+            padding: 15px;
+            background: #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+
+        .save-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .save-btn {
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .save-btn:hover {
+            background: #27ae60;
+        }
+
+        .save-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .gist-result {
+            margin-top: 15px;
+            padding: 10px;
+            background: #2c3e50;
+            color: white;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+
+        .limit-reached {
+            color: #e74c3c;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Game Hub</h1>
+            <div class="user-info">
+                <div class="user-badge" id="user-badge">
+                    <div class="user-avatar">P</div>
+                    <span>preasx24</span>
+                </div>
+
+                <div class="vs">VS</div>
+
+                <div class="user-badge" id="partner-badge">
+                    <div class="user-avatar">J</div>
+                    <span>jonas</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="leaderboard">
+                <h2>Leaderboard</h2>
+
+                <div class="score-display">
+                    <div class="user-score">
+                        <div class="score-value" id="user-score">37</div>
+                        <div class="score-label">Your Score</div>
+                    </div>
+
+                    <div class="user-score">
+                        <div class="score-value" id="partner-score">25</div>
+                        <div class="score-label">Partner Score</div>
+                    </div>
+                </div>
+
+                <div class="difference positive" id="score-difference">
+                    You are winning by 12 points!
+                </div>
+
+                <div class="save-section">
+                    <button class="save-btn" id="save-btn">
+                        <i class="fas fa-save"></i> Save Scores
+                    </button>
+                    <div class="gist-result" id="gist-result"></div>
+                </div>
+            </div>
+
+            <div class="games-panel">
+                <h2>Games</h2>
+
+                <div class="game-cards">
+                    <div class="game-card" data-game="tic-tac-toe">
+                        <div class="game-icon">
+                            <i class="fas fa-times"></i>
+                        </div>
+                        <div class="game-title">Tic Tac Toe</div>
+                        <div class="game-desc">Test your strategy against our AI</div>
+                        <button class="play-btn">Play Now</button>
+                    </div>
+
+                    <div class="game-card" data-game="rps">
+                        <div class="game-icon">
+                            <i class="fas fa-hand-rock"></i>
+                        </div>
+                        <div class="game-title">Rock Paper Scissors</div>
+                        <div class="game-desc">Try your luck against the computer</div>
+                        <button class="play-btn">Play Now</button>
+                    </div>
+
+                    <div class="game-card" data-game="memory">
+                        <div class="game-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="game-title">Memory Game</div>
+                        <div class="game-desc">Challenge your memory skills</div>
+                        <button class="play-btn">Play Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tic Tac Toe Game -->
+        <div class="game-container" id="tic-tac-toe-game">
+            <button class="back-btn" onclick="hideGame()">
+                <i class="fas fa-arrow-left"></i> Back to Games
+            </button>
+
+            <h2>Tic Tac Toe</h2>
+            <div class="game-status" id="tic-tac-toe-status">You're X, computer is O. Make your move!</div>
+            <div class="game-limit" id="tic-tac-toe-limit">Games played today: 3/10</div>
+
+            <div class="tic-tac-toe-board" id="board">
+                <div class="cell" data-cell-index="0"></div>
+                <div class="cell" data-cell-index="1"></div>
+                <div class="cell" data-cell-index="2"></div>
+                <div class="cell" data-cell-index="3"></div>
+                <div class="cell" data-cell-index="4"></div>
+                <div class="cell" data-cell-index="5"></div>
+                <div class="cell" data-cell-index="6"></div>
+                <div class="cell" data-cell-index="7"></div>
+                <div class="cell" data-cell-index="8"></div>
+            </div>
+
+            <div style="text-align: center; margin: 20px;">
+                <button class="play-btn" onclick="resetTicTacToe()">New Game</button>
+            </div>
+        </div>
+
+        <!-- Rock Paper Scissors Game -->
+        <div class="game-container" id="rps-game">
+            <button class="back-btn" onclick="hideGame()">
+                <i class="fas fa-arrow-left"></i> Back to Games
+            </button>
+
+            <h2>Rock Paper Scissors</h2>
+            <div class="game-status" id="rps-status">Choose your weapon!</div>
+            <div class="game-limit" id="rps-limit">Games played today: 10/10</div>
+
+            <div class="rps-options">
+                <div class="rps-option" data-choice="rock">
+                    <i class="fas fa-hand-rock"></i>
+                </div>
+                <div class="rps-option" data-choice="paper">
+                    <i class="fas fa-hand-paper"></i>
+                </div>
+                <div class="rps-option" data-choice="scissors">
+                    <i class="fas fa-hand-scissors"></i>
+                </div>
+            </div>
+
+            <div class="rps-result" id="rps-result"></div>
+        </div>
+
+        <!-- Memory Game -->
+        <div class="game-container" id="memory-game">
+            <button class="back-btn" onclick="hideGame()">
+                <i class="fas fa-arrow-left"></i> Back to Games
+            </button>
+
+            <h2>Memory Game</h2>
+            <div class="game-status" id="memory-status">Find all matching pairs!</div>
+            <div class="game-limit" id="memory-limit">Games played today: 0/10</div>
+
+            <div style="text-align: center; margin: 15px;">
+                Matches: <span id="match-count">0</span>/8
+                <button class="play-btn" onclick="initMemoryGame()" style="margin-left: 15px;">New Game</button>
+            </div>
+
+            <div class="memory-grid" id="memory-grid"></div>
+        </div>
+
+        <footer>
+            <p>Game Hub &copy; 2023 | Play fair and have fun!</p>
+        </footer>
+    </div>
+
+    <script>
+        // ========== GLOBAL VARIABLES ==========
+        const userGistMap = {
+            lefa: "02e300379f8b968942ac67379f5bc831",
+            jonas: "69f058ad6bcb25e41d8b797dc7395c6d",
+            owami: "6c9e9fcda5ed38f9839c9ac8bc147ba7",
+            preasx24: "50e60ff2c3bc108d63038c8eb6c26e8d"
+        };
+
+        const GIST_TOKEN_URL = 'https://gist.githubusercontent.com/Preasx24/e8b6e2c45a6963ef3c5f4a24704ab5fb/raw/gistfile1.txt';
+
+        let currentUser = "preasx24";
+        let currentPartner = "jonas";
+        let currentGistId = userGistMap[currentUser];
+        let partnerGistId = userGistMap[currentPartner];
+
+        let gameData = {
+            ticTacToe: { score: 37, playsToday: 3, lastPlayed: new Date().toDateString() },
+            rps: { score: 22, playsToday: 10, lastPlayed: "Fri Sep 12 2025" },
+            memory: { score: 12, playsToday: 0, lastPlayed: "Thu Sep 11 2025" },
+            get totalScore() {
+                return this.ticTacToe.score + this.rps.score + this.memory.score;
+            }
+        };
+
+        let partnerData = {
+            ticTacToe: { score: 15, playsToday: 5, lastPlayed: new Date().toDateString() },
+            rps: { score: 10, playsToday: 8, lastPlayed: "Fri Sep 12 2025" },
+            memory: { score: 0, playsToday: 0, lastPlayed: null },
+            get totalScore() {
+                return this.ticTacToe.score + this.rps.score + this.memory.score;
+            }
+        };
+
+        // Tic Tac Toe variables
+        let ticTacToeBoard = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameOver = false;
+
+        // Memory Game variables
+        let memoryCards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let canFlip = true;
+
+        // ========== INITIALIZATION ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load user and partner from localStorage
+            const savedUser = localStorage.getItem('gameHub_unique_user');
+            const savedPartner = localStorage.getItem('gameHub_unique_partner');
+
+            if (savedUser && savedPartner) {
+                currentUser = savedUser;
+                currentPartner = savedPartner;
+            }
+
+            // Set up UI
+            document.getElementById('user-badge').querySelector('.user-avatar').textContent = currentUser.charAt(0).toUpperCase();
+            document.getElementById('user-badge').querySelector('span').textContent = currentUser;
+            document.getElementById('user-badge').classList.add(currentUser);
+
+            document.getElementById('partner-badge').querySelector('.user-avatar').textContent = currentPartner.charAt(0).toUpperCase();
+            document.getElementById('partner-badge').querySelector('span').textContent = currentPartner;
+            document.getElementById('partner-badge').classList.add(currentPartner);
+
+            // Set Gist IDs
+            currentGistId = userGistMap[currentUser];
+            partnerGistId = userGistMap[currentPartner];
+
+            // Load data
+            loadUserData();
+            loadPartnerData();
+
+            // Set up game cards
+            document.querySelectorAll('.game-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const game = this.dataset.game;
+                    showGame(game);
+                });
+            });
+
+            // Set up save button
+            document.getElementById('save-btn').addEventListener('click', saveScoresToGist);
+
+            // Initialize games
+            initTicTacToe();
+            initRPS();
+            initMemoryGame();
+        });
+
+        // ========== UI FUNCTIONS ==========
+        function showGame(game) {
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.remove('active');
+            });
+
+            document.querySelector('.dashboard').style.display = 'none';
+            document.getElementById(`${game}-game`).classList.add('active');
+
+            // Update game limits display
+            updateGameLimits();
+        }
+
+        function hideGame() {
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.remove('active');
+            });
+
+            document.querySelector('.dashboard').style.display = 'grid';
+        }
+
+        function updateLeaderboard() {
+            document.getElementById('user-score').textContent = gameData.totalScore;
+            document.getElementById('partner-score').textContent = partnerData.totalScore;
+
+            const difference = gameData.totalScore - partnerData.totalScore;
+            const differenceElement = document.getElementById('score-difference');
+
+            if (difference > 0) {
+                differenceElement.textContent = `You are winning by ${difference} points!`;
+                differenceElement.className = 'difference positive';
+            } else if (difference < 0) {
+                differenceElement.textContent = `${currentPartner} is winning by ${Math.abs(difference)} points!`;
+                differenceElement.className = 'difference negative';
+            } else {
+                differenceElement.textContent = "It's a tie!";
+                differenceElement.className = 'difference';
+            }
+        }
+
+        function updateGameLimits() {
+            document.getElementById('tic-tac-toe-limit').textContent = `Games played today: ${gameData.ticTacToe.playsToday}/10`;
+            document.getElementById('rps-limit').textContent = `Games played today: ${gameData.rps.playsToday}/10`;
+            document.getElementById('memory-limit').textContent = `Games played today: ${gameData.memory.playsToday}/10`;
+        }
+
+        function checkGameLimit(gameType) {
+            const today = new Date().toDateString();
+
+            // Reset daily plays if it's a new day
+            if (gameData[gameType].lastPlayed !== today) {
+                gameData[gameType].playsToday = 0;
+                gameData[gameType].lastPlayed = today;
+            }
+
+            if (gameData[gameType].playsToday >= 10) {
+                alert(`You've reached the daily limit of 10 games for ${gameType.replace(/([A-Z])/g, ' $1').trim()}!`);
+                return false;
+            }
+
+            return true;
+        }
+
+        // ========== DATA MANAGEMENT ==========
+        async function loadUserData() {
+            try {
+                const response = await fetch(`https://api.github.com/gists/${currentGistId}`);
+                if (!response.ok) throw new Error('Failed to fetch user data');
+
+                const gistData = await response.json();
+                const content = JSON.parse(gistData.files['gistfile1.txt'].content);
+
+                if (content.gameData) {
+                    gameData.ticTacToe = content.gameData.ticTacToe || { score: 0, playsToday: 0, lastPlayed: null };
+                    gameData.rps = content.gameData.rps || { score: 0, playsToday: 0, lastPlayed: null };
+                    gameData.memory = content.gameData.memory || { score: 0, playsToday: 0, lastPlayed: null };
+
+                    // Check if we need to reset daily plays
+                    const today = new Date().toDateString();
+                    if (gameData.ticTacToe.lastPlayed !== today) gameData.ticTacToe.playsToday = 0;
+                    if (gameData.rps.lastPlayed !== today) gameData.rps.playsToday = 0;
+                    if (gameData.memory.lastPlayed !== today) gameData.memory.playsToday = 0;
+
+                    updateLeaderboard();
+                    updateGameLimits();
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        async function loadPartnerData() {
+            try {
+                const response = await fetch(`https://api.github.com/gists/${partnerGistId}`);
+                if (!response.ok) throw new Error('Failed to fetch partner data');
+
+                const gistData = await response.json();
+                const content = JSON.parse(gistData.files['gistfile1.txt'].content);
+
+                if (content.gameData) {
+                    partnerData.ticTacToe = content.gameData.ticTacToe || { score: 0, playsToday: 0, lastPlayed: null };
+                    partnerData.rps = content.gameData.rps || { score: 0, playsToday: 0, lastPlayed: null };
+                    partnerData.memory = content.gameData.memory || { score: 0, playsToday: 0, lastPlayed: null };
+                    updateLeaderboard();
+                }
+            } catch (error) {
+                console.error('Error loading partner data:', error);
+            }
+        }
+
+        // ========== GAME FUNCTIONS ==========
+        // Tic Tac Toe
+        function initTicTacToe() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        }
+
+        function handleCellClick(e) {
+            if (!checkGameLimit('ticTacToe')) return;
+
+            const cell = e.target;
+            const cellIndex = parseInt(cell.getAttribute('data-cell-index'));
+
+            if (ticTacToeBoard[cellIndex] !== '' || gameOver) return;
+
+            // Player's move
+            ticTacToeBoard[cellIndex] = 'X';
+            cell.textContent = 'X';
+            cell.classList.add('x');
+
+            // Check for win or draw
+            if (checkWin('X')) {
+                document.getElementById('tic-tac-toe-status').textContent = 'You win!';
+                gameData.ticTacToe.score += 10;
+                gameData.ticTacToe.playsToday++;
+                gameOver = true;
+                updateLeaderboard();
+                updateGameLimits();
+                return;
+            }
+
+            if (isBoardFull()) {
+                document.getElementById('tic-tac-toe-status').textContent = 'It\'s a draw!';
+                gameData.ticTacToe.playsToday++;
+                gameOver = true;
+                updateGameLimits();
+                return;
+            }
+
+            // AI's move
+            setTimeout(makeAIMove, 500);
+        }
+
+        function makeAIMove() {
+            // Improved AI logic - try to win, then block, then make a strategic move
+            let move = findWinningMove('O') || findWinningMove('X') || findBestMove();
+
+            ticTacToeBoard[move] = 'O';
+            const cell = document.querySelector(`[data-cell-index="${move}"]`);
+            cell.textContent = 'O';
+            cell.classList.add('o');
+
+            // Check for win or draw
+            if (checkWin('O')) {
+                document.getElementById('tic-tac-toe-status').textContent = 'Computer wins!';
+                gameData.ticTacToe.playsToday++;
+                gameOver = true;
+                updateGameLimits();
+            } else if (isBoardFull()) {
+                document.getElementById('tic-tac-toe-status').textContent = 'It\'s a draw!';
+                gameData.ticTacToe.playsToday++;
+                gameOver = true;
+                updateGameLimits();
+            }
+        }
+
+        function findWinningMove(player) {
+            // Check each empty cell to see if it would result in a win
+            for (let i = 0; i < 9; i++) {
+                if (ticTacToeBoard[i] === '') {
+                    ticTacToeBoard[i] = player;
+                    if (checkWin(player)) {
+                        ticTacToeBoard[i] = ''; // Reset the cell
+                        return i;
+                    }
+                    ticTacToeBoard[i] = ''; // Reset the cell
+                }
+            }
+            return null;
+        }
+
+        function findBestMove() {
+            // Prefer center, then corners, then edges
+            if (ticTacToeBoard[4] === '') return 4;
+
+            const corners = [0, 2, 6, 8];
+            for (let corner of corners) {
+                if (ticTacToeBoard[corner] === '') return corner;
+            }
+
+            const edges = [1, 3, 5, 7];
+            for (let edge of edges) {
+                if (ticTacToeBoard[edge] === '') return edge;
+            }
+
+            // Fallback - just find any empty cell
+            for (let i = 0; i < 9; i++) {
+                if (ticTacToeBoard[i] === '') return i;
+            }
+
+            return -1; // Should never happen if board isn't full
+        }
+
+        function checkWin(player) {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+            ];
+
+            return winPatterns.some(pattern => {
+                return pattern.every(index => ticTacToeBoard[index] === player);
+            });
+        }
+
+        function isBoardFull() {
+            return ticTacToeBoard.every(cell => cell !== '');
+        }
+
+        function resetTicTacToe() {
+            ticTacToeBoard = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            gameOver = false;
+
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o');
+            });
+
+            document.getElementById('tic-tac-toe-status').textContent = 'You\'re X, computer is O. Make your move!';
+        }
+
+        // Rock Paper Scissors
+        function initRPS() {
+            document.querySelectorAll('.rps-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    if (!checkGameLimit('rps')) return;
+
+                    const choices = ['rock', 'paper', 'scissors'];
+                    const playerChoice = this.dataset.choice;
+                    const botChoice = choices[Math.floor(Math.random() * choices.length)];
+
+                    let result = '';
+
+                    if (playerChoice === botChoice) {
+                        result = `It's a tie! Both chose ${playerChoice}.`;
+                    } else if (
+                        (playerChoice === 'rock' && botChoice === 'scissors') ||
+                        (playerChoice === 'paper' && botChoice === 'rock') ||
+                        (playerChoice === 'scissors' && botChoice === 'paper')
+                    ) {
+                        result = `You win! ${playerChoice} beats ${botChoice}.`;
+                        gameData.rps.score += 5;
+                    } else {
+                        result = `You lose! ${botChoice} beats ${playerChoice}.`;
+                    }
+
+                    gameData.rps.playsToday++;
+                    gameData.rps.lastPlayed = new Date().toDateString();
+                    updateLeaderboard();
+                    updateGameLimits();
+                    document.getElementById('rps-result').textContent = result;
+                });
+            });
+        }
+
+        // Memory Game
+        function initMemoryGame() {
+            if (!checkGameLimit('memory')) return;
+
+            const symbols = ['🍎', '🍌', '🍒', '🍊', '🍇', '🍑', '🍓', '🥝'];
+            memoryCards = [...symbols, ...symbols];
+            memoryCards.sort(() => Math.random() - 0.5);
+
+            flippedCards = [];
+            matchedPairs = 0;
+            canFlip = true;
+
+            const memoryGrid = document.getElementById('memory-grid');
+            memoryGrid.innerHTML = '';
+
+            memoryCards.forEach((symbol, index) => {
+                const card = document.createElement('div');
+                card.className = 'memory-card';
+                card.dataset.index = index;
+                card.dataset.symbol = symbol;
+
+                const front = document.createElement('div');
+                front.className = 'front';
+                front.textContent = '?';
+
+                const back = document.createElement('div');
+                back.className = 'back';
+                back.textContent = symbol;
+
+                card.appendChild(front);
+                card.appendChild(back);
+
+                card.addEventListener('click', () => flipCard(card));
+                memoryGrid.appendChild(card);
+            });
+
+            document.getElementById('match-count').textContent = '0';
+            document.getElementById('memory-status').textContent = 'Find all matching pairs!';
+        }
+
+        function flipCard(card) {
+            if (!canFlip || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                canFlip = false;
+
+                setTimeout(() => {
+                    const card1 = flippedCards[0];
+                    const card2 = flippedCards[1];
+
+                    if (card1.dataset.symbol === card2.dataset.symbol) {
+                        // Match found
+                        card1.classList.add('matched');
+                        card2.classList.add('matched');
+                        matchedPairs++;
+
+                        document.getElementById('match-count').textContent = matchedPairs;
+
+                        if (matchedPairs === 8) {
+                            // Game completed
+                            document.getElementById('memory-status').textContent = 'Congratulations! You found all pairs!';
+                            gameData.memory.score += 20;
+                            gameData.memory.playsToday++;
+                            gameData.memory.lastPlayed = new Date().toDateString();
+                            updateLeaderboard();
+                            updateGameLimits();
+                        }
+                    } else {
+                        // No match
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                    }
+
+                    flippedCards = [];
+                    canFlip = true;
+                }, 1000);
+            }
+        }
+
+        // ========== GIST INTEGRATION ==========
+        async function saveScoresToGist() {
+            const gistResultElement = document.getElementById('gist-result');
+            const saveButton = document.getElementById('save-btn');
+
+            gistResultElement.textContent = 'Saving scores...';
+            saveButton.disabled = true;
+
+            try {
+                // First, get the token from the token URL
+                const tokenResponse = await fetch(GIST_TOKEN_URL);
+                if (!tokenResponse.ok) {
+                    throw new Error('Failed to fetch token');
+                }
+                const token = await tokenResponse.text();
+
+                // Get the current gist data to preserve other fields
+                const gistResponse = await fetch(`https://api.github.com/gists/${currentGistId}`);
+                if (!gistResponse.ok) {
+                    throw new Error('Failed to fetch Gist data');
+                }
+
+                const gistData = await gistResponse.json();
+                const currentContent = JSON.parse(gistData.files['gistfile1.txt'].content);
+
+                // Create updated content
+                const updatedContent = {
+                    ...currentContent,
+                    gameData: {
+                        ticTacToe: gameData.ticTacToe,
+                        rps: gameData.rps,
+                        memory: gameData.memory
+                    },
+                    lastUpdated: new Date().toISOString()
+                };
+
+                // Update the Gist
+                const updateResponse = await fetch(`https://api.github.com/gists/${currentGistId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${token.trim()}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            'gistfile1.txt': {
+                                content: JSON.stringify(updatedContent, null, 2)
+                            }
+                        }
+                    })
+                });
+
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.message || 'Failed to update Gist');
+                }
+
+                gistResultElement.textContent = `Scores saved successfully for ${currentUser}!`;
+
+                // Reload partner data
+                loadPartnerData();
+
+            } catch (error) {
+                console.error('Error saving scores:', error);
+                gistResultElement.textContent = `Error: ${error.message}. Please check the console for details.`;
+            } finally {
+                saveButton.disabled = false;
+
+                // Clear the message after 5 seconds
+                setTimeout(() => {
+                    gistResultElement.textContent = '';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

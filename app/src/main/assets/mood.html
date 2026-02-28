@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Tracker - Together Forever</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff7eb9;
+            --secondary-color: #7e57c2;
+            --accent-color: #ff4d8d;
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            flex: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .heart-icon {
+            font-size: 40px;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 3.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--dark-color);
+            opacity: 0.8;
+        }
+
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(166, 94, 166, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(166, 94, 166, 0.15);
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--gradient);
+        }
+
+        h2 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+        }
+
+        .btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(30deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .btn:hover::after {
+            opacity: 1;
+            transform: rotate(30deg) translate(10%, 10%);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(126, 87, 194, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--secondary-color);
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            color: var(--secondary-color);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .mood-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .mood-item {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 15px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .mood-item:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 25px rgba(166, 94, 166, 0.15);
+        }
+
+        .mood-item.selected {
+            background: rgba(255, 126, 185, 0.15);
+            border: 2px solid var(--primary-color);
+        }
+
+        .mood-item .emoji {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .mood-item .mood-label {
+            font-size: 0.9rem;
+            line-height: 1.2;
+        }
+
+        .mood-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            gap: 20px;
+        }
+
+        .mood-box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            width: 45%;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .mood-value {
+            font-size: 2rem;
+            margin: 15px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+
+        .user-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .user-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .user-card:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(166, 94, 166, 0.15);
+        }
+
+        .user-card.selected {
+            background: rgba(255, 126, 185, 0.15);
+            border: 2px solid var(--primary-color);
+        }
+
+        .user-card h3 {
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-connected {
+            background: #4CAF50;
+        }
+
+        .status-disconnected {
+            background: #F44336;
+        }
+
+        .status-loading {
+            background: #FFC107;
+        }
+
+        .selected-user-display {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .change-user-btn {
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .change-user-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.5s ease;
+            z-index: 1000;
+            border-left: 5px solid var(--accent-color);
+            max-width: 350px;
+        }
+
+        #notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .notification-time {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .hearts-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .heart {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            opacity: 0;
+            transform: rotate(45deg);
+        }
+
+        .heart:before,
+        .heart:after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            border-radius: 50%;
+            background: var(--primary-color);
+        }
+
+        .heart:before {
+            top: -10px;
+            left: 0;
+        }
+
+        .heart:after {
+            top: 0;
+            left: -10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: auto;
+            color: var(--dark-color);
+            opacity: 0.7;
+            font-family: 'Dancing Script', cursive;
+            font-size: 1.2rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        @keyframes fall {
+            to {
+                top: 100vh;
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mood-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .user-card {
+                min-width: 100%;
+            }
+
+            .mood-display {
+                flex-direction: column;
+            }
+
+            .mood-box {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 2.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .mood-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .mood-item .emoji {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hearts-container" id="hearts"></div>
+
+    <button class="back-btn" onclick="goBack()">
+        ←
+    </button>
+
+    <div class="container">
+        <header>
+            <div class="heart-icon">❤</div>
+            <h1>Mood Tracker</h1>
+            <p class="subtitle">Share your feelings with your beloved</p>
+        </header>
+
+        <!-- Personal Gist Section -->
+        <div class="section" id="personalGistCard">
+            <h2>Heart Connection Settings</h2>
+            <div id="userSelectionContainer">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <div class="status-bar">
+                <div class="status-dot status-loading" id="statusDot"></div>
+                <span id="statusText">Loading connection settings...</span>
+            </div>
+        </div>
+
+        <!-- Mood Display Section -->
+        <div class="section">
+            <h2>Your Current Feelings</h2>
+            <div class="mood-display">
+                <div class="mood-box">
+                    <h3>Your Mood</h3>
+                    <div class="mood-value" id="currentMood">Not set yet</div>
+                </div>
+                <div class="mood-box">
+                    <h3>Partner's Mood</h3>
+                    <div class="mood-value" id="partnerMood">Waiting to connect</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mood Selection Section -->
+        <div class="section">
+            <h2>How Are You Feeling Today?</h2>
+            <div class="mood-grid">
+                <div class="mood-item" onclick="setMood('happy', this)">
+                    <div class="emoji">😊</div>
+                    <div class="mood-label">Happy</div>
+                </div>
+                <div class="mood-item" onclick="setMood('sad', this)">
+                    <div class="emoji">😢</div>
+                    <div class="mood-label">Sad</div>
+                </div>
+                <div class="mood-item" onclick="setMood('tired', this)">
+                    <div class="emoji">😴</div>
+                    <div class="mood-label">Tired</div>
+                </div>
+                <div class="mood-item" onclick="setMood('excited', this)">
+                    <div class="emoji">🤩</div>
+                    <div class="mood-label">Excited</div>
+                </div>
+                <div class="mood-item" onclick="setMood('romantic', this)">
+                    <div class="emoji">😍</div>
+                    <div class="mood-label">Romantic</div>
+                </div>
+                <div class="mood-item" onclick="setMood('playful', this)">
+                    <div class="emoji">😜</div>
+                    <div class="mood-label">Playful</div>
+                </div>
+                <!-- New moods -->
+                <div class="mood-item" onclick="setMood('loved', this)">
+                    <div class="emoji">❤️</div>
+                    <div class="mood-label">Loved</div>
+                </div>
+                <div class="mood-item" onclick="setMood('grateful', this)">
+                    <div class="emoji">🙏</div>
+                    <div class="mood-label">Grateful</div>
+                </div>
+                <div class="mood-item" onclick="setMood('proud', this)">
+                    <div class="emoji">🏆</div>
+                    <div class="mood-label">Proud of U</div>
+                </div>
+                <div class="mood-item" onclick="setMood('stressed', this)">
+                    <div class="emoji">😫</div>
+                    <div class="mood-label">Stressed</div>
+                </div>
+                <div class="mood-item" onclick="setMood('angry', this)">
+                    <div class="emoji">😠</div>
+                    <div class="mood-label">Angry</div>
+                </div>
+                <div class="mood-item" onclick="setMood('hurt', this)">
+                    <div class="emoji">💔</div>
+                    <div class="mood-label">Hurt</div>
+                </div>
+                <div class="mood-item" onclick="setMood('jealous', this)">
+                    <div class="emoji">😒</div>
+                    <div class="mood-label">Jealous</div>
+                </div>
+                <div class="mood-item" onclick="setMood('flirty', this)">
+                    <div class="emoji">😘</div>
+                    <div class="mood-label">Flirty</div>
+                </div>
+                <div class="mood-item" onclick="setMood('mischievous', this)">
+                    <div class="emoji">😏</div>
+                    <div class="mood-label">Mischievous</div>
+                </div>
+                <div class="mood-item" onclick="setMood('sleepy', this)">
+                    <div class="emoji">😪</div>
+                    <div class="mood-label">Sleepy</div>
+                </div>
+                <div class="mood-item" onclick="setMood('sick', this)">
+                    <div class="emoji">🤒</div>
+                    <div class="mood-label">Sick</div>
+                </div>
+                <div class="mood-item" onclick="setMood('bored', this)">
+                    <div class="emoji">😐</div>
+                    <div class="mood-label">Bored</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <button class="btn btn-secondary" onclick="updatePartnerMood()">
+                Check Partner's Mood
+            </button>
+        </div>
+    </div>
+
+    <footer>
+        made with ❤️ for owami
+    </footer>
+
+    <div id="notification">
+        <span id="notificationText"></span>
+        <div class="notification-time" id="notificationTime"></div>
+    </div>
+
+    <script>
+        const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+        let localUser = null;
+        let moodSelectionTime = null;
+
+        // Create floating hearts
+        function createHearts() {
+            const heartsContainer = document.getElementById('hearts');
+            const colors = ['#ff7eb9', '#ff4d8d', '#d42d6e', '#7e57c2'];
+
+            for (let i = 0; i < 15; i++) {
+                const heart = document.createElement('div');
+                heart.classList.add('heart');
+
+                const size = Math.random() * 15 + 5;
+                heart.style.width = `${size}px`;
+                heart.style.height = `${size}px`;
+                heart.style.left = `${Math.random() * 100}vw`;
+                heart.style.top = `${Math.random() * 100}vh`;
+                heart.style.animation = `fall ${Math.random() * 10 + 10}s linear infinite`;
+                heart.style.animationDelay = `${Math.random() * 5}s`;
+                heart.style.opacity = `${Math.random() * 0.5 + 0.1}`;
+                heart.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+                heartsContainer.appendChild(heart);
+            }
+        }
+
+        // Initialize the app
+        function initApp() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (!savedProfile) {
+                showNotification('Please set up your profile first');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            localUser = JSON.parse(savedProfile);
+
+            // Initial load of our own mood from storage if we don't have network,
+            // but we'll refresh from the global state immediately.
+            document.getElementById('currentMood').textContent = localUser.mood || 'Not set yet';
+
+            document.getElementById('personalGistCard').style.display = 'none';
+
+            updatePartnerMood();
+        }
+
+        function goBack() {
+            window.location.href = 'you.html';
+        }
+
+        async function setMood(mood, element) {
+            moodSelectionTime = new Date();
+
+            const moodItems = document.querySelectorAll('.mood-item');
+            moodItems.forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+
+            localUser.mood = mood;
+            document.getElementById('currentMood').textContent = mood;
+
+            localStorage.setItem('togetherProfile', JSON.stringify(localUser));
+
+            try {
+                const response = await fetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        [localUser.name]: {
+                            mood: mood
+                        }
+                    })
+                });
+
+                const updateTime = new Date();
+
+                if (response.ok) {
+                    showNotificationWithTime('You\'re feeling ' + mood + ' today! 💖', moodSelectionTime, updateTime);
+                } else {
+                    showNotification('Failed to share your mood');
+                }
+            } catch (error) {
+                console.error('Error setting mood:', error);
+                showNotification('Error sharing your mood: ' + error.message);
+            }
+        }
+
+        async function updatePartnerMood() {
+            try {
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                const globalState = await response.json();
+
+                const partnerState = globalState[localUser.partner.name] || {};
+                const myState = globalState[localUser.name] || {};
+
+                if (myState.mood) {
+                    document.getElementById('currentMood').textContent = myState.mood;
+                }
+
+                if (partnerState.mood) {
+                    const partnerMood = partnerState.mood;
+                    document.getElementById('partnerMood').textContent = partnerMood;
+                    showNotification('Your partner is feeling ' + partnerMood + ' today! 💞');
+                } else {
+                    showNotification('No mood data found for your partner');
+                }
+            } catch (error) {
+                console.error('Error fetching partner mood:', error);
+                showNotification('Error connecting to your partner\'s feelings');
+            }
+        }
+
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            const notificationTime = document.getElementById('notificationTime');
+
+            notificationText.textContent = message;
+            notificationTime.textContent = '';
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function showNotificationWithTime(message, startTime, endTime) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            const notificationTime = document.getElementById('notificationTime');
+
+            const timeDiff = (endTime - startTime) / 1000; // in seconds
+            const timeString = `Selected at ${startTime.toLocaleTimeString()}, updated in ${timeDiff.toFixed(1)}s`;
+
+            notificationText.textContent = message;
+            notificationTime.textContent = timeString;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        window.onload = function() {
+            initApp();
+            createHearts();
+        };
+    </script>
+</body>
+</html>

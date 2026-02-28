@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Diary Book for Owami</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Georgia', serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%); transition: background 3s ease; }
+#book-container { width: 95vw; max-width: 800px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; position: relative; background: #fffaf5; border: 1px solid #e6c9a8; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 0 60px rgba(255, 182, 193, 0.3) inset; border-radius: 8px; transition: all 0.5s ease; z-index: 2; }
+#page-content { flex: 1; white-space: pre-wrap; font-size: 9pt; line-height: 1.6; overflow-y: auto; padding: 20px; text-align: left; font-family: 'Georgia', serif; background-image: linear-gradient(rgba(0,0,0,0.03) 0.1em, transparent 0.1em), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ffb6c1' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); background-size: 100% 1.6em, 200px 200px; background-position: 0 1.4em, 0 0; transition: all 0.5s ease; position: relative; z-index: 1; }
+/* Style for detected links */
+.diary-link { color: #c44569; text-decoration: underline; cursor: pointer; font-weight: bold; }
+.diary-link:hover { color: #b33761; text-decoration: underline; }
+.nav-buttons { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 55px; min-height: 55px; border-top: 1px solid #f2d9c9; background: linear-gradient(to bottom, #fffaf5 0%, #f9e6d8 100%); transition: all 0.5s ease; z-index: 2; }
+button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Georgia', serif; height: 36px; background: #c44569; color: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transition: all 0.3s ease; position: relative; overflow: hidden; }
+button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(196, 69, 105, 0.3); background: #b33761; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+#page-indicator { font-size: 14px; font-style: italic; font-weight: bold; color: #c44569; transition: all 0.5s ease; opacity: 0.8; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.loading { text-align: center; font-style: italic; margin: 20px 0; font-size: 9pt; color: #c44569; transition: all 0.5s ease; }
+.chapter-page { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 0 5px; background-image: linear-gradient(rgba(0,0,0,0.03) 0.1em, transparent 0.1em), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ffb6c1' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); background-size: 100% 1.6em, 200px 200px; background-position: 0 1.4em, 0 0; text-align: center; transition: all 0.5s ease; position: relative; }
+.chapter-title { font-size: 32px; margin-bottom: 20px; padding: 15px 25px; border-radius: 8px; letter-spacing: 1.5px; text-align: center; width: 100%; color: #c44569; background: rgba(255, 250, 245, 0.92); box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-variant: small-caps; position: relative; transition: all 0.5s ease; text-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+.chapter-title::after { content: ""; display: block; width: 120px; height: 3px; background: linear-gradient(to right, transparent, #e6c9a8, transparent); margin: 15px auto; border-radius: 3px; }
+.chapter-subtitle { font-size: 20px; font-style: italic; padding: 10px 20px; border-radius: 5px; letter-spacing: 0.8px; text-align: center; width: 100%; color: #c44569; background: rgba(255, 250, 245, 0.9); margin-top: 15px; transition: all 0.5s ease; }
+.chapter-divider { width: 80px; height: 2px; margin: 20px 0; background: linear-gradient(to right, transparent, #e6c9a8, transparent); transition: all 0.5s ease; border-radius: 2px; }
+
+/* Password Modal */
+.password-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.password-content { background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%); padding: 35px; border-radius: 12px; text-align: center; width: 90%; max-width: 500px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); border: 2px solid #ff9e9e; position: relative; overflow: hidden; }
+.password-content::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ff9e9e' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); z-index: -1; }
+.password-title { font-size: 28px; color: #c44569; margin-bottom: 20px; font-variant: small-caps; }
+.password-text { font-size: 17px; color: #8d6363; margin-bottom: 20px; line-height: 1.5; }
+.password-input { padding: 14px 18px; border: 2px solid #ff9e9e; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 25px; background: rgba(255, 255, 255, 0.9); text-align: center; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.password-input:focus { outline: none; border-color: #c44569; box-shadow: 0 0 15px rgba(196, 69, 105, 0.4); }
+.password-btn { background: #c44569; color: white; border: none; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.password-btn:hover { background: #b33761; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(196, 69, 105, 0.4); }
+.password-error { color: #ff5252; margin-top: 15px; font-style: italic; display: none; }
+
+/* Validation Modal */
+.validation-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+.validation-modal.active { opacity: 1; pointer-events: all; }
+.validation-content { background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%); padding: 35px; border-radius: 12px; text-align: center; width: 90%; max-width: 500px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); border: 2px solid #ff9e9e; position: relative; overflow: hidden; }
+.validation-content::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ff9e9e' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); z-index: -1; }
+.validation-title { font-size: 28px; color: #c44569; margin-bottom: 20px; font-variant: small-caps; }
+.validation-text { font-size: 17px; color: #8d6363; margin-bottom: 20px; line-height: 1.5; }
+.validation-input { padding: 14px 18px; border: 2px solid #ff9e9e; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 25px; background: rgba(255, 255, 255, 0.9); text-align: center; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.validation-input:focus { outline: none; border-color: #c44569; box-shadow: 0 0 15px rgba(196, 69, 105, 0.4); }
+.validation-btn { background: #c44569; color: white; border: none; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.validation-btn:hover { background: #b33761; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(196, 69, 105, 0.4); }
+.validation-error { color: #ff5252; margin-top: 15px; font-style: italic; display: none; }
+.validation-success { color: #4caf50; margin-top: 15px; font-style: italic; display: none; }
+
+/* Celebration Animation */
+@keyframes celebrate { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.celebrate { animation: celebrate 0.5s ease; }
+/* Page turning animation */
+@keyframes pageTurn { 0% { opacity: 0; transform: translateX(30px) rotateY(-10deg); } 100% { opacity: 1; transform: translateX(0) rotateY(0); } }
+@keyframes chapterTransition { 0% { opacity: 0; transform: scale(1.1); filter: blur(10px); } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
+.page-turn { animation: pageTurn 1.2s ease forwards; }
+.chapter-transition { animation: chapterTransition 2s ease forwards; }
+/* Decorative elements */
+.book-spine { position: absolute; left: 0; top: 0; height: 100%; width: 15px; background: linear-gradient(to right, #d4b495 0%, #e6c9a8 100%); border-right: 1px solid #c4a789; box-shadow: 2px 0 8px rgba(0,0,0,0.15); }
+.book-corner { position: absolute; width: 35px; height: 35px; z-index: 2; }
+.corner-tl { top: 0; left: 0; border-top: 2px solid #e6c9a8; border-left: 2px solid #e6c9a8; border-top-left-radius: 8px; }
+.corner-tr { top: 0; right: 0; border-top: 2px solid #e6c9a8; border-right: 2px solid #e6c9a8; border-top-right-radius: 8px; }
+.corner-bl { bottom: 0; left: 0; border-bottom: 2px solid #e6c9a8; border-left: 2px solid #e6c9a8; border-bottom-left-radius: 8px; }
+.corner-br { bottom: 0; right: 0; border-bottom: 2px solid #e6c9a8; border-right: 2px solid #e6c9a8; border-bottom-right-radius: 8px; }
+.flower-decoration { position: absolute; bottom: 15px; right: 15px; opacity: 0.15; font-size: 28px; z-index: 1; }
+/* Timer indicator */
+.timer-indicator { position: absolute; bottom: 70px; right: 25px; font-size: 12px; color: #c44569; font-style: italic; background: rgba(255, 250, 245, 0.9); padding: 4px 8px; border-radius: 5px; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+/* Love message */
+.love-message { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #c44569; opacity: 0.7; font-style: italic; text-align: center; width: 100%; }
+/* Custom scrollbar */
+#page-content::-webkit-scrollbar { width: 6px; }
+#page-content::-webkit-scrollbar-track { background: rgba(245, 222, 212, 0.5); border-radius: 10px; }
+#page-content::-webkit-scrollbar-thumb { background: #e6c9a8; border-radius: 10px; }
+#page-content::-webkit-scrollbar-thumb:hover { background: #d4b495; }
+</style>
+</head>
+<body>
+<!-- Password Modal -->
+<div class="password-modal" id="password-modal">
+  <div class="password-content">
+    <h2 class="password-title">Enter Diary Password</h2>
+    <p class="password-text">This diary is encrypted for security. Please enter the password to continue reading.</p>
+    <input type="password" class="password-input" id="password-input" placeholder="Enter password...">
+    <button class="password-btn" id="password-btn">Unlock Diary</button>
+    <p class="password-error" id="password-error">Incorrect password. Please try again.</p>
+  </div>
+</div>
+
+<!-- Validation Modal -->
+<div class="validation-modal" id="validation-modal">
+  <div class="validation-content">
+    <h2 class="validation-title" id="validation-question">A Question From My Heart</h2>
+    <p class="validation-text">To continue reading this chapter, please answer this special question:</p>
+    <input type="text" class="validation-input" id="validation-input" placeholder="Your answer...">
+    <button class="validation-btn" id="validate-btn">Validate Our Love</button>
+    <p class="validation-error" id="validation-error">That's not quite right, my love. Try again!</p>
+    <p class="validation-success" id="validation-success">Yes! You remembered! ❤️</p>
+  </div>
+</div>
+
+<div id="book-container">
+  <!-- Decorative Elements -->
+  <div class="book-spine"></div>
+  <div class="book-corner corner-tl"></div>
+  <div class="book-corner corner-tr"></div>
+  <div class="book-corner corner-bl"></div>
+  <div class="book-corner corner-br"></div>
+  <div class="flower-decoration">🌸</div>
+  <!-- Timer Indicator -->
+  <div class="timer-indicator" id="timer-indicator">Next page in 25s</div>
+  <!-- Love Message -->
+  <div class="love-message">For Owami - With all my love</div>
+  <!-- Content Area -->
+  <div id="page-content">
+    <div class="loading">Please enter the password to unlock your diary...</div>
+  </div>
+  <!-- Navigation -->
+  <div class="nav-buttons">
+    <button id="prevBtn" onclick="prevPage()">⬅️ Previous</button>
+    <div id="page-indicator">Page 1</div>
+    <button id="nextBtn" onclick="nextPage()" disabled>Next ➡️</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script>
+// Define chapters with their file paths
+const chapters = [
+  { title: "Chapter 1: Childhood Foundations: From Quiet Beginnings to Growing Connections", url: "chapters/chapter1.txt" },
+  { title: "Chapter 2: High School Beginnings: Fights, Friendships, and First Discoveries", url: "chapters/chapter2.txt" },
+  { title: "Chapter 3: Tech Triumphs, First Relationships, and Personal Growth", url: "chapters/chapter3.txt" },
+  { title: "Chapter 4: 2023 – First Friendships, Self-Expression, and Life Lessons&First Love, Friendships, and Finding My Place", url: "chapters/chapter4.txt" },
+  { title: "Chapter 5: 2024 – Gap Year & DTECH Hustle", url: "chapters/chapter5.txt" },
+  { title: "Chapter 6: First Love, First Sexual Experiences, and Academic Redemption", url: "chapters/chapter6.txt" },
+  { title: "Chapter 7: Online Hustles, owami❤️, and University Uncertainty", url: "chapters/chapter7.txt" },
+  { title: "Chapter 8: university & owami", url: "chapters/chapter8.txt" }
+];
+
+// Define validation questions
+const validationQuestions = [
+  { question: "What's my alias?", answers: ["preasx24"], placeholder: "e.g. the name I use online" },
+  { question: "What is my age?", answers: ["20"], placeholder: "e.g. my age in years" },
+  { question: "What is my surname?", answers: ["mochebane"], placeholder: "e.g. my family name" },
+  { question: "What is my 'company' name?", answers: ["dtech"], placeholder: "e.g. my business name" },
+  { question: "What is one of my favourite colours?", answers: ["blue", "black", "red"], placeholder: "e.g. a color I love" },
+  { question: "What is my favourite subject?", answers: ["physics", "physical science"], placeholder: "e.g. what I enjoy studying" },
+  { question: "What is my favourite body part?", answers: ["boobs", "tits"], placeholder: "e.g. what I find attractive" }
+];
+
+let pages = [];
+let currentPage = 0;
+const wordsPerPage = 500;
+let pageTimer = null;
+let timeOnPage = 0;
+let backgroundInterval;
+let currentBg = 0;
+const backgrounds = [
+  'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)', // Red/Pink
+  'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', // Orange
+  'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)', // Blue
+  'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)', // Green
+  'linear-gradient(135deg, #a3bded 0%, #6991c7 100%)', // Purple/Blue
+  'linear-gradient(135deg, #f6d365 0%, #fda085 100%)' // Yellow/Orange
+];
+let validatedChapters = new Set();
+let currentQuestion = null;
+let lastInteractionTime = Date.now();
+let linkClicked = false;
+let diaryPassword = null;
+
+// Function to decrypt content
+function decryptContent(encryptedContent, password) {
+    try {
+        const decrypted = CryptoJS.AES.decrypt(encryptedContent, password).toString(CryptoJS.enc.Utf8);
+        if (!decrypted) {
+            throw new Error('Decryption failed');
+        }
+        return decrypted;
+    } catch (error) {
+        throw new Error('Failed to decrypt content');
+    }
+}
+
+// Function to detect and convert URLs to clickable links
+function linkify(text) {
+    // Regular expression to match URLs
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    // Replace URLs with anchor tags
+    return text.replace(urlRegex, function(url) {
+        return '<a href="' + url + '" class="diary-link" target="_blank" onclick="handleLinkClick()">' + url + '</a>';
+    });
+}
+
+// Track when a link is clicked
+function handleLinkClick() {
+    linkClicked = true;
+    localStorage.setItem('diaryLinkClicked', 'true');
+    localStorage.setItem('diaryLastInteraction', Date.now().toString());
+}
+
+// Initialize all features
+function initFeatures() {
+    // Load saved progress
+    const savedPage = localStorage.getItem('diaryCurrentPage');
+    const savedValidated = localStorage.getItem('diaryValidatedChapters');
+    const lastInteraction = localStorage.getItem('diaryLastInteraction');
+    const wasLinkClicked = localStorage.getItem('diaryLinkClicked') === 'true';
+
+    if (savedPage) {
+        currentPage = parseInt(savedPage);
+    }
+    if (savedValidated) {
+        validatedChapters = new Set(JSON.parse(savedValidated));
+    }
+
+    // Check if user was away for more than 1 minute and didn't leave via a link
+    if (lastInteraction && !wasLinkClicked) {
+        const timeAway = Date.now() - parseInt(lastInteraction);
+        if (timeAway > 60000) { // 1 minute in milliseconds
+            // User was away for more than 1 minute, ask a question
+            setTimeout(() => {
+                askRandomQuestion();
+            }, 1000);
+        }
+    }
+
+    // Reset link clicked flag
+    localStorage.setItem('diaryLinkClicked', 'false');
+
+    // Start background color cycling
+    backgroundInterval = setInterval(cycleBackgrounds, 10000); // Change every 10 seconds
+
+    // Setup validation event listeners
+    document.getElementById('validate-btn').addEventListener('click', validateAnswer);
+    document.getElementById('validation-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            validateAnswer();
+        }
+    });
+
+    // Setup password event listeners
+    document.getElementById('password-btn').addEventListener('click', checkPassword);
+    document.getElementById('password-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            checkPassword();
+        }
+    });
+
+    // Focus on password input
+    document.getElementById('password-input').focus();
+
+    // Update last interaction time regularly
+    setInterval(() => {
+        lastInteractionTime = Date.now();
+        localStorage.setItem('diaryLastInteraction', lastInteractionTime.toString());
+    }, 5000);
+
+    // Set initial interaction time
+    localStorage.setItem('diaryLastInteraction', Date.now().toString());
+}
+
+// Check password function
+function checkPassword() {
+    const passwordInput = document.getElementById('password-input').value;
+    const errorElement = document.getElementById('password-error');
+
+    if (!passwordInput) {
+        errorElement.textContent = "Please enter a password";
+        errorElement.style.display = 'block';
+        return;
+    }
+
+    // Try to decrypt a test file or use the password for future decryptions
+    diaryPassword = passwordInput;
+
+    // Hide password modal and load chapters
+    document.getElementById('password-modal').style.display = 'none';
+    document.getElementById('page-content').innerHTML = '<div class="loading">Loading your diary content...</div>';
+
+    loadChapters().catch(error => {
+        // If loading fails, show password modal again
+        document.getElementById('password-modal').style.display = 'flex';
+        errorElement.textContent = "Incorrect password. Please try again.";
+        errorElement.style.display = 'block';
+        document.getElementById('password-input').value = '';
+        document.getElementById('password-input').focus();
+    });
+}
+
+// Cycle through background colors
+function cycleBackgrounds() {
+    currentBg = (currentBg + 1) % backgrounds.length;
+    document.body.style.background = backgrounds[currentBg];
+}
+
+// Ask a random validation question
+function askRandomQuestion() {
+    const randomIndex = Math.floor(Math.random() * validationQuestions.length);
+    currentQuestion = validationQuestions[randomIndex];
+    document.getElementById('validation-question').textContent = currentQuestion.question;
+    document.getElementById('validation-input').placeholder = currentQuestion.placeholder;
+    document.getElementById('validation-input').value = '';
+    document.getElementById('validation-error').style.display = 'none';
+    document.getElementById('validation-success').style.display = 'none';
+    document.getElementById('validation-modal').classList.add('active');
+    document.getElementById('validation-input').focus();
+}
+
+// Validate the answer
+function validateAnswer() {
+    const input = document.getElementById('validation-input').value.trim().toLowerCase();
+    const errorElement = document.getElementById('validation-error');
+    const successElement = document.getElementById('validation-success');
+
+    if (currentQuestion && currentQuestion.answers.includes(input)) {
+        // Correct answer
+        errorElement.style.display = 'none';
+        successElement.style.display = 'block';
+
+        // Get current chapter if we're validating a chapter
+        if (pages.length > 0) {
+            const currentChapter = pages[currentPage].chapter;
+            validatedChapters.add(currentChapter);
+            // Save to localStorage
+            localStorage.setItem('diaryValidatedChapters', JSON.stringify(Array.from(validatedChapters)));
+        }
+
+        // Close modal after a delay
+        setTimeout(() => {
+            document.getElementById('validation-modal').classList.remove('active');
+            document.getElementById('book-container').classList.add('celebrate');
+            // Enable next button after validation if needed
+            if (pages.length > 0 && pages[currentPage].isChapterPage) {
+                document.getElementById("nextBtn").disabled = false;
+                document.getElementById("timer-indicator").style.display = 'none';
+            }
+            setTimeout(() => {
+                document.getElementById('book-container').classList.remove('celebrate');
+            }, 1000);
+        }, 1500);
+    } else {
+        // Incorrect answer
+        errorElement.style.display = 'block';
+        successElement.style.display = 'none';
+        // Shake animation for error
+        const inputElement = document.getElementById('validation-input');
+        inputElement.classList.add('celebrate');
+        setTimeout(() => {
+            inputElement.classList.remove('celebrate');
+        }, 500);
+    }
+}
+
+// Check if chapter needs validation
+function checkChapterValidation() {
+    if (pages.length === 0) return false;
+    const page = pages[currentPage];
+    if (page.isChapterPage && !validatedChapters.has(page.chapter)) {
+        // Show validation modal with random question
+        askRandomQuestion();
+        return true;
+    }
+    return false;
+}
+
+// Start the page timer
+function startPageTimer() {
+    // Clear any existing timer
+    if (pageTimer) clearInterval(pageTimer);
+
+    // Reset time on page
+    timeOnPage = 0;
+
+    // Don't start timer if validation is needed
+    if (pages.length > 0 && checkChapterValidation()) {
+        document.getElementById("nextBtn").disabled = true;
+        document.getElementById("timer-indicator").style.display = 'none';
+        return;
+    }
+
+    // Enable next button if we're on the last page
+    if (currentPage === pages.length - 1) {
+        document.getElementById("nextBtn").disabled = true;
+        document.getElementById("timer-indicator").textContent = "Last page";
+        return;
+    }
+
+    // Show timer indicator
+    document.getElementById("timer-indicator").style.display = 'block';
+
+    // Disable next button initially
+    document.getElementById("nextBtn").disabled = true;
+    document.getElementById("timer-indicator").textContent = "Next page in 25s";
+
+    // Start counting
+    pageTimer = setInterval(() => {
+        timeOnPage++;
+        // Update timer indicator
+        document.getElementById("timer-indicator").textContent = `Next page in ${25 - timeOnPage}s`;
+
+        // Enable next button after 25 seconds
+        if (timeOnPage >= 25) {
+            document.getElementById("nextBtn").disabled = false;
+            document.getElementById("timer-indicator").textContent = "Ready to turn page";
+            clearInterval(pageTimer);
+        }
+    }, 1000);
+}
+
+// Create a special chapter introduction page
+function createChapterPage(chapterTitle) {
+    return {
+        type: 'chapter',
+        chapter: chapterTitle,
+        content: `CHAPTER\n${chapterTitle.toUpperCase()}`,
+        isChapterPage: true
+    };
+}
+
+// Split text into words while preserving all formatting and spacing
+function splitTextIntoWords(text) {
+    const paragraphs = text.split(/(\n+)/);
+    const result = [];
+    for (const paragraph of paragraphs) {
+        if (paragraph.trim().length === 0 && !paragraph.includes('\n')) continue;
+        if (paragraph.replace(/\n/g, '').length === 0) {
+            result.push({ type: 'newlines', text: paragraph, wordCount: 0 });
+            continue;
+        }
+        const words = [];
+        let currentWord = '';
+        let inWord = false;
+        for (let i = 0; i < paragraph.length; i++) {
+            const char = paragraph[i];
+            if (char.match(/\s/)) {
+                if (inWord) {
+                    words.push(currentWord);
+                    currentWord = '';
+                    inWord = false;
+                }
+                currentWord += char;
+            } else {
+                if (!inWord && currentWord.length > 0) {
+                    words.push(currentWord);
+                    currentWord = '';
+                }
+                currentWord += char;
+                inWord = true;
+            }
+        }
+        if (currentWord.length > 0) {
+            words.push(currentWord);
+        }
+        result.push({ type: 'paragraph', words: words, text: paragraph, wordCount: words.filter(w => w.trim().length > 0).length });
+    }
+    return result;
+}
+
+// Paginate content based on word count while preserving formatting
+function paginateContent(wordsData, chapterTitle) {
+    const pages = [];
+    // Add chapter introduction page
+    pages.push(createChapterPage(chapterTitle));
+    let currentPageContent = [];
+    let currentWordCount = 0;
+    for (const item of wordsData) {
+        if (item.type === 'newlines') {
+            currentPageContent.push(item.text);
+            continue;
+        }
+        if (item.type === 'paragraph') {
+            if (currentWordCount + item.wordCount > wordsPerPage && currentWordCount > 0) {
+                pages.push({ type: 'content', chapter: chapterTitle, content: currentPageContent.join(''), isChapterPage: false });
+                currentPageContent = [];
+                currentWordCount = 0;
+            }
+            if (item.wordCount > 0) {
+                currentPageContent.push(item.text);
+                currentWordCount += item.wordCount;
+            }
+        }
+    }
+    if (currentPageContent.length > 0) {
+        pages.push({ type: 'content', chapter: chapterTitle, content: currentPageContent.join(''), isChapterPage: false });
+    }
+    return pages;
+}
+
+async function loadChapters() {
+    pages = [];
+    for (const chapter of chapters) {
+        try {
+            // Try to fetch from the provided URL
+            const res = await fetch(chapter.url);
+            if (!res.ok) throw new Error(`Failed to fetch ${chapter.url}`);
+            const encryptedText = await res.text();
+
+            // Decrypt the content using the provided password
+            const decryptedText = decryptContent(encryptedText, diaryPassword);
+
+            const wordsData = splitTextIntoWords(decryptedText);
+            const chapterPages = paginateContent(wordsData, chapter.title);
+            pages = pages.concat(chapterPages);
+        } catch (error) {
+            console.error("Error loading chapter:", error);
+            // If fetch or decryption fails, create sample content
+            const sampleText = `This is a sample content for ${chapter.title}. There was an error loading this chapter. Please check your password and try again.`;
+            const wordsData = splitTextIntoWords(sampleText);
+            const chapterPages = paginateContent(wordsData, chapter.title);
+            pages = pages.concat(chapterPages);
+
+            // If it's a decryption error, re-throw to trigger password prompt
+            if (error.message.includes('decrypt')) {
+                throw error;
+            }
+        }
+    }
+    renderPage();
+}
+
+function renderPage() {
+    const pageContent = document.getElementById("page-content");
+    const pageIndicator = document.getElementById("page-indicator");
+    if (pages.length === 0) {
+        pageContent.textContent = "The diary is empty or content failed to load.";
+        pageIndicator.textContent = "Page 0";
+        return;
+    }
+    const page = pages[currentPage];
+    // Add appropriate animation
+    if (page.isChapterPage) {
+        pageContent.classList.remove('page-turn');
+        pageContent.classList.add('chapter-transition');
+    } else {
+        pageContent.classList.remove('chapter-transition');
+        pageContent.classList.add('page-turn');
+    }
+    // Always scroll to top when rendering a new page
+    pageContent.scrollTop = 0;
+    if (page.isChapterPage) {
+        pageContent.innerHTML = `
+        <div class="chapter-page">
+            <div class="chapter-title">${page.content.split('\n')[0]}</div>
+            <div class="chapter-divider"></div>
+            <div class="chapter-subtitle">${page.content.split('\n')[1]}</div>
+        </div>
+        `;
+        pageIndicator.style.opacity = '0';
+        // Check if we need to show validation for this chapter
+        checkChapterValidation();
+    } else {
+        // Use linkify to convert URLs to clickable links
+        pageContent.innerHTML = linkify(page.content);
+        pageIndicator.style.opacity = '0.7';
+    }
+    pageIndicator.textContent = `Page ${currentPage + 1}`;
+    document.getElementById("prevBtn").disabled = currentPage === 0;
+    // Save current page to localStorage
+    localStorage.setItem('diaryCurrentPage', currentPage.toString());
+    // Start the timer for the next page (only for non-chapter pages)
+    if (!page.isChapterPage) {
+        startPageTimer();
+    }
+}
+
+function nextPage() {
+    if (currentPage < pages.length - 1) {
+        currentPage++;
+        renderPage();
+        // Add a nice transition effect
+        document.getElementById("book-container").style.transform = "translateX(-5px)";
+        setTimeout(() => {
+            document.getElementById("book-container").style.transform = "translateX(0)";
+        }, 100);
+    }
+}
+
+function prevPage() {
+    if (currentPage > 0) {
+        currentPage--;
+        renderPage();
+        // Add a nice transition effect
+        document.getElementById("book-container").style.transform = "translateX(5px)";
+        setTimeout(() => {
+            document.getElementById("book-container").style.transform = "translateX(0)";
+        }, 100);
+    }
+}
+
+// Initialize
+initFeatures();
+
+// Handle page visibility changes
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        // Page is visible again, update interaction time
+        lastInteractionTime = Date.now();
+        localStorage.setItem('diaryLastInteraction', lastInteractionTime.toString());
+    }
+});
+
+// Handle beforeunload to track if user is leaving via a link
+window.addEventListener('beforeunload', function() {
+    if (!linkClicked) {
+        localStorage.setItem('diaryLastInteraction', Date.now().toString());
+    }
+});
+</script>
+</body>
+</html>

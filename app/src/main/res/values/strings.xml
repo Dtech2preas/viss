@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Together</string>
+    <string name="channel_name">Partner Updates</string>
+    <string name="channel_description">Notifications for when your partner updates their status</string>
+</resources>

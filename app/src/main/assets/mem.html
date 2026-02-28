@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Card Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background-color: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+      padding: 30px;
+      width: 100%;
+      max-width: 900px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #4a2c82;
+      margin-bottom: 20px;
+      font-size: 2.5rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #userSetup {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #4a2c82;
+    }
+
+    select, .startBtn {
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      font-size: 1rem;
+      margin: 5px;
+      transition: all 0.3s ease;
+    }
+
+    select {
+      width: 200px;
+    }
+
+    select:focus {
+      border-color: #667eea;
+      outline: none;
+    }
+
+    .startBtn {
+      background-color: #4a2c82;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .startBtn:hover {
+      background-color: #5a3c9f;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    #playerInfo {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      color: #4a2c82;
+      font-weight: 600;
+    }
+
+    .game-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .flip-counter {
+      background-color: #4a2c82;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .matches-counter {
+      background-color: #28a745;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #gameBoard {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      justify-content: center;
+      margin: 25px auto;
+      max-width: 600px;
+    }
+
+    .card {
+      height: 90px;
+      background: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      perspective: 1000px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 1.8rem;
+    }
+
+    .card-front {
+      background: linear-gradient(135deg, #4a2c82 0%, #667eea 100%);
+      color: white;
+    }
+
+    .card-front::after {
+      content: "?";
+    }
+
+    .card-back {
+      background-color: #fff;
+      color: #333;
+      transform: rotateY(180deg);
+    }
+
+    .card.matched {
+      opacity: 0.7;
+      cursor: default;
+    }
+
+    .card.matched:hover {
+      transform: none;
+    }
+
+    #status {
+      font-weight: 600;
+      margin: 20px 0;
+      font-size: 1.2rem;
+      min-height: 30px;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .status-waiting {
+      background-color: #e9ecef;
+      color: #6c757d;
+    }
+
+    .status-playing {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .status-match {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .status-success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .status-warning {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .status-reward {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      animation: pulse 1s;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    #score {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 12px;
+      font-weight: 600;
+      color: #4a2c82;
+      margin-top: 20px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .limit-reached {
+      background-color: #fff3cd;
+      color: #856404;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+      font-weight: 600;
+    }
+
+    .change-user {
+      background: none;
+      border: none;
+      color: #667eea;
+      text-decoration: underline;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background-color: #e9ecef;
+      border-radius: 5px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #28a745, #20c997);
+      width: 100%;
+      transition: width 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      #gameBoard {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .card {
+        height: 80px;
+      }
+
+      .card-front, .card-back {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      #gameBoard {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .card {
+        height: 70px;
+      }
+
+      .card-front, .card-back {
+        font-size: 1.3rem;
+      }
+
+      select, .startBtn {
+        width: 100%;
+        margin: 5px 0;
+      }
+
+      .game-info {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Memory Card Game</h1>
+
+    <div id="userSetup">
+      <button class="startBtn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <p id="playerInfo"></p>
+
+    <div class="game-info">
+      <div class="flip-counter">Flips Remaining: <span id="flipCount">40</span></div>
+      <div class="matches-counter">Matches: <span id="matchCount">0</span>/10</div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div id="gameBoard"></div>
+    <p id="status" class="status-waiting">Please select a username and press Start.</p>
+    <p id="score"></p>
+    <button class="change-user" onclick="changeUser()">Change User</button>
+  </div>
+
+  <script>
+    const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+
+    let player = null, playerData = null;
+    let flippedCards = [], lockBoard = false, matchesFound = 0;
+    let maxFlips = 30, remainingFlips = 30;
+
+    const boardDiv = document.getElementById("gameBoard");
+    const statusDiv = document.getElementById("status");
+    const scoreDiv = document.getElementById("score");
+    const playerInfo = document.getElementById("playerInfo");
+    const playerSelect = document.getElementById("playerSelect");
+    const userSetup = document.getElementById("userSetup");
+    const flipCountDisplay = document.getElementById("flipCount");
+    const matchCountDisplay = document.getElementById("matchCount");
+    const progressFill = document.getElementById("progressFill");
+
+    // Emojis for the game - using 10 pairs for a 5x4 grid
+    const emojis = ["🍎","🍌","🍓","🍇","🍊","🍉","🍒","🍍","🥭","🍏"];
+
+    // Check for saved user on page load
+    window.onload = function() {
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const userData = JSON.parse(savedProfile);
+        player = userData.name;
+        startGame();
+      } else {
+        statusDiv.textContent = "Please set up your profile on the home page first.";
+        userSetup.style.display = "none";
+      }
+    };
+
+    async function startGame() {
+      if (!player) {
+          const savedProfile = localStorage.getItem('togetherProfile');
+          if (savedProfile) {
+              const userData = JSON.parse(savedProfile);
+              player = userData.name;
+          } else {
+              return alert("Please set up your profile on the home page first");
+          }
+      }
+
+      await loadPlayerData();
+
+      // Initialize dailyGames tracker if missing
+      if (!playerData.gameData.memory.dailyGames) {
+        playerData.gameData.memory.dailyGames = { date: new Date().toDateString(), count: 0 };
+        await savePlayerData();
+      }
+
+      // Reset flip limits if it's a new day
+      const today = new Date().toDateString();
+      if (playerData.gameData.memory.lastPlayed !== today) {
+        maxFlips = 30;
+        playerData.gameData.memory.maxFlips = maxFlips;
+      } else {
+        maxFlips = playerData.gameData.memory.maxFlips || 30;
+      }
+
+      // Lock username choice
+      userSetup.style.display = "none";
+      playerInfo.textContent = `Playing as: ${player}`;
+      document.querySelector('.change-user').style.display = 'block';
+
+      startNewRound();
+    }
+
+    function changeUser() {
+      window.location.href = 'index.html';
+    }
+
+    function startNewRound() {
+      const g = playerData.gameData.memory;
+      const today = new Date().toDateString();
+      if (g.dailyGames.date !== today) {
+        g.dailyGames.date = today;
+        g.dailyGames.count = 0;
+      }
+      if (g.dailyGames.count >= 10) {
+        boardDiv.innerHTML = "";
+        statusDiv.textContent = "🚫 Daily limit reached (10 games). Come back tomorrow!";
+        statusDiv.className = "status-error";
+        renderScore();
+        return;
+      }
+
+      // Reset game state
+      matchesFound = 0;
+      flippedCards = [];
+      lockBoard = false;
+      remainingFlips = maxFlips;
+
+      // Use 10 pairs for a 5x4 grid
+      const selectedEmojis = emojis.slice(0, 10);
+      let cards = [...selectedEmojis, ...selectedEmojis];
+      cards.sort(() => Math.random() - 0.5);
+
+      boardDiv.innerHTML = "";
+      cards.forEach((emoji, i) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.value = emoji;
+
+        const cardInner = document.createElement("div");
+        cardInner.className = "card-inner";
+
+        const cardFront = document.createElement("div");
+        cardFront.className = "card-front";
+
+        const cardBack = document.createElement("div");
+        cardBack.className = "card-back";
+        cardBack.textContent = emoji;
+
+        cardInner.appendChild(cardFront);
+        cardInner.appendChild(cardBack);
+        card.appendChild(cardInner);
+
+        card.onclick = () => flipCard(card);
+        boardDiv.appendChild(card);
+      });
+
+      updateFlipDisplay();
+      updateMatchDisplay();
+      renderScore();
+      statusDiv.textContent = "Find all pairs! Flips remaining: " + remainingFlips;
+      statusDiv.className = "status-playing";
+    }
+
+    function flipCard(card) {
+      if (lockBoard || card.classList.contains("flipped") || card.classList.contains("matched")) return;
+
+      // Check if we have flips remaining
+      if (remainingFlips <= 0) {
+        statusDiv.textContent = "❌ Out of flips! Game over.";
+        statusDiv.className = "status-error";
+        return;
+      }
+
+      // Use a flip
+      remainingFlips--;
+      updateFlipDisplay();
+
+      card.classList.add("flipped");
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        checkMatch();
+      }
+    }
+
+    async function checkMatch() {
+      lockBoard = true;
+      const [c1, c2] = flippedCards;
+
+      if (c1.dataset.value === c2.dataset.value) {
+        // MATCH FOUND - Reward with 4 extra flips
+        remainingFlips += 2;
+        maxFlips += 2;
+        updateFlipDisplay();
+
+        statusDiv.textContent = "✅ Match! +2 flips!";
+        statusDiv.className = "status-reward";
+
+        // Mark cards as matched
+        setTimeout(() => {
+          c1.classList.add("matched");
+          c2.classList.add("matched");
+        }, 500);
+
+        matchesFound++;
+        updateMatchDisplay();
+        await updateScore();
+        resetFlipped();
+
+        if (matchesFound === 10) {
+          // Player cleared the board
+          statusDiv.textContent = "🎉 You cleared the board! Starting new round...";
+          statusDiv.className = "status-success";
+
+          // Save the increased maxFlips
+          playerData.gameData.memory.maxFlips = maxFlips;
+          playerData.lastUpdated = new Date().toISOString();
+          await savePlayerData();
+
+          setTimeout(startNewRound, 2000);
+        }
+      } else {
+        statusDiv.textContent = "❌ No match!";
+        statusDiv.className = "status-error";
+        setTimeout(() => {
+          c1.classList.remove("flipped");
+          c2.classList.remove("flipped");
+          resetFlipped();
+        }, 1000);
+      }
+    }
+
+    function resetFlipped() {
+      flippedCards = [];
+      lockBoard = false;
+
+      // Check if we're out of flips
+      if (remainingFlips <= 0) {
+        statusDiv.textContent = "❌ Out of flips! Game over.";
+        statusDiv.className = "status-error";
+
+        // End the game for today
+        setTimeout(() => {
+          playerData.gameData.memory.dailyGames.count = 10;
+          playerData.gameData.memory.maxFlips = maxFlips;
+          playerData.lastUpdated = new Date().toISOString();
+          savePlayerData();
+          startNewRound(); // This will show the daily limit message
+        }, 2000);
+      } else {
+        statusDiv.textContent = "Find all pairs! Flips remaining: " + remainingFlips;
+        statusDiv.className = "status-playing";
+      }
+    }
+
+    function updateFlipDisplay() {
+      flipCountDisplay.textContent = remainingFlips;
+
+      // Update progress bar
+      const percentage = (remainingFlips / maxFlips) * 100;
+      progressFill.style.width = percentage + '%';
+
+      // Change color based on remaining flips
+      if (percentage < 20) {
+        progressFill.style.background = 'linear-gradient(90deg, #dc3545, #e83e8c)';
+      } else if (percentage < 50) {
+        progressFill.style.background = 'linear-gradient(90deg, #ffc107, #fd7e14)';
+      } else {
+        progressFill.style.background = 'linear-gradient(90deg, #28a745, #20c997)';
+      }
+    }
+
+    function updateMatchDisplay() {
+      matchCountDisplay.textContent = matchesFound;
+    }
+
+    function renderScore() {
+      const g = playerData.gameData.memory;
+      scoreDiv.textContent = `Memory Score: ${g.score} | Total Score: ${playerData.gameData.totalScore} | Games today: ${g.dailyGames.count}/10 | Max Flips: ${maxFlips}`;
+    }
+
+    // --- API STUFF ---
+    async function loadPlayerData() {
+      try {
+        const res = await fetch(`${API_URL}/api/couple`);
+        const globalState = await res.json();
+        if (globalState && globalState[player]) {
+            playerData = globalState[player];
+        } else {
+            throw new Error("No player data in shared state");
+        }
+      } catch (error) {
+        console.error("Error loading player data:", error);
+        playerData = {
+          name: player,
+          gameData: {
+            totalScore: 0
+          },
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      if (!playerData.gameData) {
+          playerData.gameData = { totalScore: 0 };
+      }
+      if (!playerData.gameData.memory) {
+          playerData.gameData.memory = { score: 0, dailyGames: { date: new Date().toDateString(), count: 0 }, maxFlips: 30 };
+      }
+    }
+
+    async function savePlayerData() {
+      try {
+        await fetch(`${API_URL}/api/couple`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+              [player]: {
+                  gameData: playerData.gameData,
+                  lastUpdated: playerData.lastUpdated
+              }
+          })
+        });
+      } catch (error) {
+        console.error("Error saving player data:", error);
+        statusDiv.textContent = "Error saving data. Please try again.";
+        statusDiv.className = "status-error";
+      }
+    }
+
+    async function updateScore() {
+      const g = playerData.gameData.memory;
+      const today = new Date().toDateString();
+
+      if (g.dailyGames.date !== today) {
+        g.dailyGames.date = today;
+        g.dailyGames.count = 0;
+      }
+
+      if (g.dailyGames.count >= 10) return;
+
+      g.score += 1;
+      playerData.gameData.totalScore += 1;
+      g.lastPlayed = today;
+      g.dailyGames.count += 1;
+      playerData.lastUpdated = new Date().toISOString();
+
+      await savePlayerData();
+      renderScore();
+    }
+  </script>
+</body>
+</html>

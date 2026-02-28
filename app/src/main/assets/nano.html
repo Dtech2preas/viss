@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy 1st Anniversary My Love</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Parisienne&family=Raleway:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Raleway', sans-serif;
+            background: linear-gradient(135deg, #ffdde1, #ee9ca7, #ffdde1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #5d001e;
+            position: relative;
+            transition: background 15s ease-in-out;
+        }
+
+        .container {
+            max-width: 800px;
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
+            position: relative;
+        }
+
+        .message {
+            font-size: 2.2rem;
+            margin: 40px 0;
+            opacity: 0;
+            transform: translateY(60px);
+            transition: all 2.5s ease-out;
+            font-family: 'Playfair Display', serif;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
+            line-height: 1.6;
+        }
+
+        .message.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .finale {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            background: radial-gradient(circle, rgba(255,182,193,0.85) 0%, rgba(238,156,167,0.9) 100%);
+            opacity: 0;
+            transition: opacity 3s ease;
+        }
+
+        .finale.visible {
+            opacity: 1;
+        }
+
+        .finale-text {
+            font-family: 'Parisienne', cursive;
+            font-size: 6rem;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.7),
+                         0 0 40px rgba(255, 20, 147, 0.7),
+                         0 0 60px rgba(255, 105, 180, 0.7);
+            animation: pulse 3s infinite alternate, float 6s infinite ease-in-out;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .credit {
+            font-size: 2rem;
+            color: #fff;
+            text-shadow: 0 0 15px rgba(255, 20, 147, 0.8);
+            opacity: 0;
+            transition: opacity 3s ease;
+            font-family: 'Raleway', sans-serif;
+            margin-top: 40px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 30px;
+            border-radius: 15px;
+        }
+
+        .credit.visible {
+            opacity: 1;
+        }
+
+        /* Particle and heart styles */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .heart {
+            position: absolute;
+            z-index: 2;
+            opacity: 0;
+            font-size: 24px;
+            color: #ff4d6d;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+            animation: float 15s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .petal {
+            position: absolute;
+            z-index: 3;
+            opacity: 0;
+            font-size: 20px;
+            color: #ff9eb6;
+            animation: floatPetals 18s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .sparkle {
+            position: absolute;
+            z-index: 4;
+            opacity: 0;
+            font-size: 16px;
+            color: #fff;
+            text-shadow: 0 0 8px gold;
+            animation: sparkleAnim 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                text-shadow: 0 0 20px rgba(255, 0, 0, 0.7),
+                             0 0 40px rgba(255, 20, 147, 0.7),
+                             0 0 60px rgba(255, 105, 180, 0.7);
+            }
+            100% {
+                transform: scale(1.15);
+                text-shadow: 0 0 30px rgba(255, 0, 0, 0.8),
+                             0 0 60px rgba(255, 20, 147, 0.8),
+                             0 0 80px rgba(255, 105, 180, 0.8);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-30px) rotate(5deg);
+            }
+            50% {
+                transform: translateY(-60px) rotate(-5deg);
+            }
+            75% {
+                transform: translateY(-30px) rotate(5deg);
+            }
+        }
+
+        @keyframes floatPetals {
+            0% {
+                transform: translateY(0) translateX(0) rotate(0deg);
+                opacity: 0.8;
+            }
+            25% {
+                transform: translateY(-40px) translateX(30px) rotate(90deg);
+            }
+            50% {
+                transform: translateY(-80px) translateX(-20px) rotate(180deg);
+            }
+            75% {
+                transform: translateY(-40px) translateX(20px) rotate(270deg);
+            }
+            100% {
+                transform: translateY(0) translateX(0) rotate(360deg);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes sparkleAnim {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.5);
+            }
+        }
+
+        .background-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .message {
+                font-size: 1.8rem;
+            }
+
+            .finale-text {
+                font-size: 4.5rem;
+            }
+
+            .credit {
+                font-size: 1.6rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .message {
+                font-size: 1.5rem;
+            }
+
+            .finale-text {
+                font-size: 3.5rem;
+            }
+
+            .credit {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-animation" id="background-animation"></div>
+
+    <div class="container" id="text-container">
+        <p class="message">hello baby 🙃</p>
+        <p class="message">I hope you are doing well.</p>
+        <p class="message">As today marks our first anniversary ❤️</p>
+        <p class="message">We can't spend it together because of the distance between us,</p>
+        <p class="message">but I've created this to better bridge that gap ❤️</p>
+        <p class="message">I love you and I hope you like it &</p>
+        <p class="message">✨ HAPPY ANNIVERSARY ✨</p>
+    </div>
+
+    <div class="finale" id="finale">
+        <h1 class="finale-text">💖 Forever Yours 💖</h1>
+        <p class="credit" id="credit">Made with ❤️ for Owami</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messages = document.querySelectorAll('.message');
+            const finale = document.getElementById('finale');
+            const credit = document.getElementById('credit');
+            const textContainer = document.getElementById('text-container');
+            const backgroundAnimation = document.getElementById('background-animation');
+            const body = document.body;
+
+            // Background gradient transitions
+            const gradients = [
+                'linear-gradient(135deg, #ffdde1, #ee9ca7, #ffdde1)',
+                'linear-gradient(135deg, #f8c8dc, #ffb6c1, #f8c8dc)',
+                'linear-gradient(135deg, #ffdfd3, #fec8d8, #ffdfd3)',
+                'linear-gradient(135deg, #e0bbe4, #ffb6c1, #e0bbe4)',
+                'linear-gradient(135deg, #ffccd5, #ffb3c1, #ffccd5)'
+            ];
+
+            let gradientIndex = 0;
+
+            // Create particles for background
+            function createParticles() {
+                for (let i = 0; i < 80; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('particle');
+
+                    const size = Math.random() * 6 + 2;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+
+                    particle.style.left = `${Math.random() * 100}vw`;
+                    particle.style.top = `${Math.random() * 100}vh`;
+
+                    const animationDuration = Math.random() * 12 + 8;
+                    particle.style.animation = `float ${animationDuration}s infinite ease-in-out`;
+                    particle.style.animationDelay = `${Math.random() * 5}s`;
+                    particle.style.opacity = Math.random() * 0.6 + 0.2;
+
+                    backgroundAnimation.appendChild(particle);
+                }
+            }
+
+            // Create floating hearts for the finale
+            function createHearts() {
+                for (let i = 0; i < 45; i++) {
+                    const heart = document.createElement('div');
+                    heart.classList.add('heart');
+                    heart.innerHTML = '<i class="fas fa-heart"></i>';
+
+                    const size = Math.random() * 30 + 20;
+                    heart.style.fontSize = `${size}px`;
+
+                    heart.style.left = `${Math.random() * 100}vw`;
+                    heart.style.top = `${Math.random() * 100 + 100}vh`;
+
+                    const animationDuration = Math.random() * 10 + 15;
+                    heart.style.animation = `float ${animationDuration}s infinite ease-in-out`;
+                    heart.style.animationDelay = `${Math.random() * 5}s`;
+                    heart.style.opacity = Math.random() * 0.7 + 0.3;
+
+                    // Different colors for hearts
+                    const colors = ['#ff4d6d', '#ff8fa3', '#ffb3c1', '#ffccd5', '#ff5c8a'];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    heart.style.color = color;
+
+                    backgroundAnimation.appendChild(heart);
+                }
+            }
+
+            // Create floating rose petals
+            function createPetals() {
+                for (let i = 0; i < 35; i++) {
+                    const petal = document.createElement('div');
+                    petal.classList.add('petal');
+                    petal.innerHTML = '<i class="fas fa-leaf"></i>';
+
+                    const size = Math.random() * 25 + 15;
+                    petal.style.fontSize = `${size}px`;
+
+                    petal.style.left = `${Math.random() * 100}vw`;
+                    petal.style.top = `${Math.random() * 100 + 100}vh`;
+
+                    const animationDuration = Math.random() * 10 + 18;
+                    petal.style.animation = `floatPetals ${animationDuration}s infinite ease-in-out`;
+                    petal.style.animationDelay = `${Math.random() * 5}s`;
+                    petal.style.opacity = Math.random() * 0.7 + 0.3;
+
+                    // Different colors for petals
+                    const colors = ['#ff9eb6', '#ffb6c1', '#ffc2d1', '#ffacc5', '#ff85a1'];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    petal.style.color = color;
+
+                    backgroundAnimation.appendChild(petal);
+                }
+            }
+
+            // Create sparkling particles
+            function createSparkles() {
+                for (let i = 0; i < 60; i++) {
+                    const sparkle = document.createElement('div');
+                    sparkle.classList.add('sparkle');
+                    sparkle.innerHTML = '<i class="fas fa-sparkle"></i>';
+
+                    const size = Math.random() * 20 + 10;
+                    sparkle.style.fontSize = `${size}px`;
+
+                    sparkle.style.left = `${Math.random() * 100}vw`;
+                    sparkle.style.top = `${Math.random() * 100}vh`;
+
+                    const animationDuration = Math.random() * 3 + 2;
+                    sparkle.style.animation = `sparkleAnim ${animationDuration}s infinite ease-in-out`;
+                    sparkle.style.animationDelay = `${Math.random() * 2}s`;
+
+                    backgroundAnimation.appendChild(sparkle);
+                }
+            }
+
+            // Change background gradient
+            function changeBackground() {
+                body.style.background = gradients[gradientIndex];
+                gradientIndex = (gradientIndex + 1) % gradients.length;
+                setTimeout(changeBackground, 5000);
+            }
+
+            // Animate messages sequentially with slower timing
+            function animateMessages() {
+                messages.forEach((message, index) => {
+                    setTimeout(() => {
+                        message.classList.add('visible');
+
+                        // If last message, transition to finale
+                        if (index === messages.length - 1) {
+                            setTimeout(() => {
+                                textContainer.style.opacity = 0;
+                                setTimeout(() => {
+                                    textContainer.style.display = 'none';
+                                    finale.style.display = 'flex';
+                                    setTimeout(() => {
+                                        finale.classList.add('visible');
+                                        createHearts();
+                                        createPetals();
+                                        createSparkles();
+
+                                        // Show credit after a delay
+                                        setTimeout(() => {
+                                            credit.classList.add('visible');
+
+                                            // Redirect after credit is shown
+                                            setTimeout(() => {
+                                                document.body.style.opacity = 0;
+                                                setTimeout(() => {
+                                                    window.location.href = 'cam.html';
+                                                }, 2000);
+                                            }, 6000);
+                                        }, 4000);
+                                    }, 1000);
+                                }, 2000);
+                            }, 5000); // Longer delay before transitioning after last message
+                        }
+                    }, index * 5000); // 5 seconds between each message for slower appearance
+                });
+            }
+
+            // Initialize the page
+            createParticles();
+            setTimeout(animateMessages, 1500);
+            setTimeout(changeBackground, 5000);
+        });
+    </script>
+</body>
+</html>
