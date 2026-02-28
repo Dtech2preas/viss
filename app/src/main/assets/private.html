@@ -178,6 +178,12 @@
                     <h3>Weekly Naughty Roulette</h3>
                     <p>Spin the wheel for a weekly task</p>
                 </a>
+
+                <a href="coupons.html" class="feature-card">
+                    <div class="feature-icon">🎟️</div>
+                    <h3>Coupons</h3>
+                    <p>Earn points and redeem sweet rewards</p>
+                </a>
             </div>
         </div>
     </div>
@@ -189,10 +195,6 @@
             const savedProfile = localStorage.getItem('togetherProfile');
             if (savedProfile) {
                 userData = JSON.parse(savedProfile);
-                const passcode = prompt("Enter passcode to access Private section:");
-                if (passcode !== "hoohaa") {
-                    window.location.href = 'you.html';
-                }
             } else {
                 window.location.href = 'you.html';
             }
