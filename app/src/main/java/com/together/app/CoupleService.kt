@@ -1,47 +1,100 @@
 package com.together.app
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.work.Worker
-import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import kotlin.concurrent.thread
 
-class CoupleWorker(appContext: Context, workerParams: WorkerParameters) :
-    Worker(appContext, workerParams) {
+class CoupleService : Service() {
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
+    private var isRunning = false
+    private val client = OkHttpClient()
 
-    override fun doWork(): Result {
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!isRunning) {
+            isRunning = true
+            startForegroundService()
+            startPolling()
+        }
+        return START_STICKY
+    }
+
+    private fun startForegroundService() {
+        val channelId = "TogetherServiceChannel"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Together Background Service"
+            val descriptionText = "Keeps the connection active for real-time notifications"
+            val importance = NotificationManager.IMPORTANCE_LOW
+            val channel = NotificationChannel(channelId, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val notification: Notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Together")
+            .setContentText("Connected to your partner ❤️")
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
+
+        startForeground(1, notification)
+    }
+
+    private fun startPolling() {
+        thread {
+            while (isRunning) {
+                pollForUpdates()
+                // Check every 15 seconds
+                Thread.sleep(15000)
+            }
+        }
+    }
+
+    private fun pollForUpdates() {
         val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
         val profileJson = sharedPref.getString("togetherProfile", null)
 
         if (profileJson.isNullOrEmpty()) {
-            Log.d("CoupleWorker", "No profile found, skipping work.")
-            return Result.success()
+            return
         }
 
         try {
             val profile = JSONObject(profileJson)
             val partnerName = profile.getJSONObject("partner").getString("name")
 
-            val client = OkHttpClient()
             val request = Request.Builder()
                 .url(apiUrl)
                 .build()
 
             val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return Result.retry()
-            }
+            if (!response.isSuccessful) return
 
             val responseBody = response.body?.string()
             if (!responseBody.isNullOrEmpty()) {
@@ -62,7 +115,7 @@ class CoupleWorker(appContext: Context, workerParams: WorkerParameters) :
 
                 if (globalState.has(partnerName)) {
                     val partnerStateStr = globalState.getJSONObject(partnerName).toString()
-                    val lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}")
+                    val lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
 
                     if (partnerStateStr != lastPartnerStateStr) {
                         val currentPartnerState = JSONObject(partnerStateStr)
@@ -78,11 +131,8 @@ class CoupleWorker(appContext: Context, workerParams: WorkerParameters) :
                 }
             }
         } catch (e: Exception) {
-            Log.e("CoupleWorker", "Error in doWork", e)
-            return Result.retry()
+            Log.e("CoupleService", "Error polling for updates", e)
         }
-
-        return Result.success()
     }
 
     private fun checkAndNotify(partnerName: String, currentState: JSONObject, lastState: JSONObject) {
@@ -174,7 +224,7 @@ class CoupleWorker(appContext: Context, workerParams: WorkerParameters) :
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = applicationContext.getString(R.string.channel_name)
             val descriptionText = applicationContext.getString(R.string.channel_description)
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
@@ -192,7 +242,7 @@ class CoupleWorker(appContext: Context, workerParams: WorkerParameters) :
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Together Update")
             .setContentText(content)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
@@ -200,8 +250,13 @@ class CoupleWorker(appContext: Context, workerParams: WorkerParameters) :
             try {
                 notify(System.currentTimeMillis().toInt(), builder.build())
             } catch (e: SecurityException) {
-                Log.e("CoupleWorker", "Notification permission not granted", e)
+                Log.e("CoupleService", "Notification permission not granted", e)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isRunning = false
     }
 }

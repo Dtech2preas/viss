@@ -6,29 +6,27 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.content.Intent
 import android.util.Log
+import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.work.*
-import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
-    // Register the permissions callback, which handles the user's response to the
-    // system permissions dialog.
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                Log.d("MainActivity", "Notification permission granted.")
-            } else {
-                Log.d("MainActivity", "Notification permission denied.")
+    // Register the permissions callback for multiple permissions
+    private val requestMultiplePermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach {
+                Log.d("MainActivity", "Permission ${it.key} granted: ${it.value}")
             }
         }
 
@@ -39,8 +37,8 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this)
         setContentView(webView)
 
-        // Request notification permission for Android 13+
-        askNotificationPermission()
+        // Request necessary permissions
+        askForPermissions()
 
         // Enable Javascript and DOM storage
         val webSettings: WebSettings = webView.settings
@@ -48,6 +46,17 @@ class MainActivity : AppCompatActivity() {
         webSettings.domStorageEnabled = true
         webSettings.allowFileAccess = true
         webSettings.allowContentAccess = true
+        webSettings.setGeolocationEnabled(true)
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback
+            ) {
+                // Grant geolocation permissions to the WebView
+                callback.invoke(origin, true, false)
+            }
+        }
 
         // Set WebViewClient to handle redirects within the WebView
         webView.webViewClient = object : WebViewClient() {
@@ -87,19 +96,22 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/you.html")
     }
 
-    private fun askNotificationPermission() {
+    private fun askForPermissions() {
+        val permissionsToRequest = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                // Permission is already granted
-            } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
-                // You can show an educational UI here, then request the permission.
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                // Directly ask for the permission
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        val ungrantedPermissions = permissionsToRequest.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (ungrantedPermissions.isNotEmpty()) {
+            requestMultiplePermissionsLauncher.launch(ungrantedPermissions.toTypedArray())
         }
     }
 
@@ -127,19 +139,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         private fun startBackgroundWork(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
-            val pollRequest = PeriodicWorkRequestBuilder<CoupleWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(constraints)
-                .build()
-
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                "CoupleWorker",
-                ExistingPeriodicWorkPolicy.UPDATE,
-                pollRequest
-            )
+            val serviceIntent = Intent(context, CoupleService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
         }
     }
 }
