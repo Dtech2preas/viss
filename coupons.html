@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coupons - Together Forever</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff7eb9;
+            --secondary-color: #7e57c2;
+            --accent-color: #ff4d8d;
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --success-color: #4CAF50;
+            --warning-color: #ff9800;
+            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
+        }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; width: 100%; }
+
+        header { text-align: center; padding: 20px 0; position: relative; }
+
+        .back-btn {
+            position: absolute; left: 0; top: 30px;
+            background: none; border: none; color: var(--secondary-color);
+            font-size: 1.2rem; cursor: pointer; text-decoration: none;
+            display: flex; align-items: center; gap: 5px; font-family: 'Montserrat', sans-serif;
+        }
+
+        h1 { font-family: 'Dancing Script', cursive; font-size: 3rem; color: var(--secondary-color); margin-bottom: 5px; }
+        .subtitle { font-size: 1rem; color: var(--dark-color); opacity: 0.8; }
+
+        .section {
+            background: white; border-radius: 20px; padding: 30px; margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(166, 94, 166, 0.1); position: relative;
+        }
+
+        h2 { font-family: 'Dancing Script', cursive; font-size: 2rem; color: var(--primary-color); margin-bottom: 15px; border-bottom: 2px dashed #eee; padding-bottom: 10px; }
+
+        .balance-board { display: flex; justify-content: space-around; background: linear-gradient(135deg, #fdfbfd 0%, #f3e5f5 100%); padding: 20px; border-radius: 15px; border: 2px solid var(--secondary-color); margin-bottom: 20px; }
+        .balance-item { text-align: center; }
+        .balance-title { font-size: 0.9rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .balance-amount { font-size: 2.5rem; font-weight: 700; color: var(--accent-color); font-family: 'Dancing Script', cursive; }
+
+        .award-points { display: flex; gap: 10px; margin-top: 15px; align-items: center; justify-content: center; }
+        .award-points input { width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; text-align: center; font-family: 'Montserrat'; font-weight: bold;}
+        .btn { background: var(--gradient); color: white; border: none; padding: 10px 20px; border-radius: 50px; cursor: pointer; font-family: 'Montserrat'; font-weight: 600; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,126,185,0.4); }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; border-radius: 20px; cursor: pointer; background: #eee; font-weight: 500; transition: 0.3s; flex: 1; text-align: center; }
+        .tab.active { background: var(--secondary-color); color: white; }
+
+        .coupon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .coupon-card {
+            background: #fff; border: 2px dashed var(--primary-color); border-radius: 15px; padding: 20px;
+            text-align: center; position: relative; transition: 0.3s; overflow: hidden;
+        }
+        .coupon-card::before, .coupon-card::after { content: ''; position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: 50%; transform: translateY(-50%); border: 2px dashed var(--primary-color); }
+        .coupon-card::before { left: -12px; border-right: none; }
+        .coupon-card::after { right: -12px; border-left: none; }
+        .coupon-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+
+        .coupon-price { background: var(--accent-color); color: white; display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
+        .coupon-title { font-size: 1.1rem; font-weight: 600; color: var(--dark-color); margin-bottom: 15px; min-height: 45px;}
+        .btn-buy { background: var(--success-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
+        .btn-buy:disabled { background: #ccc; cursor: not-allowed; }
+
+        .inventory-list { display: flex; flex-direction: column; gap: 10px; }
+        .inventory-item { display: flex; justify-content: space-between; align-items: center; background: #fdfbfd; padding: 15px; border-radius: 10px; border: 1px solid #e6d4f7; }
+        .btn-redeem { background: var(--warning-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        .add-proposal { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #fdfbfd; padding: 15px; border-radius: 10px; border: 1px dashed #e6d4f7; }
+        .input-group { display: flex; gap: 10px; }
+        .add-proposal input[type="text"] { flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Montserrat'; }
+        .add-proposal input[type="number"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Montserrat'; }
+
+        .proposal-item { background: white; border: 1px solid #eee; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
+        .negotiate-area { display: flex; gap: 10px; align-items: center; margin-top: 5px; padding-top: 10px; border-top: 1px solid #eee; }
+        .negotiate-area input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+        .action-btns { display: flex; gap: 5px; }
+        .btn-accept { background: var(--success-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-edit { background: var(--warning-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+
+        .loader { text-align: center; padding: 20px; }
+
+        @media (max-width: 600px) {
+            .input-group { flex-direction: column; }
+            .coupon-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="private.html" class="back-btn">← Back</a>
+            <h1>Love Coupons</h1>
+            <p class="subtitle">Earn points, buy rewards</p>
+        </header>
+
+        <div id="loader" class="loader">⏳ Loading our coupons...</div>
+
+        <div id="app-content" style="display: none;">
+
+            <div class="section">
+                <div class="balance-board">
+                    <div class="balance-item">
+                        <div class="balance-title">My Balance</div>
+                        <div class="balance-amount" id="myBalance">0</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-title">Partner's Balance</div>
+                        <div class="balance-amount" id="partnerBalance">0</div>
+                    </div>
+                </div>
+
+                <div class="award-points">
+                    <span>Award points to partner: </span>
+                    <input type="number" id="awardAmount" min="1" value="10">
+                    <button class="btn" onclick="awardPoints()">Award!</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('store')" id="tab-store">Store</div>
+                    <div class="tab" onclick="switchTab('inventory')" id="tab-inventory">My Inventory</div>
+                    <div class="tab" onclick="switchTab('proposals')" id="tab-proposals">Proposals</div>
+                </div>
+
+                <!-- Store Tab -->
+                <div id="view-store" style="display: block;">
+                    <h2>Coupon Store</h2>
+                    <div class="coupon-grid" id="storeGrid">
+                        <!-- Dynamic Store -->
+                    </div>
+                </div>
+
+                <!-- Inventory Tab -->
+                <div id="view-inventory" style="display: none;">
+                    <h2>My Wallet</h2>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Coupons you have bought and can redeem.</p>
+                    <div class="inventory-list" id="inventoryList">
+                        <!-- Dynamic Inventory -->
+                    </div>
+                </div>
+
+                <!-- Proposals Tab -->
+                <div id="view-proposals" style="display: none;">
+                    <h2>Propose a Coupon</h2>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Want a custom reward? Propose it here. Your partner must accept the price.</p>
+
+                    <div class="add-proposal">
+                        <div class="input-group">
+                            <input type="text" id="newCouponTask" placeholder="E.g., 30 min back rub">
+                            <input type="number" id="newCouponPrice" placeholder="Points" min="1">
+                        </div>
+                        <button class="btn" style="width: 100%;" onclick="proposeCoupon()">Propose Coupon</button>
+                    </div>
+
+                    <h3 style="margin: 20px 0 10px 0; color: var(--secondary-color);">Pending Approvals</h3>
+                    <div id="proposalsList">
+                        <!-- Dynamic Proposals -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
+        let userData = { name: '', partner: { name: '' } };
+
+        let couponState = {
+            balances: {}, // { 'Jonas': 0, 'Owami': 0 }
+            inventory: {}, // { 'Jonas': [{id, title}], 'Owami': [] }
+            proposed: [], // { id, title, price, author, status, lastNegotiator }
+            customApproved: [] // { id, title, price }
+        };
+
+        let currentTab = 'store';
+
+        const defaultCoupons = [
+            { id: 'hard1', title: 'Call by {partner}', price: 50 },
+            { id: 'hard2', title: 'Receive a vid call from {partner}', price: 100 },
+            { id: 'hard3', title: 'Get a boob pic from {partner}', price: 120 },
+            { id: 'hard4', title: 'Steal 100 points from {partner}', price: 150 }
+        ];
+
+        window.onload = async function() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (!savedProfile) {
+                window.location.href = 'you.html';
+                return;
+            }
+            userData = JSON.parse(savedProfile);
+            await loadData();
+        };
+
+        async function loadData() {
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('app-content').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/api/couple`);
+                const data = await response.json();
+
+                if (data.couponState) {
+                    couponState = data.couponState;
+                }
+
+                // Init missing data
+                if (!couponState.balances) couponState.balances = {};
+                if (couponState.balances[userData.name] === undefined) couponState.balances[userData.name] = 0;
+                if (couponState.balances[userData.partner.name] === undefined) couponState.balances[userData.partner.name] = 0;
+
+                if (!couponState.inventory) couponState.inventory = {};
+                if (!couponState.inventory[userData.name]) couponState.inventory[userData.name] = [];
+                if (!couponState.inventory[userData.partner.name]) couponState.inventory[userData.partner.name] = [];
+
+                if (!couponState.proposed) couponState.proposed = [];
+                if (!couponState.customApproved) couponState.customApproved = [];
+
+                updateUI();
+
+            } catch (e) {
+                console.error("Error loading coupon data", e);
+                alert("Failed to load. Try again.");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+            }
+        }
+
+        async function saveData() {
+            try {
+                await fetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ couponState: couponState })
+                });
+            } catch (e) {
+                console.error("Error saving data", e);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('myBalance').innerText = couponState.balances[userData.name] || 0;
+            document.getElementById('partnerBalance').innerText = couponState.balances[userData.partner.name] || 0;
+
+            renderStore();
+            renderInventory();
+            renderProposals();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            document.getElementById('view-store').style.display = tab === 'store' ? 'block' : 'none';
+            document.getElementById('view-inventory').style.display = tab === 'inventory' ? 'block' : 'none';
+            document.getElementById('view-proposals').style.display = tab === 'proposals' ? 'block' : 'none';
+        }
+
+        async function awardPoints() {
+            const amount = parseInt(document.getElementById('awardAmount').value);
+            if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount");
+
+            couponState.balances[userData.partner.name] += amount;
+            document.getElementById('awardAmount').value = 10;
+            updateUI();
+            await saveData();
+            alert(`Awarded ${amount} points to ${userData.partner.name}!`);
+        }
+
+        function renderStore() {
+            const grid = document.getElementById('storeGrid');
+            grid.innerHTML = '';
+
+            const myBalance = couponState.balances[userData.name] || 0;
+
+            // Combine default and approved custom coupons
+            const allCoupons = [...defaultCoupons, ...couponState.customApproved];
+
+            allCoupons.forEach(coupon => {
+                const canAfford = myBalance >= coupon.price;
+                const dynamicTitle = coupon.title.replace('{partner}', userData.partner.name).replace('{other partner}', userData.partner.name);
+
+                grid.innerHTML += `
+                    <div class="coupon-card">
+                        <div class="coupon-price">${coupon.price} pts</div>
+                        <div class="coupon-title">${dynamicTitle}</div>
+                        <button class="btn-buy" ${canAfford ? '' : 'disabled'} onclick="buyCoupon('${coupon.id}', ${coupon.price}, '${escape(coupon.title)}')">
+                            ${canAfford ? 'Buy Coupon' : 'Not Enough Points'}
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        async function buyCoupon(id, price, encodedTitle) {
+            const title = unescape(encodedTitle);
+            if (couponState.balances[userData.name] < price) return;
+
+            // Special logic for steal points
+            if (id === 'hard4') {
+                if (couponState.balances[userData.partner.name] < 100) {
+                    return alert("Your partner doesn't have 100 points to steal!");
+                }
+                couponState.balances[userData.partner.name] -= 100;
+                couponState.balances[userData.name] += 100;
+                // Pay the cost
+                couponState.balances[userData.name] -= price;
+
+                alert("You stole 100 points!");
+                updateUI();
+                await saveData();
+                return;
+            }
+
+            // Deduct points
+            couponState.balances[userData.name] -= price;
+
+            // Add to inventory
+            couponState.inventory[userData.name].push({
+                id: Date.now().toString() + '_' + id,
+                title: title,
+                purchasedAt: Date.now()
+            });
+
+            updateUI();
+            await saveData();
+            alert("Coupon purchased successfully! It's in your inventory.");
+        }
+
+        function renderInventory() {
+            const list = document.getElementById('inventoryList');
+            list.innerHTML = '';
+
+            const myInventory = couponState.inventory[userData.name] || [];
+
+            if (myInventory.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#888;">Your inventory is empty.</p>';
+                return;
+            }
+
+            myInventory.forEach(item => {
+                const dynamicTitle = item.title.replace('{partner}', userData.partner.name).replace('{other partner}', userData.partner.name);
+                list.innerHTML += `
+                    <div class="inventory-item">
+                        <div style="font-weight:600;">🎟️ ${dynamicTitle}</div>
+                        <button class="btn-redeem" onclick="redeemCoupon('${item.id}')">Redeem</button>
+                    </div>
+                `;
+            });
+        }
+
+        async function redeemCoupon(inventoryId) {
+            if (!confirm("Are you sure you want to redeem this now? It will notify your partner and be removed from your inventory.")) return;
+
+            const myInventory = couponState.inventory[userData.name];
+            const itemIndex = myInventory.findIndex(i => i.id === inventoryId);
+
+            if (itemIndex > -1) {
+                const item = myInventory[itemIndex];
+                myInventory.splice(itemIndex, 1);
+
+                // Add a notification / log somewhere if we had a global feed, for now just remove and save
+                updateUI();
+                await saveData();
+                alert(`Coupon Redeemed! Make sure to tell ${userData.partner.name} to fulfill it!`);
+            }
+        }
+
+        // --- Proposals Logic ---
+        async function proposeCoupon() {
+            const taskInput = document.getElementById('newCouponTask');
+            const priceInput = document.getElementById('newCouponPrice');
+
+            const task = taskInput.value.trim();
+            const price = parseInt(priceInput.value);
+
+            if (!task || isNaN(price) || price <= 0) {
+                alert("Please enter a valid description and price.");
+                return;
+            }
+
+            const newProp = {
+                id: Date.now().toString(),
+                title: task,
+                price: price,
+                author: userData.name,
+                status: 'pending',
+                lastNegotiator: userData.name
+            };
+
+            couponState.proposed.push(newProp);
+            taskInput.value = '';
+            priceInput.value = '';
+
+            updateUI();
+            await saveData();
+            alert("Proposed! Waiting for partner to approve.");
+        }
+
+        async function acceptProposal(id) {
+            const propIndex = couponState.proposed.findIndex(p => p.id === id);
+            if (propIndex > -1) {
+                const prop = couponState.proposed[propIndex];
+
+                // Move to customApproved
+                couponState.customApproved.push({
+                    id: prop.id,
+                    title: prop.title,
+                    price: prop.price
+                });
+
+                // Remove from proposed
+                couponState.proposed.splice(propIndex, 1);
+
+                updateUI();
+                await saveData();
+                alert("Added to store!");
+            }
+        }
+
+        async function negotiateProposal(id) {
+            const prop = couponState.proposed.find(p => p.id === id);
+            if (prop) {
+                const inputId = `neg_price_${id}`;
+                const newPrice = parseInt(document.getElementById(inputId).value);
+
+                if (isNaN(newPrice) || newPrice <= 0) {
+                    alert("Enter a valid price.");
+                    return;
+                }
+
+                prop.price = newPrice;
+                prop.lastNegotiator = userData.name;
+                prop.status = 'pending';
+
+                updateUI();
+                await saveData();
+            }
+        }
+
+        async function deleteProposal(id) {
+            couponState.proposed = couponState.proposed.filter(p => p.id !== id);
+            updateUI();
+            await saveData();
+        }
+
+        function renderProposals() {
+            const list = document.getElementById('proposalsList');
+            list.innerHTML = '';
+
+            if (couponState.proposed.length === 0) {
+                list.innerHTML = '<div style="text-align:center;color:#888;">No pending proposals.</div>';
+                return;
+            }
+
+            couponState.proposed.forEach(p => {
+                const isMyProposalOrNegotiation = p.lastNegotiator === userData.name;
+                const statusText = isMyProposalOrNegotiation ? 'Waiting for Partner' : 'Needs your Review';
+                const statusColor = isMyProposalOrNegotiation ? '#ff9800' : '#e65100';
+
+                let html = `
+                    <div class="proposal-item">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="font-weight:600;">${p.title} (${p.price} pts)</span>
+                            <span style="font-size:0.8rem; font-weight:bold; color:${statusColor};">${statusText}</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:#888;">Proposed by ${p.author}</div>
+                `;
+
+                if (!isMyProposalOrNegotiation) {
+                    html += `
+                        <div class="negotiate-area">
+                            <span>Change Price:</span>
+                            <input type="number" id="neg_price_${p.id}" value="${p.price}" min="1">
+                            <div class="action-btns">
+                                <button class="btn-edit" onclick="negotiateProposal('${p.id}')">Counter</button>
+                                <button class="btn-accept" onclick="acceptProposal('${p.id}')">Accept</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `<button style="align-self: flex-start; margin-top:10px; background:none; border:none; color:#f44336; font-size:0.8rem; cursor:pointer; text-decoration:underline;" onclick="deleteProposal('${p.id}')">Delete Proposal</button>`;
+                html += `</div>`;
+                list.innerHTML += html;
+            });
+        }
+    </script>
+</body>
+</html>
