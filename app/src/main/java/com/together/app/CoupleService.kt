@@ -105,7 +105,7 @@ class CoupleService : Service() {
                 if (globalState.has("bucketList")) {
                     val bucketList = globalState.getJSONArray("bucketList")
                     if (lastBucketCount != -1 && bucketList.length() > lastBucketCount) {
-                        sendNotification("$partnerName added something to the bucket list!")
+                        sendNotification("$partnerName added a new item to the bucket list! ✨")
                     }
                     with(sharedPref.edit()) {
                         putInt("lastBucketCount_$partnerName", bucketList.length())
@@ -174,8 +174,7 @@ class CoupleService : Service() {
 
             if (currentLogs.length() > lastLogsCount) {
                 val latestLog = currentLogs.getJSONObject(currentLogs.length() - 1)
-                val subject = if (latestLog.has("subject")) latestLog.getString("subject") else "something"
-                sendNotification("$partnerName finished studying $subject")
+                sendNotification("$partnerName finished studying! 📚")
             }
         }
 
@@ -193,6 +192,65 @@ class CoupleService : Service() {
 
             if (currentTotalScore > lastTotalScore) {
                 sendNotification("$partnerName is playing games and scored points!")
+            }
+        }
+
+        if (currentState.has("coupons")) {
+            val currentCoupons = currentState.getJSONObject("coupons")
+            val lastCoupons = if (lastState.has("coupons")) lastState.getJSONObject("coupons") else null
+
+            if (lastCoupons != null && currentCoupons.has("inventory") && lastCoupons.has("inventory")) {
+                val currentInventory = currentCoupons.getJSONObject("inventory")
+                val lastInventory = lastCoupons.getJSONObject("inventory")
+
+                // Check if partner's inventory decreased (they redeemed a coupon)
+                if (currentInventory.has(partnerName) && lastInventory.has(partnerName)) {
+                    val currentPartnerInv = currentInventory.getJSONArray(partnerName)
+                    val lastPartnerInv = lastInventory.getJSONArray(partnerName)
+                    if (currentPartnerInv.length() < lastPartnerInv.length()) {
+                        sendNotification("$partnerName redeemed a coupon!")
+                    } else if (currentPartnerInv.length() > lastPartnerInv.length()) {
+                        sendNotification("$partnerName got a new coupon!")
+                    }
+                }
+
+                // Check if points changed
+                if (currentCoupons.has("balances") && lastCoupons.has("balances")) {
+                    val currentBalances = currentCoupons.getJSONObject("balances")
+                    val lastBalances = lastCoupons.getJSONObject("balances")
+
+                    if (currentBalances.has(partnerName) && lastBalances.has(partnerName)) {
+                        val currentPartnerPoints = currentBalances.getInt(partnerName)
+                        val lastPartnerPoints = lastBalances.getInt(partnerName)
+
+                        // We need to know who the current user is to notify properly if partner awarded them points,
+                        // but we can just say "points changed" if we don't have the user's name handy.
+                        // Actually, partnerName is the partner. Let's find the current user name if possible,
+                        // or just notify that points were awarded to someone.
+
+                        // Try to find the local user's name from balances keys
+                        var localUserName = ""
+                        val keys = currentBalances.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            if (key != partnerName) {
+                                localUserName = key
+                                break
+                            }
+                        }
+
+                        if (localUserName.isNotEmpty() && currentBalances.has(localUserName) && lastBalances.has(localUserName)) {
+                            val currentUserPoints = currentBalances.getInt(localUserName)
+                            val lastUserPoints = lastBalances.getInt(localUserName)
+
+                            if (currentUserPoints > lastUserPoints) {
+                                // Either partner awarded points or stole points (but stealing subtracts from partner).
+                                // We just say points received.
+                                sendNotification("$partnerName gave you some points! 💖")
+                            }
+                        }
+                    }
+                }
             }
         }
     }

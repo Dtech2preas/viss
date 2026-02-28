@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rock Paper Scissors</title>
@@ -264,6 +265,7 @@
       }
     }
   </style>
+<script src="custom-alerts.js"></script>
 </head>
 <body>
   <div class="container">
@@ -386,7 +388,7 @@
               const userData = JSON.parse(savedProfile);
               player = userData.name;
           } else {
-              return alert("Please set up your profile on the home page first");
+              return appAlert("Please set up your profile on the home page first");
           }
       }
 
