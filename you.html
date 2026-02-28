@@ -437,6 +437,12 @@
                     <h3>Love Notes</h3>
                     <p>Send one special message per day</p>
                 </div>
+
+                <div class="feature-card" onclick="promptPasscode()">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Private</h3>
+                    <p>Our special secret place</p>
+                </div>
             </div>
         </div>
     </div>
@@ -519,6 +525,15 @@
 
         function navigateTo(page) {
             window.location.href = page;
+        }
+
+        function promptPasscode() {
+            const passcode = prompt("Enter passcode to access Private section:");
+            if (passcode === "hoohaa") {
+                navigateTo('private.html');
+            } else if (passcode !== null) {
+                showNotification("Incorrect passcode.");
+            }
         }
 
         function showNotification(message) {
