@@ -615,27 +615,25 @@
     // --- API STUFF ---
     async function loadPlayerData() {
       try {
-        const res = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(player)}`);
-        const data = await res.json();
-        if (data && data.gameData) {
-            playerData = data;
+        const res = await fetch(`${API_URL}/api/couple`);
+        const globalState = await res.json();
+        if (globalState && globalState[player]) {
+            playerData = globalState[player];
         } else {
-            throw new Error("No game data");
+            throw new Error("No player data in shared state");
         }
       } catch (error) {
         console.error("Error loading player data:", error);
         playerData = {
           name: player,
           gameData: {
-            memory: {
-              score: 0,
-              dailyGames: { date: new Date().toDateString(), count: 0 },
-              maxFlips: 30
-            },
             totalScore: 0
           },
           lastUpdated: new Date().toISOString()
         };
+      }
+      if (!playerData.gameData) {
+          playerData.gameData = { totalScore: 0 };
       }
       if (!playerData.gameData.memory) {
           playerData.gameData.memory = { score: 0, dailyGames: { date: new Date().toDateString(), count: 0 }, maxFlips: 30 };
@@ -644,10 +642,15 @@
 
     async function savePlayerData() {
       try {
-        await fetch(`${API_URL}/api/user`, {
+        await fetch(`${API_URL}/api/couple`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(playerData)
+          body: JSON.stringify({
+              [player]: {
+                  gameData: playerData.gameData,
+                  lastUpdated: playerData.lastUpdated
+              }
+          })
         });
       } catch (error) {
         console.error("Error saving player data:", error);

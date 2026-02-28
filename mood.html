@@ -594,7 +594,7 @@
 
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
-        let userData = null;
+        let localUser = null;
         let moodSelectionTime = null;
 
         // Create floating hearts
@@ -629,8 +629,11 @@
                 return;
             }
 
-            userData = JSON.parse(savedProfile);
-            document.getElementById('currentMood').textContent = userData.mood || 'Not set yet';
+            localUser = JSON.parse(savedProfile);
+
+            // Initial load of our own mood from storage if we don't have network,
+            // but we'll refresh from the global state immediately.
+            document.getElementById('currentMood').textContent = localUser.mood || 'Not set yet';
 
             document.getElementById('personalGistCard').style.display = 'none';
 
@@ -638,7 +641,7 @@
         }
 
         function goBack() {
-            window.location.href = 'index.html';
+            window.location.href = 'you.html';
         }
 
         async function setMood(mood, element) {
@@ -648,16 +651,20 @@
             moodItems.forEach(item => item.classList.remove('selected'));
             element.classList.add('selected');
 
-            userData.mood = mood;
+            localUser.mood = mood;
             document.getElementById('currentMood').textContent = mood;
 
-            localStorage.setItem('togetherProfile', JSON.stringify(userData));
+            localStorage.setItem('togetherProfile', JSON.stringify(localUser));
 
             try {
-                const response = await fetch(`${API_URL}/api/user`, {
+                const response = await fetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify({
+                        [localUser.name]: {
+                            mood: mood
+                        }
+                    })
                 });
 
                 const updateTime = new Date();
@@ -675,13 +682,19 @@
 
         async function updatePartnerMood() {
             try {
-                if(!userData.partner) return;
-                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                if(!response.ok) throw new Error("Partner not found");
-                const data = await response.json();
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                const globalState = await response.json();
 
-                if (data && data.mood) {
-                    const partnerMood = data.mood;
+                const partnerState = globalState[localUser.partner.name] || {};
+                const myState = globalState[localUser.name] || {};
+
+                if (myState.mood) {
+                    document.getElementById('currentMood').textContent = myState.mood;
+                }
+
+                if (partnerState.mood) {
+                    const partnerMood = partnerState.mood;
                     document.getElementById('partnerMood').textContent = partnerMood;
                     showNotification('Your partner is feeling ' + partnerMood + ' today! 💞');
                 } else {

@@ -328,7 +328,7 @@
 
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
-        let userData = null;
+        let localUser = null;
         let messageCheckInterval = null;
 
         function initApp() {
@@ -339,7 +339,7 @@
                 return;
             }
 
-            userData = JSON.parse(savedProfile);
+            localUser = JSON.parse(savedProfile);
             loadMessages();
             updateMessageCountdown();
 
@@ -350,7 +350,7 @@
         }
 
         function goBack() {
-            window.location.href = 'index.html';
+            window.location.href = 'you.html';
         }
 
         async function sendDailyMessage() {
@@ -362,7 +362,7 @@
             }
 
             const today = new Date().toDateString();
-            const lastMessageDate = userData.lastMessageDate ? new Date(userData.lastMessageDate).toDateString() : null;
+            const lastMessageDate = localUser.lastMessageDate ? new Date(localUser.lastMessageDate).toDateString() : null;
 
             if (lastMessageDate === today) {
                 showNotification('You can only send one message per day');
@@ -374,28 +374,42 @@
             sendBtn.innerHTML = 'Sending...';
             sendBtn.disabled = true;
 
-            if (!userData.messages) {
-                userData.messages = [];
-            }
-
-            userData.messages.push({
-                text: messageText,
-                timestamp: new Date().toISOString(),
-                sender: userData.name
-            });
-
-            if (userData.messages.length > 50) {
-                userData.messages = userData.messages.slice(-50);
-            }
-
-            userData.lastMessageDate = new Date().toISOString();
-            localStorage.setItem('togetherProfile', JSON.stringify(userData));
-
             try {
-                const res = await fetch(`${API_URL}/api/user`, {
+                // Fetch the latest global state
+                const resState = await fetch(`${API_URL}/api/couple`);
+                let globalState = {};
+                if (resState.ok) {
+                    globalState = await resState.json();
+                }
+
+                let myState = globalState[localUser.name] || {};
+
+                if (!myState.messages) {
+                    myState.messages = [];
+                }
+
+                myState.messages.push({
+                    text: messageText,
+                    timestamp: new Date().toISOString(),
+                    sender: localUser.name
+                });
+
+                if (myState.messages.length > 50) {
+                    myState.messages = myState.messages.slice(-50);
+                }
+
+                myState.lastMessageDate = new Date().toISOString();
+
+                // Also save to local user profile for convenience
+                localUser.lastMessageDate = myState.lastMessageDate;
+                localStorage.setItem('togetherProfile', JSON.stringify(localUser));
+
+                const res = await fetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify({
+                        [localUser.name]: myState
+                    })
                 });
 
                 if (res.ok) {
@@ -419,13 +433,13 @@
             const countdownEl = document.getElementById('messageCountdown');
             const sendBtn = document.getElementById('sendMessageBtn');
 
-            if (!userData.lastMessageDate) {
+            if (!localUser.lastMessageDate) {
                 countdownEl.textContent = 'You can send a message now!';
                 sendBtn.disabled = false;
                 return;
             }
 
-            const lastMessageDate = new Date(userData.lastMessageDate);
+            const lastMessageDate = new Date(localUser.lastMessageDate);
             const now = new Date();
             const tomorrow = new Date(now);
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -435,7 +449,7 @@
             const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
             const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
 
-            if (hours > 0 || minutes > 0) {
+            if (timeRemaining > 0) {
                 countdownEl.textContent = `Next message in: ${hours}h ${minutes}m`;
                 sendBtn.disabled = true;
             } else {
@@ -449,17 +463,19 @@
                 const messageHistory = document.getElementById('messageHistory');
                 let allMessages = [];
 
-                if (userData.messages) {
-                    allMessages = allMessages.concat(userData.messages.map(msg => ({...msg, isOwn: true})));
-                }
+                const res = await fetch(`${API_URL}/api/couple`);
+                if (res.ok) {
+                    const globalState = await res.json();
 
-                if (userData.partner) {
-                    const partnerRes = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                    if (partnerRes.ok) {
-                        const partnerData = await partnerRes.json();
-                        if (partnerData && partnerData.messages) {
-                            allMessages = allMessages.concat(partnerData.messages.map(msg => ({...msg, isOwn: false})));
-                        }
+                    const myState = globalState[localUser.name] || {};
+                    const partnerState = globalState[localUser.partner.name] || {};
+
+                    if (myState.messages) {
+                        allMessages = allMessages.concat(myState.messages.map(msg => ({...msg, isOwn: true})));
+                    }
+
+                    if (partnerState.messages) {
+                        allMessages = allMessages.concat(partnerState.messages.map(msg => ({...msg, isOwn: false})));
                     }
                 }
 
@@ -482,7 +498,7 @@
                     const messageEl = document.createElement('div');
                     messageEl.className = 'message';
                     messageEl.innerHTML = `
-                        <div>${message.text}</div>
+                        <div><strong>${message.isOwn ? 'You' : localUser.partner.name}:</strong> ${message.text}</div>
                         <div class="message-time">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${new Date(message.timestamp).toLocaleDateString()}</div>
                     `;
                     messageHistory.appendChild(messageEl);

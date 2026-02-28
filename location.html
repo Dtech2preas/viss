@@ -535,9 +535,9 @@
 
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
-        let userData = null;
+        let localUser = null;
+        let globalState = {};
         let autoUpdateInterval = null;
-        let lastSentLocation = null;
 
         // Create floating hearts
         function createHearts() {
@@ -570,13 +570,7 @@
                 return;
             }
 
-            userData = JSON.parse(savedProfile);
-            
-            // Load last sent location from localStorage if available
-            const savedLastLocation = localStorage.getItem('togetherLastLocation');
-            if (savedLastLocation) {
-                lastSentLocation = JSON.parse(savedLastLocation);
-            }
+            localUser = JSON.parse(savedProfile);
 
             document.getElementById('personalGistSection').style.display = 'none';
 
@@ -586,43 +580,40 @@
         }
 
         function goBack() {
-            window.location.href = 'index.html';
+            window.location.href = 'you.html';
         }
 
         async function loadLocationData() {
             try {
-                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.name)}`);
-                const data = await response.json();
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                globalState = await response.json();
 
-                if (data) {
-                    if (data.locationHistory) {
-                        userData.locationHistory = data.locationHistory;
-                    }
-                    if (data.closestDistance) {
-                        userData.closestDistance = data.closestDistance;
-                        document.getElementById('closestDistance').textContent = userData.closestDistance.toFixed(2) + ' km';
-                    }
-                    if (data.furthestDistance) {
-                        userData.furthestDistance = data.furthestDistance;
-                        document.getElementById('furthestDistance').textContent = userData.furthestDistance.toFixed(2) + ' km';
-                    }
-                }
+                const myState = globalState[localUser.name] || {};
+                const partnerState = globalState[localUser.partner.name] || {};
 
-                if (userData.partner) {
-                    const partnerResponse = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                    const partnerData = await partnerResponse.json();
-                    
-                    if (partnerData && partnerData.location) {
-                        userData.partnerLocation = partnerData.location;
-                        updatePartnerLocationDisplay();
-
-                        if (userData.location) {
-                            calculateDistance();
-                        }
+                if (myState) {
+                    if (myState.closestDistance) {
+                        document.getElementById('closestDistance').textContent = myState.closestDistance.toFixed(2) + ' km';
+                    }
+                    if (myState.furthestDistance) {
+                        document.getElementById('furthestDistance').textContent = myState.furthestDistance.toFixed(2) + ' km';
                     }
                 }
 
-                updateLocationHistory();
+                if (partnerState.location) {
+                    updatePartnerLocationDisplay(partnerState.location);
+                }
+
+                if (myState.location) {
+                    updateUserLocationDisplay(myState.location);
+                }
+
+                if (myState.location && partnerState.location) {
+                    calculateDistance(myState.location, partnerState.location);
+                }
+
+                updateLocationHistory(myState.locationHistory);
 
             } catch (error) {
                 console.error('Error loading location data:', error);
@@ -634,22 +625,9 @@
             if (navigator.geolocation) {
                 const options = {
                     enableHighAccuracy: true,
-                    timeout: 10000,
+                    timeout: 20000,
                     maximumAge: 0
                 };
-
-                try {
-                    // Try to ask for permissions explicitly if browser supports it
-                    if (navigator.permissions) {
-                        const permission = await navigator.permissions.query({ name: 'geolocation' });
-                        if (permission.state === 'denied') {
-                            showNotification('Location permission is denied. Please enable it in your browser settings.');
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    console.log("Permissions API not fully supported, continuing with geolocation request", e);
-                }
 
                 navigator.geolocation.getCurrentPosition(
                     async position => {
@@ -659,24 +637,35 @@
                             timestamp: new Date().toISOString()
                         };
 
-                        userData.location = newLocation;
-                        if (!userData.locationHistory) userData.locationHistory = [];
-                        userData.locationHistory.push(newLocation);
-                        if (userData.locationHistory.length > 10) {
-                            userData.locationHistory = userData.locationHistory.slice(-10);
+                        // Fetch latest global state
+                        const res = await fetch(`${API_URL}/api/couple`);
+                        if (res.ok) {
+                           globalState = await res.json();
                         }
 
-                        localStorage.setItem('togetherProfile', JSON.stringify(userData));
-                        updateUserLocationDisplay();
+                        if (!globalState[localUser.name]) globalState[localUser.name] = {};
+                        if (!globalState[localUser.name].locationHistory) globalState[localUser.name].locationHistory = [];
+
+                        globalState[localUser.name].locationHistory.push(newLocation);
+                        if (globalState[localUser.name].locationHistory.length > 10) {
+                            globalState[localUser.name].locationHistory = globalState[localUser.name].locationHistory.slice(-10);
+                        }
+
+                        updateUserLocationDisplay(newLocation);
                         
                         try {
                             const address = await getAddressFromCoords(newLocation.lat, newLocation.lng);
                             document.getElementById('userAddress').textContent = address;
                             
-                            const response = await fetch(`${API_URL}/api/user`, {
+                            const response = await fetch(`${API_URL}/api/couple`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(userData)
+                                body: JSON.stringify({
+                                    [localUser.name]: {
+                                        location: newLocation,
+                                        locationHistory: globalState[localUser.name].locationHistory
+                                    }
+                                })
                             });
 
                             if (response.ok) {
@@ -689,15 +678,16 @@
                             showNotification('Error updating location: ' + error.message);
                         }
 
-                        if (userData.partnerLocation) {
-                            calculateDistance();
+                        const partnerState = globalState[localUser.partner.name] || {};
+                        if (partnerState.location) {
+                            calculateDistance(newLocation, partnerState.location);
                         }
 
-                        updateLocationHistory();
+                        updateLocationHistory(globalState[localUser.name].locationHistory);
                     },
                     error => {
                         let errorMessage = "Error getting location";
-                        if (error.code === 1) errorMessage = "Location permission denied by user.";
+                        if (error.code === 1) errorMessage = "Location permission denied by user. Check browser settings.";
                         else if (error.code === 2) errorMessage = "Location position unavailable.";
                         else if (error.code === 3) errorMessage = "Location request timed out.";
                         showNotification(errorMessage);
@@ -726,17 +716,18 @@
 
         async function updatePartnerLocation() {
             try {
-                if(!userData.partner) return;
-                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                if(!response.ok) throw new Error("Partner not found");
-                const data = await response.json();
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                globalState = await response.json();
 
-                if (data && data.location) {
-                    userData.partnerLocation = data.location;
-                    updatePartnerLocationDisplay();
+                const partnerState = globalState[localUser.partner.name] || {};
+                const myState = globalState[localUser.name] || {};
+
+                if (partnerState.location) {
+                    updatePartnerLocationDisplay(partnerState.location);
                     
-                    if (userData.location) {
-                        calculateDistance();
+                    if (myState.location) {
+                        calculateDistance(myState.location, partnerState.location);
                     }
                     showNotification('Partner location updated');
                 } else {
@@ -748,16 +739,16 @@
             }
         }
 
-        function calculateDistance() {
-            if (!userData.location || !userData.partnerLocation) return;
+        async function calculateDistance(myLocation, partnerLocation) {
+            if (!myLocation || !partnerLocation) return;
 
             const R = 6371; 
-            const dLat = deg2rad(userData.partnerLocation.lat - userData.location.lat);
-            const dLon = deg2rad(userData.partnerLocation.lng - userData.location.lng);
+            const dLat = deg2rad(partnerLocation.lat - myLocation.lat);
+            const dLon = deg2rad(partnerLocation.lng - myLocation.lng);
 
             const a = 
                 Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(deg2rad(userData.location.lat)) * Math.cos(deg2rad(userData.partnerLocation.lat)) * 
+                Math.cos(deg2rad(myLocation.lat)) * Math.cos(deg2rad(partnerLocation.lat)) *
                 Math.sin(dLon/2) * Math.sin(dLon/2);
 
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
@@ -765,26 +756,34 @@
 
             document.getElementById('currentDistance').textContent = distance.toFixed(2) + ' km';
 
-            if (!userData.closestDistance || distance < userData.closestDistance) {
-                userData.closestDistance = distance;
+            const myState = globalState[localUser.name] || {};
+            let updated = false;
+            let updates = {};
+
+            if (!myState.closestDistance || distance < myState.closestDistance) {
+                updates.closestDistance = distance;
                 document.getElementById('closestDistance').textContent = distance.toFixed(2) + ' km';
+                updated = true;
             }
 
-            if (!userData.furthestDistance || distance > userData.furthestDistance) {
-                userData.furthestDistance = distance;
+            if (!myState.furthestDistance || distance > myState.furthestDistance) {
+                updates.furthestDistance = distance;
                 document.getElementById('furthestDistance').textContent = distance.toFixed(2) + ' km';
+                updated = true;
             }
 
-            localStorage.setItem('togetherProfile', JSON.stringify(userData));
-
-            try {
-                await fetch(`${API_URL}/api/user`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
-                });
-            } catch (error) {
-                console.error('Error saving distance data', error);
+            if (updated) {
+                try {
+                    await fetch(`${API_URL}/api/couple`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            [localUser.name]: updates
+                        })
+                    });
+                } catch (error) {
+                    console.error('Error saving distance data', error);
+                }
             }
         }
 
@@ -792,12 +791,12 @@
             return deg * (Math.PI/180);
         }
 
-        function updateLocationHistory() {
+        function updateLocationHistory(history) {
             const historyContainer = document.getElementById('locationHistory');
             historyContainer.innerHTML = '';
 
-            if (userData.locationHistory && userData.locationHistory.length > 0) {
-                const recentLocations = userData.locationHistory.slice(-5).reverse();
+            if (history && history.length > 0) {
+                const recentLocations = history.slice(-5).reverse();
 
                 recentLocations.forEach(location => {
                     const date = new Date(location.timestamp);
@@ -811,13 +810,13 @@
             }
         }
 
-        function updateUserLocationDisplay() {
-            if (userData.location) {
+        function updateUserLocationDisplay(location) {
+            if (location) {
                 document.getElementById('userCoordinates').textContent = 
-                    `Lat: ${userData.location.lat.toFixed(6)}, Lng: ${userData.location.lng.toFixed(6)}`;
+                    `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
                 
                 // Get address from coordinates
-                getAddressFromCoords(userData.location.lat, userData.location.lng)
+                getAddressFromCoords(location.lat, location.lng)
                     .then(address => {
                         document.getElementById('userAddress').textContent = address;
                     })
@@ -827,13 +826,13 @@
             }
         }
 
-        function updatePartnerLocationDisplay() {
-            if (userData.partnerLocation) {
+        function updatePartnerLocationDisplay(location) {
+            if (location) {
                 document.getElementById('partnerCoordinates').textContent = 
-                    `Lat: ${userData.partnerLocation.lat.toFixed(6)}, Lng: ${userData.partnerLocation.lng.toFixed(6)}`;
+                    `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
                 
                 // Get address from coordinates
-                getAddressFromCoords(userData.partnerLocation.lat, userData.partnerLocation.lng)
+                getAddressFromCoords(location.lat, location.lng)
                     .then(address => {
                         document.getElementById('partnerAddress').textContent = address;
                     })

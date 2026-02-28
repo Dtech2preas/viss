@@ -429,7 +429,7 @@
 
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
-        let userData = null;
+        let localUser = null;
 
         // Initialize the app
         function initApp() {
@@ -440,7 +440,7 @@
                 return;
             }
 
-            userData = JSON.parse(savedProfile);
+            localUser = JSON.parse(savedProfile);
             loadPartnerActivities();
 
             // Auto-refresh partner activities every 30 seconds
@@ -449,46 +449,48 @@
 
         // Go back to main page
         function goBack() {
-            window.location.href = 'index.html';
+            window.location.href = 'you.html';
         }
 
         // Share activity
         async function shareActivity(activity) {
-            // First fetch the latest userData from the server to avoid overwriting other fields
-            try {
-                const res = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.name)}`);
-                if (res.ok) {
-                    const serverData = await res.json();
-                    if (serverData) {
-                        userData = { ...userData, ...serverData }; // Update local with latest server data
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to fetch latest user data before sharing activity", e);
-            }
-
-            if (!userData.activities) {
-                userData.activities = [];
-            }
-
             const newActivity = {
                 type: activity,
                 timestamp: new Date().toISOString()
             };
 
-            userData.activities.push(newActivity);
-
-            if (userData.activities.length > 20) {
-                userData.activities = userData.activities.slice(-20);
-            }
-
-            localStorage.setItem('togetherProfile', JSON.stringify(userData));
-
             try {
-                const response = await fetch(`${API_URL}/api/user`, {
+                // Fetch the latest global state
+                const res = await fetch(`${API_URL}/api/couple`);
+                let globalState = {};
+                if (res.ok) {
+                    globalState = await res.json();
+                }
+
+                // Initialize my section if needed
+                if (!globalState[localUser.name]) {
+                    globalState[localUser.name] = {};
+                }
+                if (!globalState[localUser.name].activities) {
+                    globalState[localUser.name].activities = [];
+                }
+
+                // Append activity
+                globalState[localUser.name].activities.push(newActivity);
+
+                // Trim to 20
+                if (globalState[localUser.name].activities.length > 20) {
+                    globalState[localUser.name].activities = globalState[localUser.name].activities.slice(-20);
+                }
+
+                const response = await fetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify({
+                        [localUser.name]: {
+                            activities: globalState[localUser.name].activities
+                        }
+                    })
                 });
 
                 if (response.ok) {
@@ -505,16 +507,16 @@
         // Load partner activities
         async function loadPartnerActivities() {
             try {
-                if(!userData.partner) return;
-                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                if(!response.ok) throw new Error("Partner not found");
-                const data = await response.json();
+                const partnerName = localUser.partner.name;
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                const globalState = await response.json();
 
                 const activitiesContainer = document.getElementById('partnerActivities');
                 activitiesContainer.innerHTML = '';
 
-                if (data && data.activities && data.activities.length > 0) {
-                    const activities = data.activities;
+                if (globalState[partnerName] && globalState[partnerName].activities && globalState[partnerName].activities.length > 0) {
+                    const activities = globalState[partnerName].activities;
 
                     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
