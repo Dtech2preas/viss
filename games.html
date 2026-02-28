@@ -393,16 +393,15 @@
     let currentOpponent = "";
 
     // 🔹 Fetch game data
-    async function fetchGameData(username) {
+    async function fetchGameData() {
       try {
-        const res = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(username)}`);
+        const res = await fetch(`${API_URL}/api/couple`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         
-        const data = await res.json();
-        return data.gameData || { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
+        return await res.json();
       } catch (error) {
         console.error("Failed to fetch game data:", error);
-        return { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
+        return {};
       }
     }
 
@@ -419,10 +418,10 @@
     // 🔹 Load stats
     async function loadStats() {
       try {
-        const [userData, oppData] = await Promise.all([
-          fetchGameData(currentUser),
-          fetchGameData(currentOpponent)
-        ]);
+        const globalState = await fetchGameData();
+
+        const userData = globalState[currentUser]?.gameData || { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
+        const oppData = globalState[currentOpponent]?.gameData || { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
 
         // Top line
         document.getElementById("matchup").innerHTML = 
@@ -478,10 +477,10 @@
     (async () => {
       const savedProfile = localStorage.getItem('togetherProfile');
       if (savedProfile) {
-        const userData = JSON.parse(savedProfile);
-        if (userData.partner) {
-          currentUser = userData.name;
-          currentOpponent = userData.partner.name;
+        const localUser = JSON.parse(savedProfile);
+        if (localUser.partner) {
+          currentUser = localUser.name;
+          currentOpponent = localUser.partner.name;
           document.getElementById('titleLine').textContent = "May the best lover win ✨";
           loadStats();
           setInterval(loadStats, 15000);

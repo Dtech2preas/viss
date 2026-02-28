@@ -361,7 +361,7 @@
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
 
-        let userData = null;
+        let localUser = null;
         let currentPeriod = 'day';
         let partnerActivities = [];
 
@@ -373,7 +373,7 @@
                 return;
             }
 
-            userData = JSON.parse(savedProfile);
+            localUser = JSON.parse(savedProfile);
             loadPartnerActivities();
             loadRelationshipStats();
 
@@ -385,7 +385,7 @@
         }
 
         function goBack() {
-            window.location.href = 'index.html';
+            window.location.href = 'you.html';
         }
 
         function changePeriod(period, element) {
@@ -402,13 +402,14 @@
 
         async function loadPartnerActivities() {
             try {
-                if(!userData.partner) return;
-                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                if(!response.ok) throw new Error("Partner not found");
-                const data = await response.json();
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                const globalState = await response.json();
 
-                if (data && data.activities) {
-                    partnerActivities = data.activities;
+                const partnerState = globalState[localUser.partner.name] || {};
+
+                if (partnerState.activities) {
+                    partnerActivities = partnerState.activities;
                     updateActivityStats();
                 }
             } catch (error) {
@@ -434,31 +435,23 @@
 
         async function loadRelationshipStats() {
             try {
-                // Fetch our data
-                const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.name)}`);
-                let data = await response.json();
+                const response = await fetch(`${API_URL}/api/couple`);
+                if (!response.ok) throw new Error("Failed to load shared state");
+                let globalState = await response.json();
 
-                // Fetch partner data if available
-                let partnerData = null;
-                if (userData.partner) {
-                    const pResponse = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
-                    if (pResponse.ok) {
-                        partnerData = await pResponse.json();
-                    }
-                }
+                let myState = globalState[localUser.name] || {};
+                let partnerState = globalState[localUser.partner.name] || {};
 
-                if (!data) data = userData; // Fallback
-
-                let closest = data.closestDistance || userData.closestDistance || Infinity;
-                let furthest = data.furthestDistance || userData.furthestDistance || 0;
-                let timesTogether = data.timesTogether || userData.timesTogether || 0;
+                let closest = myState.closestDistance || Infinity;
+                let furthest = myState.furthestDistance || 0;
+                let timesTogether = myState.timesTogether || 0;
                 let statsUpdated = false;
 
                 // If we have both current locations, calculate current distance
-                if (data.location && partnerData && partnerData.location) {
+                if (myState.location && partnerState.location) {
                     const currentDist = calculateDistance(
-                        data.location.lat, data.location.lng,
-                        partnerData.location.lat, partnerData.location.lng
+                        myState.location.lat, myState.location.lng,
+                        partnerState.location.lat, partnerState.location.lng
                     );
 
                     if (currentDist < closest || closest === Infinity) {
@@ -472,10 +465,10 @@
 
                     // Simple metric for "times together" if close enough (e.g. < 0.1km)
                     if (currentDist < 0.1) {
-                        if (!userData.lastTimeTogether || (Date.now() - new Date(userData.lastTimeTogether).getTime() > 1000 * 60 * 60 * 12)) {
+                        if (!myState.lastTimeTogether || (Date.now() - new Date(myState.lastTimeTogether).getTime() > 1000 * 60 * 60 * 12)) {
                             // Increment times together if haven't been recorded as together in the last 12 hours
                             timesTogether++;
-                            userData.lastTimeTogether = new Date().toISOString();
+                            myState.lastTimeTogether = new Date().toISOString();
                             statsUpdated = true;
                         }
                     }
@@ -486,16 +479,17 @@
 
                 if (statsUpdated) {
                     // Save back to local & server
-                    userData.closestDistance = closest;
-                    userData.furthestDistance = furthest;
-                    userData.timesTogether = timesTogether;
-                    localStorage.setItem('togetherProfile', JSON.stringify(userData));
+                    myState.closestDistance = closest;
+                    myState.furthestDistance = furthest;
+                    myState.timesTogether = timesTogether;
 
                     try {
-                        await fetch(`${API_URL}/api/user`, {
+                        await fetch(`${API_URL}/api/couple`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(userData)
+                            body: JSON.stringify({
+                                [localUser.name]: myState
+                            })
                         });
                     } catch (e) { console.error("Could not update stats on server", e); }
                 }

@@ -387,68 +387,11 @@
         
         <div class="section" id="questions-section">
             <h2>Let's Get Started</h2>
+            <p style="text-align: center; margin-bottom: 20px; font-size: 1.2rem; color: var(--dark-color);">Who are you?</p>
             
-            <div id="step-name" class="step active">
-                <div class="form-group">
-                    <label for="username">What is your beautiful name?</label>
-                    <input type="text" id="username" placeholder="Your Name">
-                </div>
-                <button class="btn" onclick="nextStep('surname')">Next</button>
-            </div>
-
-            <div id="step-surname" class="step">
-                <div class="form-group">
-                    <label for="surname">And your wonderful surname?</label>
-                    <input type="text" id="surname" placeholder="Your Surname">
-                </div>
-                <button class="btn" onclick="nextStep('age')">Next</button>
-            </div>
-
-            <div id="step-age" class="step">
-                <div class="form-group">
-                    <label for="age">How old are you?</label>
-                    <input type="number" id="age" placeholder="Your Age">
-                </div>
-                <button class="btn" onclick="nextStep('virgin')">Next</button>
-            </div>
-
-            <div id="step-virgin" class="step">
-                <div class="form-group">
-                    <label>Are you a virgin?</label>
-                    <div class="btn-group">
-                        <button class="btn outline" onclick="handleVirginAnswer('yes')">Yes</button>
-                        <button class="btn" onclick="handleVirginAnswer('no')">No</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="section" id="pairing-section" style="display:none;">
-            <h2>Find Your Love</h2>
-            <p style="text-align: center; margin-bottom: 20px;">Connect with your partner to share moments.</p>
-            
-            <div class="form-group">
-                <label for="partner-name">Partner's Name</label>
-                <input type="text" id="partner-name" placeholder="Enter their name">
-            </div>
-            
-            <div class="form-group">
-                <label for="partner-surname">Partner's Surname</label>
-                <input type="text" id="partner-surname" placeholder="Enter their surname">
-            </div>
-            
-            <div class="form-group">
-                <label for="partner-age">Partner's Age</label>
-                <input type="number" id="partner-age" placeholder="Enter their age">
-            </div>
-            
-            <button class="btn" onclick="sendPairingRequest()" id="btn-pair">Send Pairing Request</button>
-
-            <div id="pending-requests" style="margin-top: 30px; display: none;">
-                <h3 style="color: var(--secondary-color); text-align: center;">Pending Requests for You</h3>
-                <div id="requests-list" style="margin-top: 15px;">
-                    <!-- Requests will be injected here -->
-                </div>
+            <div class="btn-group" style="flex-direction: column; gap: 15px;">
+                <button class="btn" onclick="selectUser('Jonas', 'Owami')">I am Jonas</button>
+                <button class="btn" onclick="selectUser('Owami', 'Jonas')">I am Owami</button>
             </div>
         </div>
         
@@ -511,12 +454,8 @@
 
         let userData = {
             name: '',
-            surname: '',
-            age: '',
-            partner: null
+            partner: { name: '' }
         };
-
-        let requestPollInterval = null;
 
         // Create floating hearts
         function createHearts() {
@@ -541,197 +480,39 @@
             }
         }
 
-        // Navigation for questions
-        function nextStep(step) {
-            if (step === 'surname') {
-                const name = document.getElementById('username').value.trim();
-                if (!name) return showNotification('Please enter your name');
-                userData.name = name;
-            } else if (step === 'age') {
-                const surname = document.getElementById('surname').value.trim();
-                if (!surname) return showNotification('Please enter your surname');
-                userData.surname = surname;
-            } else if (step === 'virgin') {
-                const age = document.getElementById('age').value.trim();
-                if (!age) return showNotification('Please enter your age');
-                userData.age = age;
-            }
+        async function selectUser(name, partnerName) {
+            userData.name = name;
+            userData.partner.name = partnerName;
 
-            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-            document.getElementById(`step-${step}`).classList.add('active');
-        }
+            // Save to localStorage immediately
+            localStorage.setItem('togetherProfile', JSON.stringify(userData));
 
-        async function handleVirginAnswer(answer) {
-            const toaster = document.getElementById('toaster');
-            if (answer === 'no') {
-                toaster.textContent = "Not for long 😏";
-                toaster.className = "toaster show";
-                setTimeout(() => {
-                    toaster.classList.remove('show');
-                    saveUserAndGoToPairing();
-                }, 2500);
-            } else {
-                toaster.textContent = "Wrong answer! Try again 😜";
-                toaster.className = "toaster toaster-wrong show";
-                setTimeout(() => {
-                    toaster.classList.remove('show');
-                }, 2000);
-            }
-        }
-
-        async function saveUserAndGoToPairing() {
+            // Initialize their part of the state in backend if it doesn't exist
             try {
-                const res = await fetch(`${API_URL}/api/user`, {
+                await fetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify({
+                        [name]: { name: name }
+                    })
                 });
-
-                if (res.ok) {
-                    localStorage.setItem('togetherProfile', JSON.stringify(userData));
-                    document.getElementById('questions-section').style.display = 'none';
-                    document.getElementById('pairing-section').style.display = 'block';
-                    startPollingRequests();
-                } else {
-                    showNotification('Error saving user data');
-                }
             } catch (e) {
-                console.error(e);
-                showNotification('Network error saving user');
+                console.error("Could not sync with backend", e);
             }
+
+            showFeaturesMenu(name);
         }
 
-        // Check if profile already exists
-        async function checkExistingProfile() {
+        function checkExistingProfile() {
             const savedProfile = localStorage.getItem('togetherProfile');
             if (savedProfile) {
                 userData = JSON.parse(savedProfile);
-                if (userData.partner) {
-                    showFeaturesMenu(userData.name);
-                } else {
-                    document.getElementById('questions-section').style.display = 'none';
-                    document.getElementById('pairing-section').style.display = 'block';
-                    startPollingRequests();
-                }
-            }
-        }
-
-        async function sendPairingRequest() {
-            const pName = document.getElementById('partner-name').value.trim();
-            const pSurname = document.getElementById('partner-surname').value.trim();
-            const pAge = document.getElementById('partner-age').value.trim();
-
-            if (!pName || !pSurname || !pAge) {
-                showNotification('Please fill all partner details');
-                return;
-            }
-
-            const btn = document.getElementById('btn-pair');
-            btn.textContent = "Sending...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_URL}/api/pair/request`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        requester: userData,
-                        target: { name: pName, surname: pSurname, age: pAge }
-                    })
-                });
-
-                if (res.ok) {
-                    showNotification('Pairing request sent!');
-                } else {
-                    showNotification('Partner not found or error occurred.');
-                }
-            } catch (e) {
-                console.error(e);
-                showNotification('Network error sending request');
-            } finally {
-                btn.textContent = "Send Pairing Request";
-                btn.disabled = false;
-            }
-        }
-
-        function startPollingRequests() {
-            if (requestPollInterval) clearInterval(requestPollInterval);
-            pollRequests(); // run immediately
-            requestPollInterval = setInterval(pollRequests, 5000); // every 5s
-        }
-
-        async function pollRequests() {
-            if(!userData.name || !userData.surname || !userData.age) return;
-
-            try {
-                const res = await fetch(`${API_URL}/api/pair/pending?name=${encodeURIComponent(userData.name)}&surname=${encodeURIComponent(userData.surname)}&age=${encodeURIComponent(userData.age)}`);
-                if (res.ok) {
-                    const requests = await res.json();
-                    renderPendingRequests(requests);
-                }
-            } catch (e) {
-                console.error("Polling error", e);
-            }
-        }
-
-        function renderPendingRequests(requests) {
-            const container = document.getElementById('pending-requests');
-            const list = document.getElementById('requests-list');
-
-            if (!requests || requests.length === 0) {
-                container.style.display = 'none';
-                return;
-            }
-
-            container.style.display = 'block';
-            list.innerHTML = '';
-
-            requests.forEach(req => {
-                const div = document.createElement('div');
-                div.style.background = 'rgba(0,0,0,0.05)';
-                div.style.padding = '10px';
-                div.style.borderRadius = '10px';
-                div.style.marginBottom = '10px';
-                div.style.display = 'flex';
-                div.style.justifyContent = 'space-between';
-                div.style.alignItems = 'center';
-
-                div.innerHTML = `
-                    <span><strong>${req.requester.name} ${req.requester.surname}</strong> (${req.requester.age})</span>
-                    <button class="btn" style="padding: 8px 15px; font-size: 0.9rem; margin: 0;" onclick='acceptRequest(${JSON.stringify(req)})'>Accept</button>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        async function acceptRequest(req) {
-            try {
-                const res = await fetch(`${API_URL}/api/pair/accept`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        accepter: userData,
-                        requester: req.requester
-                    })
-                });
-
-                if (res.ok) {
-                    userData.partner = req.requester;
-                    localStorage.setItem('togetherProfile', JSON.stringify(userData));
-                    if (requestPollInterval) clearInterval(requestPollInterval);
-                    showFeaturesMenu(userData.name);
-                } else {
-                    showNotification('Error accepting request');
-                }
-            } catch (e) {
-                console.error(e);
-                showNotification('Network error');
+                showFeaturesMenu(userData.name);
             }
         }
 
         function showFeaturesMenu(username) {
             document.getElementById('questions-section').style.display = 'none';
-            document.getElementById('pairing-section').style.display = 'none';
             document.getElementById('features-menu').style.display = 'block';
             document.getElementById('welcome-name').textContent = username;
         }
