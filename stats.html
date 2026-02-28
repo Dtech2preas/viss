@@ -376,6 +376,12 @@
             userData = JSON.parse(savedProfile);
             loadPartnerActivities();
             loadRelationshipStats();
+
+            // Auto-refresh stats periodically
+            setInterval(() => {
+                loadPartnerActivities();
+                loadRelationshipStats();
+            }, 30000);
         }
 
         function goBack() {
@@ -411,22 +417,97 @@
             }
         }
 
+        // Calculate distance between two points in km
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the earth in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2)
+                ;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const d = R * c; // Distance in km
+            return d;
+        }
+
         async function loadRelationshipStats() {
             try {
+                // Fetch our data
                 const response = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.name)}`);
-                const data = await response.json();
+                let data = await response.json();
 
-                if (data) {
-                    if (data.closestDistance) {
-                        document.getElementById('closestDistance').textContent = data.closestDistance.toFixed(2) + ' km';
-                    }
-                    if (data.furthestDistance) {
-                        document.getElementById('furthestDistance').textContent = data.furthestDistance.toFixed(2) + ' km';
-                    }
-                    if (data.timesTogether) {
-                        document.getElementById('timesTogether').textContent = data.timesTogether;
+                // Fetch partner data if available
+                let partnerData = null;
+                if (userData.partner) {
+                    const pResponse = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.partner.name)}`);
+                    if (pResponse.ok) {
+                        partnerData = await pResponse.json();
                     }
                 }
+
+                if (!data) data = userData; // Fallback
+
+                let closest = data.closestDistance || userData.closestDistance || Infinity;
+                let furthest = data.furthestDistance || userData.furthestDistance || 0;
+                let timesTogether = data.timesTogether || userData.timesTogether || 0;
+                let statsUpdated = false;
+
+                // If we have both current locations, calculate current distance
+                if (data.location && partnerData && partnerData.location) {
+                    const currentDist = calculateDistance(
+                        data.location.lat, data.location.lng,
+                        partnerData.location.lat, partnerData.location.lng
+                    );
+
+                    if (currentDist < closest || closest === Infinity) {
+                        closest = currentDist;
+                        statsUpdated = true;
+                    }
+                    if (currentDist > furthest) {
+                        furthest = currentDist;
+                        statsUpdated = true;
+                    }
+
+                    // Simple metric for "times together" if close enough (e.g. < 0.1km)
+                    if (currentDist < 0.1) {
+                        if (!userData.lastTimeTogether || (Date.now() - new Date(userData.lastTimeTogether).getTime() > 1000 * 60 * 60 * 12)) {
+                            // Increment times together if haven't been recorded as together in the last 12 hours
+                            timesTogether++;
+                            userData.lastTimeTogether = new Date().toISOString();
+                            statsUpdated = true;
+                        }
+                    }
+                }
+
+                // If no closest/furthest found yet, show dashes
+                if (closest === Infinity) closest = null;
+
+                if (statsUpdated) {
+                    // Save back to local & server
+                    userData.closestDistance = closest;
+                    userData.furthestDistance = furthest;
+                    userData.timesTogether = timesTogether;
+                    localStorage.setItem('togetherProfile', JSON.stringify(userData));
+
+                    try {
+                        await fetch(`${API_URL}/api/user`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(userData)
+                        });
+                    } catch (e) { console.error("Could not update stats on server", e); }
+                }
+
+                if (closest !== null) {
+                    document.getElementById('closestDistance').textContent = closest.toFixed(2) + ' km';
+                }
+                if (furthest) {
+                    document.getElementById('furthestDistance').textContent = furthest.toFixed(2) + ' km';
+                }
+                document.getElementById('timesTogether').textContent = timesTogether;
+
             } catch (error) {
                 console.error('Error loading relationship stats:', error);
             }

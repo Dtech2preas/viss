@@ -442,6 +442,9 @@
 
             userData = JSON.parse(savedProfile);
             loadPartnerActivities();
+
+            // Auto-refresh partner activities every 30 seconds
+            setInterval(loadPartnerActivities, 30000);
         }
 
         // Go back to main page
@@ -451,6 +454,19 @@
 
         // Share activity
         async function shareActivity(activity) {
+            // First fetch the latest userData from the server to avoid overwriting other fields
+            try {
+                const res = await fetch(`${API_URL}/api/user?name=${encodeURIComponent(userData.name)}`);
+                if (res.ok) {
+                    const serverData = await res.json();
+                    if (serverData) {
+                        userData = { ...userData, ...serverData }; // Update local with latest server data
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch latest user data before sharing activity", e);
+            }
+
             if (!userData.activities) {
                 userData.activities = [];
             }
