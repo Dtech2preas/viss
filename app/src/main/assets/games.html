@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Love Dashboard ❤️</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff4d6d;
+      --primary-light: #ff80aa;
+      --primary-dark: #ff0066;
+      --secondary: #4d79ff;
+      --text: #333;
+      --text-light: #666;
+      --bg-light: #fff;
+      --bg-gradient: linear-gradient(135deg, #ffe6f0, #e6f7ff);
+      --shadow: 0 8px 20px rgba(0,0,0,0.1);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+      position: relative;
+      display: inline-block;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    #titleLine {
+      font-size: 1.1rem;
+      color: var(--text-light);
+      margin-bottom: 20px;
+    }
+
+    .selector-container {
+      background: var(--bg-light);
+      border-radius: var(--radius);
+      padding: 25px;
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 30px;
+    }
+
+    .selector {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .selector-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    label {
+      font-weight: 500;
+      min-width: 120px;
+      text-align: left;
+    }
+
+    select {
+      flex: 1;
+      padding: 12px 15px;
+      border-radius: 10px;
+      border: 2px solid #e0e0e0;
+      font-size: 1rem;
+      background: white;
+      transition: border-color 0.3s;
+      min-width: 150px;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    button {
+      padding: 12px 25px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .dashboard {
+      width: 100%;
+      display: none;
+    }
+
+    .matchup-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .matchup-header h2 {
+      font-size: 1.8rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .leader-summary {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+      width: 100%;
+    }
+
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 25px;
+      transition: transform 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card h3 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+      text-align: center;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+
+    .score-container {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .user-score, .opponent-score {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .score-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 5px 0;
+    }
+
+    .user-score .score-value {
+      color: var(--primary);
+    }
+
+    .opponent-score .score-value {
+      color: var(--secondary);
+    }
+
+    .score-label {
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+
+    .love-message {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow);
+      font-size: 1.2rem;
+      font-style: italic;
+      color: var(--text);
+      border-left: 5px solid var(--primary);
+    }
+
+    .game-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      width: 100%;
+    }
+
+    .game-button {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .game-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .game-btn:hover {
+      background: var(--primary);
+      transform: translateY(-3px);
+    }
+
+    .game-icon {
+      font-size: 2rem;
+    }
+
+    .refresh-indicator {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 77, 109, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      .selector-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      label {
+        text-align: center;
+        margin-bottom: 5px;
+      }
+
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+
+      .game-buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>💖 Our Love Game Stats 💖</h1>
+      <p id="titleLine">Loading... ✨</p>
+    </header>
+
+    <div class="dashboard" id="dashboard" style="display: block;">
+      <div class="matchup-header">
+        <h2 id="matchup"></h2>
+        <div class="refresh-indicator">
+          <div class="spinner"></div>
+          <span>Stats update every 15 seconds</span>
+        </div>
+      </div>
+
+      <div id="leaderSummary" class="leader-summary"></div>
+
+      <div id="statsContainer" class="stats-container"></div>
+
+      <div id="loveMessage" class="love-message"></div>
+
+      <div class="game-buttons">
+        <a href="tic.html" class="game-button">
+          <button class="game-btn">
+            <div class="game-icon">⭕</div>
+            <div>Play Tic Tac Toe</div>
+          </button>
+        </a>
+        <a href="rock.html" class="game-button">
+          <button class="game-btn">
+            <div class="game-icon">✊🤚✌️</div>
+            <div>Play Rock Paper Scissors</div>
+          </button>
+        </a>
+        <a href="mem.html" class="game-button">
+          <button class="game-btn">
+            <div class="game-icon">🃏</div>
+            <div>Play Memory Game</div>
+          </button>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+    let currentUser = "";
+    let currentOpponent = "";
+
+    // 🔹 Fetch game data
+    async function fetchGameData() {
+      try {
+        const res = await fetch(`${API_URL}/api/couple`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+        return await res.json();
+      } catch (error) {
+        console.error("Failed to fetch game data:", error);
+        return {};
+      }
+    }
+
+    // 🔹 Format game name for display
+    function formatGameName(game) {
+      const names = {
+        ticTacToe: "Tic Tac Toe",
+        rps: "Rock Paper Scissors",
+        memory: "Memory Game"
+      };
+      return names[game] || game;
+    }
+
+    // 🔹 Load stats
+    async function loadStats() {
+      try {
+        const globalState = await fetchGameData();
+
+        const userData = globalState[currentUser]?.gameData || { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
+        const oppData = globalState[currentOpponent]?.gameData || { totalScore: 0, ticTacToe: { score: 0 }, rps: { score: 0 }, memory: { score: 0 } };
+
+        // Top line
+        document.getElementById("matchup").innerHTML =
+          `💖 ${currentUser} vs ${currentOpponent} 💖`;
+
+        // Leader summary
+        const diff = (userData.totalScore || 0) - (oppData.totalScore || 0);
+        let leaderSummary = "";
+        if (diff > 0) leaderSummary = `${currentUser} is winning by ${diff} points 👑`;
+        else if (diff < 0) leaderSummary = `${currentOpponent} is winning by ${Math.abs(diff)} points 👑`;
+        else leaderSummary = "It's perfectly tied 💞";
+        document.getElementById("leaderSummary").innerHTML = leaderSummary;
+
+        // Game stats
+        let statsHtml = "";
+        ["ticTacToe", "rps", "memory"].forEach(game => {
+          const userScore = userData[game]?.score || 0;
+          const oppScore = oppData[game]?.score || 0;
+
+          statsHtml += `
+            <div class="card">
+              <h3>${formatGameName(game)}</h3>
+              <div class="score-container">
+                <div class="user-score">
+                  <span class="score-label">${currentUser}</span>
+                  <span class="score-value">${userScore}</span>
+                </div>
+                <div class="opponent-score">
+                  <span class="score-label">${currentOpponent}</span>
+                  <span class="score-value">${oppScore}</span>
+                </div>
+              </div>
+            </div>`;
+        });
+        document.getElementById("statsContainer").innerHTML = statsHtml;
+
+        // Love message
+        let loveMessage = "";
+        if (diff > 20) loveMessage = "Your love is dominating! Keep it up! ❤️";
+        else if (diff > 0) loveMessage = "You're in the lead! Play to secure your top spot! 💕";
+        else if (diff === 0) loveMessage = "Perfect balance, just like your love! ✨";
+        else if (diff > -20) loveMessage = "You're catching up! Time to surpass your partner! 💪";
+        else loveMessage = "Your partner is dominating! Show them what you've got! 🔥";
+
+        document.getElementById("loveMessage").innerHTML = loveMessage;
+      } catch (error) {
+        console.error("Error loading stats:", error);
+        document.getElementById("leaderSummary").innerHTML = "Error loading data. Please try again.";
+      }
+    }
+
+    // 🔹 Init
+    (async () => {
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const localUser = JSON.parse(savedProfile);
+        if (localUser.partner) {
+          currentUser = localUser.name;
+          currentOpponent = localUser.partner.name;
+          document.getElementById('titleLine').textContent = "May the best lover win ✨";
+          loadStats();
+          setInterval(loadStats, 15000);
+          return;
+        }
+      }
+      document.getElementById('titleLine').textContent = "Please pair with your partner on the home page first.";
+      document.getElementById('dashboard').style.display = 'none';
+    })();
+  </script>
+</body>
+</html>

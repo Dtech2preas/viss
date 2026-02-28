@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Dashboard - Together Forever</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #ff7eb9;
+            --secondary-color: #7e57c2;
+            --accent-color: #ff4d8d;
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --study-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --partner-gradient: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            padding-bottom: 50px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: var(--secondary-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 8px 20px rgba(166, 94, 166, 0.3);
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0 20px 0;
+            animation: fadeIn 1s ease-out;
+        }
+
+        h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .dashboard-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(166, 94, 166, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .dashboard-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--study-gradient);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .chart-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .toggle-btn {
+            background: white;
+            border: 2px solid #e6d4f7;
+            color: var(--dark-color);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .toggle-btn.active {
+            background: var(--study-gradient);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.3);
+        }
+
+        .chart-type-btn {
+            background: var(--light-color);
+            border: 1px solid #e6d4f7;
+            color: #666;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chart-type-btn.active {
+            background: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--light-color);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #ffe6f0;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+
+        .partner-stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin-top: 5px;
+            display: none;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(79, 172, 254, 0.3);
+            border-radius: 50%;
+            border-top-color: #4facfe;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .toggle-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="study.html" class="back-btn">← Timer</a>
+
+    <div class="container">
+        <header>
+            <h1>Study Dashboard</h1>
+            <p class="subtitle">Tracking your progress together</p>
+        </header>
+
+        <div id="loading" class="dashboard-section loading">
+            <div class="spinner"></div>
+            <p>Loading your amazing progress...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="dashboard-section">
+                <div class="controls">
+                    <button id="btn-me" class="toggle-btn active" onclick="setView('me')">My Stats</button>
+                    <button id="btn-partner" class="toggle-btn" onclick="setView('partner')">Partner's Stats</button>
+                    <button id="btn-both" class="toggle-btn" onclick="setView('both')">Side-by-Side</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">Yesterday</div>
+                        <div id="stat-yesterday" class="stat-value">0h 0m</div>
+                        <div id="partner-stat-yesterday" class="partner-stat-value">0h 0m</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">This Week</div>
+                        <div id="stat-week" class="stat-value">0h 0m</div>
+                        <div id="partner-stat-week" class="partner-stat-value">0h 0m</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">This Month</div>
+                        <div id="stat-month" class="stat-value">0h 0m</div>
+                        <div id="partner-stat-month" class="partner-stat-value">0h 0m</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">This Year</div>
+                        <div id="stat-year" class="stat-value">0h 0m</div>
+                        <div id="partner-stat-year" class="partner-stat-value">0h 0m</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">All Time</div>
+                        <div id="stat-all" class="stat-value">0h 0m</div>
+                        <div id="partner-stat-all" class="partner-stat-value">0h 0m</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                    <h3 style="color: var(--secondary-color); margin: 0 auto;">Weekly Progress</h3>
+                </div>
+
+                <div class="chart-controls">
+                    <button id="btn-bar" class="chart-type-btn active" onclick="setChartType('bar')">Bar Chart</button>
+                    <button id="btn-line" class="chart-type-btn" onclick="setChartType('line')">Line Graph</button>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
+        let currentView = 'me'; // 'me', 'partner', 'both'
+        let currentChartType = 'bar'; // 'bar', 'line'
+        let userData = null;
+        let coupleData = {};
+        let myChart = null;
+
+        // Stats structured by user -> timeframe
+        const stats = {
+            me: { yesterday: 0, week: 0, month: 0, year: 0, all: 0, chartData: [0,0,0,0,0,0,0] },
+            partner: { yesterday: 0, week: 0, month: 0, year: 0, all: 0, chartData: [0,0,0,0,0,0,0] }
+        };
+
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        let chartLabels = [];
+
+        window.onload = async function() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (savedProfile) {
+                userData = JSON.parse(savedProfile);
+                document.getElementById('btn-partner').textContent = `${userData.partner.name}'s Stats`;
+                await fetchAndProcessData();
+            } else {
+                window.location.href = 'you.html';
+            }
+        };
+
+        async function fetchAndProcessData() {
+            try {
+                const response = await fetch(`${API_URL}/api/couple`);
+                coupleData = await response.json();
+
+                processData();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+                updateUI();
+                initChart();
+            } catch (e) {
+                console.error("Failed to load dashboard data", e);
+                document.getElementById('loading').innerHTML = '<p>Error loading data. Please refresh.</p>';
+            }
+        }
+
+        function processData() {
+            const meName = userData.name;
+            const partnerName = userData.partner.name;
+
+            const myLogs = (coupleData[meName] && coupleData[meName].studyLogs) ? coupleData[meName].studyLogs : [];
+            const partnerLogs = (coupleData[partnerName] && coupleData[partnerName].studyLogs) ? coupleData[partnerName].studyLogs : [];
+
+            calculateStatsForUser(myLogs, 'me');
+            calculateStatsForUser(partnerLogs, 'partner');
+
+            generateChartLabels();
+            calculateChartData(myLogs, 'me');
+            calculateChartData(partnerLogs, 'partner');
+        }
+
+        function calculateStatsForUser(logs, userType) {
+            const now = new Date();
+
+            // Set time boundaries
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const startOfYesterday = startOfToday - (24 * 60 * 60 * 1000);
+
+            // Start of week (assuming Sunday as first day)
+            const startOfWeekDate = new Date(now);
+            startOfWeekDate.setDate(now.getDate() - now.getDay());
+            startOfWeekDate.setHours(0, 0, 0, 0);
+            const startOfWeek = startOfWeekDate.getTime();
+
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+            // Reset stats
+            stats[userType] = { yesterday: 0, week: 0, month: 0, year: 0, all: 0, chartData: [0,0,0,0,0,0,0] };
+
+            logs.forEach(log => {
+                const logTime = log.startTime || new Date(log.date).getTime();
+                const duration = log.durationSeconds || 0;
+
+                // All time
+                stats[userType].all += duration;
+
+                // Yesterday
+                if (logTime >= startOfYesterday && logTime < startOfToday) {
+                    stats[userType].yesterday += duration;
+                }
+
+                // This Week
+                if (logTime >= startOfWeek) {
+                    stats[userType].week += duration;
+                }
+
+                // This Month
+                if (logTime >= startOfMonth) {
+                    stats[userType].month += duration;
+                }
+
+                // This Year
+                if (logTime >= startOfYear) {
+                    stats[userType].year += duration;
+                }
+            });
+        }
+
+        function generateChartLabels() {
+            chartLabels = [];
+            const now = new Date();
+            // Generate last 7 days including today
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now);
+                d.setDate(now.getDate() - i);
+                chartLabels.push(daysOfWeek[d.getDay()]);
+            }
+        }
+
+        function calculateChartData(logs, userType) {
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+            logs.forEach(log => {
+                const logTime = log.startTime || new Date(log.date).getTime();
+                const durationMinutes = (log.durationSeconds || 0) / 60; // Chart shows minutes
+
+                // Check if it falls in the last 7 days
+                const daysAgo = Math.floor((startOfToday - logTime) / (24 * 60 * 60 * 1000));
+
+                // If log is today, daysAgo could be slightly negative or 0 due to startOfToday vs exact logTime
+                // So let's handle it purely by date string comparison for accuracy
+                const logDateStr = new Date(logTime).toDateString();
+
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setDate(now.getDate() - i);
+                    if (d.toDateString() === logDateStr) {
+                        const index = 6 - i; // map to 0-6 array
+                        stats[userType].chartData[index] += durationMinutes;
+                        break;
+                    }
+                }
+            });
+        }
+
+        function formatDuration(seconds) {
+            if (seconds === 0) return "0h 0m";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+
+            if (h > 0) {
+                return `${h}h ${m}m`;
+            } else {
+                return `${m}m`;
+            }
+        }
+
+        function setView(view) {
+            currentView = view;
+
+            // Update buttons
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${view === 'both' ? 'both' : (view === 'me' ? 'me' : 'partner')}`).classList.add('active');
+
+            // Update UI & Chart
+            updateUI();
+            updateChart();
+        }
+
+        function setChartType(type) {
+            currentChartType = type;
+
+            // Update buttons
+            document.querySelectorAll('.chart-type-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${type}`).classList.add('active');
+
+            // Update Chart
+            if (myChart) {
+                myChart.config.type = type;
+                myChart.update();
+            }
+        }
+
+        function updateUI() {
+            const timeframes = ['yesterday', 'week', 'month', 'year', 'all'];
+
+            timeframes.forEach(tf => {
+                const mainEl = document.getElementById(`stat-${tf}`);
+                const partnerEl = document.getElementById(`partner-stat-${tf}`);
+
+                if (currentView === 'me') {
+                    mainEl.textContent = formatDuration(stats.me[tf]);
+                    mainEl.style.color = 'var(--secondary-color)';
+                    partnerEl.style.display = 'none';
+                } else if (currentView === 'partner') {
+                    mainEl.textContent = formatDuration(stats.partner[tf]);
+                    mainEl.style.color = 'var(--accent-color)';
+                    partnerEl.style.display = 'none';
+                } else if (currentView === 'both') {
+                    mainEl.textContent = `${userData.name}: ${formatDuration(stats.me[tf])}`;
+                    mainEl.style.color = 'var(--secondary-color)';
+                    mainEl.style.fontSize = '1.2rem';
+
+                    partnerEl.textContent = `${userData.partner.name}: ${formatDuration(stats.partner[tf])}`;
+                    partnerEl.style.display = 'block';
+                }
+
+                // Reset font size if not 'both'
+                if (currentView !== 'both') {
+                    mainEl.style.fontSize = '1.8rem';
+                }
+            });
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+
+            Chart.defaults.font.family = "'Montserrat', sans-serif";
+
+            myChart = new Chart(ctx, {
+                type: currentChartType,
+                data: getChartDataConfig(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    family: "'Montserrat', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        const totalMinutes = Math.round(context.parsed.y);
+                                        const h = Math.floor(totalMinutes / 60);
+                                        const m = totalMinutes % 60;
+                                        if (h > 0) {
+                                            label += `${h}h ${m}m`;
+                                        } else {
+                                            label += `${m}m`;
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Minutes'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getChartDataConfig() {
+            const config = {
+                labels: chartLabels,
+                datasets: []
+            };
+
+            if (currentView === 'me' || currentView === 'both') {
+                config.datasets.push({
+                    label: userData.name,
+                    data: stats.me.chartData,
+                    backgroundColor: 'rgba(79, 172, 254, 0.6)',
+                    borderColor: 'rgba(79, 172, 254, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5
+                });
+            }
+
+            if (currentView === 'partner' || currentView === 'both') {
+                config.datasets.push({
+                    label: userData.partner.name,
+                    data: stats.partner.chartData,
+                    backgroundColor: 'rgba(245, 87, 108, 0.6)',
+                    borderColor: 'rgba(245, 87, 108, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5
+                });
+            }
+
+            return config;
+        }
+
+        function updateChart() {
+            if (myChart) {
+                myChart.data = getChartDataConfig();
+                myChart.update();
+            }
+        }
+    </script>
+</body>
+</html>

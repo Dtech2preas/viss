@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fixed Tic Tac Toe</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .user-setup {
+      margin-bottom: 25px;
+    }
+
+    select, button {
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 5px;
+    }
+
+    select {
+      width: 200px;
+    }
+
+    button {
+      background: #4a6fa5;
+      color: white;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #5d84be;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .player-info {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 0 auto 25px;
+      max-width: 350px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .cell:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-3px);
+    }
+
+    .cell.x {
+      color: #ff6b6b;
+    }
+
+    .cell.o {
+      color: #4cb5f5;
+    }
+
+    .cell.win {
+      background: rgba(76, 181, 245, 0.3);
+      box-shadow: 0 0 20px rgba(76, 181, 245, 0.5);
+    }
+
+    #status {
+      font-size: 1.3rem;
+      font-weight: bold;
+      min-height: 40px;
+      margin-bottom: 20px;
+      padding: 12px 20px;
+      border-radius: 50px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .win-message {
+      color: #a5d6a7;
+      text-shadow: 0 0 10px rgba(165, 214, 167, 0.5);
+    }
+
+    .loss-message {
+      color: #ff6b6b;
+    }
+
+    .draw-message {
+      color: #ffe082;
+    }
+
+    .score-display {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 15px;
+    }
+
+    .score-box {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 15px;
+      min-width: 120px;
+    }
+
+    .score-box h3 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .score-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+
+    .change-user {
+      margin-top: 20px;
+      font-size: 0.9rem;
+    }
+
+    .change-user button {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      padding: 8px 15px;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      #board {
+        gap: 8px;
+      }
+
+      .cell {
+        font-size: 2.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><i class="fas fa-gamepad"></i> Tic Tac Toe</h1>
+
+    <div id="userSetup" class="user-setup">
+      <button onclick="startGame()"><i class="fas fa-play"></i> Start Game</button>
+    </div>
+
+    <div id="playerInfo" class="player-info"></div>
+
+    <div id="board"></div>
+
+    <div id="status">Select your username and start the game</div>
+
+    <div class="score-display">
+      <div class="score-box">
+        <h3><i class="fas fa-trophy"></i> Score</h3>
+        <div class="score-value" id="score">0</div>
+      </div>
+      <div class="score-box">
+        <h3><i class="fas fa-calendar-day"></i> Today</h3>
+        <div class="score-value" id="daily-games">0/10</div>
+      </div>
+    </div>
+
+    <div class="change-user">
+      <button onclick="changeUser()"><i class="fas fa-user"></i> Change User</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+
+    let board = Array(9).fill(null);
+    let currentPlayer = "X";
+    let player = null, playerData = null;
+    let gameActive = false;
+    let playerMoves = []; // Track player moves in order
+    let computerMoves = []; // Track computer moves in order
+    const boardDiv = document.getElementById("board");
+    const statusDiv = document.getElementById("status");
+    const scoreDiv = document.getElementById("score");
+    const dailyGamesDiv = document.getElementById("daily-games");
+    const playerInfo = document.getElementById("playerInfo");
+    const userSetupDiv = document.getElementById("userSetup");
+
+    // Check if we have a stored user
+    window.onload = function() {
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const userData = JSON.parse(savedProfile);
+        player = userData.name;
+        startGame();
+      } else {
+        statusDiv.textContent = 'Please set up your profile on the home page first';
+        userSetupDiv.style.display = 'none';
+      }
+    };
+
+    function changeUser() {
+      window.location.href = 'index.html';
+    }
+
+    async function startGame() {
+      if (!player) {
+          const savedProfile = localStorage.getItem('togetherProfile');
+          if (savedProfile) {
+              const userData = JSON.parse(savedProfile);
+              player = userData.name;
+          } else {
+              return alert("Please set up your profile on the home page first");
+          }
+      }
+
+      await loadPlayerData();
+
+      // Initialize dailyGames tracker if missing
+      if (!playerData.gameData.ticTacToe.dailyGames) {
+        playerData.gameData.ticTacToe.dailyGames = { date: new Date().toDateString(), count: 0 };
+      }
+
+      await savePlayerData();
+
+      // Hide user selection UI
+      userSetupDiv.style.display = 'none';
+      playerInfo.textContent = `Playing as: ${player}`;
+
+      resetBoard();
+      gameActive = true;
+      renderBoard();
+      statusDiv.textContent = "Your turn (X)";
+      statusDiv.className = "";
+    }
+
+    function resetBoard() {
+      board = Array(9).fill(null);
+      currentPlayer = "X";
+      gameActive = true;
+      playerMoves = [];
+      computerMoves = [];
+      renderBoard();
+    }
+
+    function renderBoard() {
+      boardDiv.innerHTML = "";
+      board.forEach((cell, i) => {
+        const div = document.createElement("div");
+        div.className = `cell ${cell === 'X' ? 'x' : cell === 'O' ? 'o' : ''}`;
+        div.textContent = cell || "";
+        div.onclick = () => makeMove(i);
+        boardDiv.appendChild(div);
+      });
+
+      if (playerData) {
+        const g = playerData.gameData.ticTacToe;
+        scoreDiv.textContent = g.score;
+        dailyGamesDiv.textContent = `${g.dailyGames.count}/10`;
+      }
+    }
+
+    function makeMove(i) {
+      if (!player || !gameActive || board[i] || currentPlayer !== "X") return;
+
+      // Check if player has 3 marks already - remove oldest if so
+      if (playerMoves.length >= 3) {
+        const oldestMove = playerMoves[0];
+        board[oldestMove] = null;
+        playerMoves.shift();
+      }
+
+      board[i] = "X";
+      playerMoves.push(i);
+      currentPlayer = "O";
+      renderBoard();
+
+      const winner = checkWinner();
+      if (winner) {
+        endGame(winner);
+        return;
+      }
+
+      setTimeout(computerMove, 600);
+    }
+
+    function computerMove() {
+      if (!gameActive) return;
+
+      // Check if computer has 3 marks already - remove oldest if so
+      if (computerMoves.length >= 3) {
+        const oldestMove = computerMoves[0];
+        board[oldestMove] = null;
+        computerMoves.shift();
+        renderBoard();
+      }
+
+      // NEVER take center if player's first move was a corner
+      const playerFirstMove = playerMoves[0];
+      const corners = [0, 2, 6, 8];
+      const avoidCenter = corners.includes(playerFirstMove) && computerMoves.length === 0;
+
+      // Check if computer can win
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === null) {
+          board[i] = "O";
+          if (checkWinner() === "O") {
+            board[i] = null;
+            board[i] = "O";
+            computerMoves.push(i);
+            currentPlayer = "X";
+            renderBoard();
+            endGame("O");
+            return;
+          }
+          board[i] = null;
+        }
+      }
+
+      // Check if player can win and block
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === null) {
+          board[i] = "X";
+          if (checkWinner() === "X") {
+            board[i] = null;
+            board[i] = "O";
+            computerMoves.push(i);
+            currentPlayer = "X";
+            renderBoard();
+            const winner = checkWinner();
+            if (winner) endGame(winner);
+            return;
+          }
+          board[i] = null;
+        }
+      }
+
+      // Choose move - NEVER center if player's first move was corner
+      const availableMoves = [];
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === null && !(avoidCenter && i === 4)) {
+          availableMoves.push(i);
+        }
+      }
+
+      if (availableMoves.length > 0) {
+        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+        board[move] = "O";
+        computerMoves.push(move);
+        currentPlayer = "X";
+        renderBoard();
+        const winner = checkWinner();
+        if (winner) endGame(winner);
+      }
+    }
+
+    function checkWinner() {
+      const wins = [[0,1,2],[3,4,5],[6,7,8],
+                    [0,3,6],[1,4,7],[2,5,8],
+                    [0,4,8],[2,4,6]];
+
+      for (const [a,b,c] of wins) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          // Highlight winning cells
+          setTimeout(() => {
+            document.querySelectorAll('.cell')[a].classList.add('win');
+            document.querySelectorAll('.cell')[b].classList.add('win');
+            document.querySelectorAll('.cell')[c].classList.add('win');
+          }, 10);
+
+          return board[a];
+        }
+      }
+
+      return null;
+    }
+
+    async function endGame(winner) {
+      gameActive = false;
+      let msg = "";
+
+      if (winner === "X") {
+        msg = "🎉 You Win!";
+        statusDiv.className = "win-message";
+        await updateScore();
+      }
+      else if (winner === "O") {
+        msg = "💻 Computer Wins!";
+        statusDiv.className = "loss-message";
+        await updateGameCount();
+      }
+
+      statusDiv.textContent = msg;
+
+      setTimeout(() => {
+        if (playerData.gameData.ticTacToe.dailyGames.count >= 10) {
+          statusDiv.textContent = "🚫 Daily limit reached (10 games). Come back tomorrow!";
+          boardDiv.innerHTML = "";
+        } else {
+          resetBoard();
+          statusDiv.textContent = "Your turn (X)";
+          statusDiv.className = "";
+        }
+      }, 2000);
+    }
+
+    // --- API STUFF ---
+    async function loadPlayerData() {
+      try {
+        const res = await fetch(`${API_URL}/api/couple`);
+        const globalState = await res.json();
+        if (globalState && globalState[player]) {
+            playerData = globalState[player];
+        } else {
+            throw new Error("No player data in shared state");
+        }
+      } catch (error) {
+        console.error("Error loading player data:", error);
+        playerData = {
+          name: player,
+          gameData: {
+            totalScore: 0
+          }
+        };
+      }
+      if (!playerData.gameData) {
+         playerData.gameData = { totalScore: 0 };
+      }
+      if (!playerData.gameData.ticTacToe) {
+         playerData.gameData.ticTacToe = { score: 0, dailyGames: { date: new Date().toDateString(), count: 0 } };
+      }
+    }
+
+    async function savePlayerData() {
+      try {
+        await fetch(`${API_URL}/api/couple`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+              [player]: {
+                  gameData: playerData.gameData
+              }
+          })
+        });
+      } catch (error) {
+        console.error("Error saving player data:", error);
+      }
+    }
+
+    async function updateScore() {
+      const g = playerData.gameData.ticTacToe;
+      const today = new Date().toDateString();
+
+      if (g.dailyGames.date !== today) {
+        g.dailyGames.date = today;
+        g.dailyGames.count = 0;
+      }
+
+      if (g.dailyGames.count >= 10) return; // limit reached
+
+      g.score += 1;
+      playerData.gameData.totalScore += 1;
+      g.lastPlayed = today;
+      g.dailyGames.count += 1;
+      playerData.lastUpdated = new Date().toISOString();
+
+      await savePlayerData();
+      renderBoard();
+    }
+
+    async function updateGameCount() {
+      const g = playerData.gameData.ticTacToe;
+      const today = new Date().toDateString();
+
+      if (g.dailyGames.date !== today) {
+        g.dailyGames.date = today;
+        g.dailyGames.count = 0;
+      }
+
+      if (g.dailyGames.count >= 10) return; // limit reached
+
+      g.dailyGames.count += 1;
+      playerData.lastUpdated = new Date().toISOString();
+
+      await savePlayerData();
+      renderBoard();
+    }
+  </script>
+</body>
+</html>

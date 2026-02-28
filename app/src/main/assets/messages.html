@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - Together</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-title i {
+            margin-right: 10px;
+            color: #ff4b90;
+        }
+
+        .btn {
+            background: #ff4b90;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn:hover {
+            background: #ff2d78;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: #764ba2;
+        }
+
+        .btn-secondary:hover {
+            background: #5a3a7e;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1rem;
+            margin: 10px 0;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .countdown {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .message-history {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .message {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+        }
+
+        .message-time {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ff4b90;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        /* Personal Gist Section Styles */
+        .user-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .user-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-card:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-3px);
+        }
+
+        .user-card.selected {
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid #ff4b90;
+        }
+
+        .user-card h3 {
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-connected {
+            background: #4CAF50;
+        }
+
+        .status-disconnected {
+            background: #F44336;
+        }
+
+        .status-loading {
+            background: #FFC107;
+        }
+
+        .selected-user-display {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .change-user-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .change-user-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 600px) {
+            .user-card {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="goBack()">
+        ←
+    </button>
+
+    <div class="container">
+        <header>
+            <h1>Messages</h1>
+            <p class="subtitle">Share special moments with your partner each day</p>
+        </header>
+
+        <!-- Personal Gist Section -->
+        <div class="card" id="personalGistCard">
+            <h2 class="card-title">Personal Gist Settings</h2>
+            <div id="userSelectionContainer">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <div class="status-bar">
+                <div class="status-dot status-loading" id="statusDot"></div>
+                <span id="statusText">Loading personal gist settings...</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Send Daily Message</h2>
+
+            <div>
+                <label for="dailyMessage">Your Message for Today</label>
+                <textarea id="dailyMessage" placeholder="Express your feelings..."></textarea>
+            </div>
+
+            <div class="countdown" id="messageCountdown">You can send a message now!</div>
+
+            <button class="btn" id="sendMessageBtn" onclick="sendDailyMessage()">Send Message</button>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Message History</h2>
+            <button class="btn btn-secondary" onclick="loadMessages()">Reload</button>
+
+            <div class="message-history" id="messageHistory">
+                <div class="message">
+                    <p>No messages yet</p>
+                    <p>Send your first message to get started</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+        let localUser = null;
+        let messageCheckInterval = null;
+
+        function initApp() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (!savedProfile) {
+                showNotification('Please set up your profile first');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            localUser = JSON.parse(savedProfile);
+            loadMessages();
+            updateMessageCountdown();
+
+            document.getElementById('personalGistCard').style.display = 'none';
+
+            if (messageCheckInterval) clearInterval(messageCheckInterval);
+            messageCheckInterval = setInterval(loadMessages, 30000);
+        }
+
+        function goBack() {
+            window.location.href = 'you.html';
+        }
+
+        async function sendDailyMessage() {
+            const messageText = document.getElementById('dailyMessage').value.trim();
+
+            if (!messageText) {
+                showNotification('Please enter a message');
+                return;
+            }
+
+            const today = new Date().toDateString();
+            const lastMessageDate = localUser.lastMessageDate ? new Date(localUser.lastMessageDate).toDateString() : null;
+
+            if (lastMessageDate === today) {
+                showNotification('You can only send one message per day');
+                return;
+            }
+
+            const sendBtn = document.getElementById('sendMessageBtn');
+            const originalText = sendBtn.innerHTML;
+            sendBtn.innerHTML = 'Sending...';
+            sendBtn.disabled = true;
+
+            try {
+                // Fetch the latest global state
+                const resState = await fetch(`${API_URL}/api/couple`);
+                let globalState = {};
+                if (resState.ok) {
+                    globalState = await resState.json();
+                }
+
+                let myState = globalState[localUser.name] || {};
+
+                if (!myState.messages) {
+                    myState.messages = [];
+                }
+
+                myState.messages.push({
+                    text: messageText,
+                    timestamp: new Date().toISOString(),
+                    sender: localUser.name
+                });
+
+                if (myState.messages.length > 50) {
+                    myState.messages = myState.messages.slice(-50);
+                }
+
+                myState.lastMessageDate = new Date().toISOString();
+
+                // Also save to local user profile for convenience
+                localUser.lastMessageDate = myState.lastMessageDate;
+                localStorage.setItem('togetherProfile', JSON.stringify(localUser));
+
+                const res = await fetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        [localUser.name]: myState
+                    })
+                });
+
+                if (res.ok) {
+                    document.getElementById('dailyMessage').value = '';
+                    updateMessageCountdown();
+                    loadMessages();
+                    showNotification('Message sent to your partner!');
+                } else {
+                    showNotification('Failed to share message');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showNotification('Error sending message: ' + error.message);
+            } finally {
+                sendBtn.innerHTML = originalText;
+                sendBtn.disabled = false;
+            }
+        }
+
+        function updateMessageCountdown() {
+            const countdownEl = document.getElementById('messageCountdown');
+            const sendBtn = document.getElementById('sendMessageBtn');
+
+            if (!localUser.lastMessageDate) {
+                countdownEl.textContent = 'You can send a message now!';
+                sendBtn.disabled = false;
+                return;
+            }
+
+            const lastMessageDate = new Date(localUser.lastMessageDate);
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+
+            const timeRemaining = tomorrow - now;
+            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (timeRemaining > 0) {
+                countdownEl.textContent = `Next message in: ${hours}h ${minutes}m`;
+                sendBtn.disabled = true;
+            } else {
+                countdownEl.textContent = 'You can send a message now!';
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function loadMessages() {
+            try {
+                const messageHistory = document.getElementById('messageHistory');
+                let allMessages = [];
+
+                const res = await fetch(`${API_URL}/api/couple`);
+                if (res.ok) {
+                    const globalState = await res.json();
+
+                    const myState = globalState[localUser.name] || {};
+                    const partnerState = globalState[localUser.partner.name] || {};
+
+                    if (myState.messages) {
+                        allMessages = allMessages.concat(myState.messages.map(msg => ({...msg, isOwn: true})));
+                    }
+
+                    if (partnerState.messages) {
+                        allMessages = allMessages.concat(partnerState.messages.map(msg => ({...msg, isOwn: false})));
+                    }
+                }
+
+                allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                if (allMessages.length === 0) {
+                    messageHistory.innerHTML = `
+                        <div class="message">
+                            <p>No messages yet</p>
+                            <p>Send your first message to get started</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const recentMessages = allMessages.slice(-20);
+                messageHistory.innerHTML = '';
+
+                recentMessages.forEach(message => {
+                    const messageEl = document.createElement('div');
+                    messageEl.className = 'message';
+                    messageEl.innerHTML = `
+                        <div><strong>${message.isOwn ? 'You' : localUser.partner.name}:</strong> ${message.text}</div>
+                        <div class="message-time">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${new Date(message.timestamp).toLocaleDateString()}</div>
+                    `;
+                    messageHistory.appendChild(messageEl);
+                });
+
+                messageHistory.scrollTop = messageHistory.scrollHeight;
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            notificationText.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>

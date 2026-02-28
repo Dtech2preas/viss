@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Activities - Together Forever</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #d4145a 0%, #fbb03b 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 i {
+            margin-right: 15px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        .heart {
+            color: #ff4b90;
+            text-shadow: 0 0 10px rgba(255, 75, 144, 0.7);
+            margin: 0 5px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .card-title {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            font-weight: 300;
+        }
+
+        .card-title i {
+            margin-right: 12px;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 18px;
+            margin: 25px 0;
+        }
+
+        .activity-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .activity-item i {
+            font-size: 2.2rem;
+            margin-bottom: 12px;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+
+        .partner-activities {
+            margin: 20px 0;
+        }
+
+        .activity-log {
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .activity-log .time {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(212, 20, 90, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Personal Gist Section Styles */
+        .user-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .user-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-card:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-3px);
+        }
+
+        .user-card.selected {
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .user-card h3 {
+            margin-bottom: 10px;
+            font-weight: 400;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-connected {
+            background: #8cc152;
+            box-shadow: 0 0 8px #8cc152;
+        }
+
+        .status-disconnected {
+            background: #da4453;
+            box-shadow: 0 0 8px #da4453;
+        }
+
+        .status-loading {
+            background: #f6bb42;
+            box-shadow: 0 0 8px #f6bb42;
+        }
+
+        .selected-user-display {
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            margin: 15px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .romantic-element {
+            position: fixed;
+            font-size: 1.5rem;
+            opacity: 0.7;
+            z-index: -1;
+            animation: float 8s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 600px) {
+            .activity-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .user-card {
+                min-width: 100%;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating romantic elements -->
+    <div class="romantic-element" style="top: 10%; left: 5%;">❤️</div>
+    <div class="romantic-element" style="top: 20%; right: 7%;">💖</div>
+    <div class="romantic-element" style="top: 40%; left: 8%;">💕</div>
+    <div class="romantic-element" style="bottom: 30%; right: 10%;">🌸</div>
+    <div class="romantic-element" style="bottom: 15%; left: 12%;">🌹</div>
+
+    <button class="back-btn" onclick="goBack()">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-heart"></i> Our Activities</h1>
+            <p class="subtitle">Share what you're doing with your <span class="heart">love</span></p>
+        </header>
+
+        <!-- Main Activity Sharing Section -->
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-plus-circle"></i> Share Your Activity</h2>
+            <div class="activity-grid">
+                <div class="activity-item" onclick="shareActivity('pooping')">
+                    <i class="fas fa-poop"></i>
+                    <div>Pooping</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('eating')">
+                    <i class="fas fa-utensils"></i>
+                    <div>Eating</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('working')">
+                    <i class="fas fa-laptop"></i>
+                    <div>Working</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('sleeping')">
+                    <i class="fas fa-bed"></i>
+                    <div>Sleeping</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('exercising')">
+                    <i class="fas fa-running"></i>
+                    <div>Exercising</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('thinking')">
+                    <i class="fas fa-brain"></i>
+                    <div>Thinking of You</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('shopping')">
+                    <i class="fas fa-shopping-cart"></i>
+                    <div>Shopping</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('watching')">
+                    <i class="fas fa-tv"></i>
+                    <div>Watching TV</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('cooking')">
+                    <i class="fas fa-utensil-spoon"></i>
+                    <div>Cooking</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('driving')">
+                    <i class="fas fa-car"></i>
+                    <div>Driving</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('missing')">
+                    <i class="fas fa-heart"></i>
+                    <div>Missing You</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('celebrating')">
+                    <i class="fas fa-glass-cheers"></i>
+                    <div>Celebrating</div>
+                </div>
+                <!-- New activities -->
+                <div class="activity-item" onclick="shareActivity('studying')">
+                    <i class="fas fa-book"></i>
+                    <div>Studying</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('goingout')">
+                    <i class="fas fa-walking"></i>
+                    <div>Going Out</div>
+                </div>
+                <div class="activity-item" onclick="shareActivity('goingoffline')">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <div>Going Offline</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-history"></i> Your Love's Recent Activities</h2>
+            <div id="partnerActivities" class="partner-activities">
+                <p>No recent activities from your love yet</p>
+            </div>
+
+            <button class="btn" onclick="loadPartnerActivities()">
+                <i class="fas fa-sync"></i> Refresh Activities
+            </button>
+        </div>
+    </div>
+
+    <footer>
+        Made with ❤️ for owami
+    </footer>
+
+    <div class="notification" id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+        let localUser = null;
+
+        // Initialize the app
+        function initApp() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (!savedProfile) {
+                showNotification('Please set up your profile first');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            localUser = JSON.parse(savedProfile);
+            loadPartnerActivities();
+
+            // Auto-refresh partner activities every 30 seconds
+            setInterval(loadPartnerActivities, 30000);
+        }
+
+        // Go back to main page
+        function goBack() {
+            window.location.href = 'you.html';
+        }
+
+        // Share activity
+        async function shareActivity(activity) {
+            const newActivity = {
+                type: activity,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                // Fetch the latest global state
+                const res = await fetch(`${API_URL}/api/couple`);
+                let globalState = {};
+                if (res.ok) {
+                    globalState = await res.json();
+                }
+
+                // Initialize my section if needed
+                if (!globalState[localUser.name]) {
+                    globalState[localUser.name] = {};
+                }
+                if (!globalState[localUser.name].activities) {
+                    globalState[localUser.name].activities = [];
+                }
+
+                // Append activity
+                globalState[localUser.name].activities.push(newActivity);
+
+                // Trim to 20
+                if (globalState[localUser.name].activities.length > 20) {
+                    globalState[localUser.name].activities = globalState[localUser.name].activities.slice(-20);
+                }
+
+                const response = await fetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        [localUser.name]: {
+                            activities: globalState[localUser.name].activities
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    showNotification('Activity shared: ' + formatActivityType(activity));
+                } else {
+                    showNotification('Failed to share activity');
+                }
+            } catch (error) {
+                console.error('Error sharing activity:', error);
+                showNotification('Error sharing activity: ' + error.message);
+            }
+        }
+
+        // Load partner activities
+        async function loadPartnerActivities() {
+            try {
+                const partnerName = localUser.partner.name;
+                const response = await fetch(`${API_URL}/api/couple`);
+                if(!response.ok) throw new Error("Failed to load shared state");
+                const globalState = await response.json();
+
+                const activitiesContainer = document.getElementById('partnerActivities');
+                activitiesContainer.innerHTML = '';
+
+                if (globalState[partnerName] && globalState[partnerName].activities && globalState[partnerName].activities.length > 0) {
+                    const activities = globalState[partnerName].activities;
+
+                    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                    const recentActivities = activities.slice(0, 10);
+
+                    recentActivities.forEach(activity => {
+                        const timeDiff = Math.floor((new Date() - new Date(activity.timestamp)) / 60000);
+
+                        let timeText = '';
+                        if (timeDiff < 1) timeText = 'just now';
+                        else if (timeDiff < 60) timeText = `${timeDiff} minutes ago`;
+                        else timeText = `${Math.floor(timeDiff/60)} hours ago`;
+
+                        const activityEl = document.createElement('div');
+                        activityEl.className = 'activity-log';
+                        activityEl.innerHTML = `
+                            <div><strong>${formatActivityType(activity.type)}</strong></div>
+                            <div class="time">${timeText}</div>
+                        `;
+
+                        activitiesContainer.appendChild(activityEl);
+                    });
+                } else {
+                    activitiesContainer.innerHTML = '<p>No recent activities from your love yet</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching partner activities:', error);
+                showNotification('Error fetching partner activities');
+            }
+        }
+
+        // Format activity type for display
+        function formatActivityType(type) {
+            const activityMap = {
+                'pooping': 'Pooping 💩',
+                'eating': 'Eating 🍽️',
+                'working': 'Working 💼',
+                'sleeping': 'Sleeping 😴',
+                'exercising': 'Exercising 🏃',
+                'thinking': 'Thinking of You 💭',
+                'shopping': 'Shopping 🛍️',
+                'watching': 'Watching TV 📺',
+                'cooking': 'Cooking 👩‍🍳',
+                'driving': 'Driving 🚗',
+                'missing': 'Missing You 💔',
+                'celebrating': 'Celebrating 🎉',
+                'studying': 'Studying 📚',
+                'goingout': 'Going Out 🚶‍♀️',
+                'goingoffline': 'Going Offline 🔌'
+            };
+
+            return activityMap[type] || type;
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+
+            notificationText.textContent = message;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
