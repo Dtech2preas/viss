@@ -344,14 +344,6 @@
     <h1>Memory Card Game</h1>
 
     <div id="userSetup">
-      <label for="playerSelect">Choose your username:</label>
-      <select id="playerSelect">
-        <option value="">-- Select --</option>
-        <option value="lefa">Lefa</option>
-        <option value="jonas">Jonas</option>
-        <option value="owami">Owami</option>
-        <option value="preasx24">Preasx24</option>
-      </select>
       <button class="startBtn" onclick="startGame()">Start Game</button>
     </div>
 
@@ -394,19 +386,27 @@
 
     // Check for saved user on page load
     window.onload = function() {
-      const savedPlayer = localStorage.getItem('memoryGamePlayer');
-      if (savedPlayer) {
-        playerSelect.value = savedPlayer;
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const userData = JSON.parse(savedProfile);
+        player = userData.name;
         startGame();
+      } else {
+        statusDiv.textContent = "Please set up your profile on the home page first.";
+        userSetup.style.display = "none";
       }
     };
 
     async function startGame() {
-      player = playerSelect.value;
-      if (!player) return alert("Please choose a username");
-
-      // Save to local storage
-      localStorage.setItem('memoryGamePlayer', player);
+      if (!player) {
+          const savedProfile = localStorage.getItem('togetherProfile');
+          if (savedProfile) {
+              const userData = JSON.parse(savedProfile);
+              player = userData.name;
+          } else {
+              return alert("Please set up your profile on the home page first");
+          }
+      }
 
       await loadPlayerData();
 
@@ -434,14 +434,7 @@
     }
 
     function changeUser() {
-      localStorage.removeItem('memoryGamePlayer');
-      userSetup.style.display = "block";
-      playerInfo.textContent = "";
-      boardDiv.innerHTML = "";
-      statusDiv.textContent = "Please select a username and press Start.";
-      statusDiv.className = "status-waiting";
-      scoreDiv.textContent = "";
-      document.querySelector('.change-user').style.display = 'none';
+      window.location.href = 'index.html';
     }
 
     function startNewRound() {

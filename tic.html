@@ -202,13 +202,6 @@
     <h1><i class="fas fa-gamepad"></i> Tic Tac Toe</h1>
 
     <div id="userSetup" class="user-setup">
-      <select id="playerSelect">
-        <option value="">-- Select Username --</option>
-        <option value="lefa">Lefa</option>
-        <option value="jonas">Jonas</option>
-        <option value="owami">Owami</option>
-        <option value="preasx24">Preasx24</option>
-      </select>
       <button onclick="startGame()"><i class="fas fa-play"></i> Start Game</button>
     </div>
 
@@ -252,30 +245,31 @@
 
     // Check if we have a stored user
     window.onload = function() {
-      const storedUser = localStorage.getItem('tictactoe_username');
-      if (storedUser) {
-        document.getElementById('playerSelect').value = storedUser;
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const userData = JSON.parse(savedProfile);
+        player = userData.name;
         startGame();
+      } else {
+        statusDiv.textContent = 'Please set up your profile on the home page first';
+        userSetupDiv.style.display = 'none';
       }
     };
 
     function changeUser() {
-      localStorage.removeItem('tictactoe_username');
-      player = null;
-      userSetupDiv.style.display = 'block';
-      playerInfo.textContent = '';
-      statusDiv.textContent = 'Select your username and start the game';
-      boardDiv.innerHTML = '';
-      scoreDiv.textContent = '0';
-      dailyGamesDiv.textContent = '0/10';
+      window.location.href = 'index.html';
     }
 
     async function startGame() {
-      player = document.getElementById("playerSelect").value;
-      if (!player) return alert("Please choose a username");
-
-      // Store the user selection
-      localStorage.setItem('tictactoe_username', player);
+      if (!player) {
+          const savedProfile = localStorage.getItem('togetherProfile');
+          if (savedProfile) {
+              const userData = JSON.parse(savedProfile);
+              player = userData.name;
+          } else {
+              return alert("Please set up your profile on the home page first");
+          }
+      }
 
       await loadPlayerData();
 

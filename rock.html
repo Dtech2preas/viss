@@ -270,14 +270,7 @@
     <h1><i class="fas fa-hand-scissors"></i> RPS Game</h1>
     
     <div id="userSetup" class="card setup-container">
-      <h2>Choose Player</h2>
-      <select id="playerSelect" class="player-select">
-        <option value="">-- Select Username --</option>
-        <option value="lefa">Lefa</option>
-        <option value="jonas">Jonas</option>
-        <option value="owami">Owami</option>
-        <option value="preasx24">Preasx24</option>
-      </select>
+      <h2>Ready to Play?</h2>
       <button class="btn btn-primary" onclick="startGame()">
         <i class="fas fa-play"></i> Start Game
       </button>
@@ -371,29 +364,31 @@
     // Initialize the game
     function initGame() {
       // Check if we have a saved player
-      const savedPlayer = localStorage.getItem('rpsPlayer');
-      if (savedPlayer) {
-        playerSelect.value = savedPlayer;
+      const savedProfile = localStorage.getItem('togetherProfile');
+      if (savedProfile) {
+        const userData = JSON.parse(savedProfile);
+        player = userData.name;
         startGame();
+      } else {
+        document.getElementById("userSetup").innerHTML = "<p>Please set up your profile on the home page first.</p>";
       }
     }
 
     // Change user function
     function changeUser() {
-      if (confirm("Change user? Your current progress will be saved.")) {
-        localStorage.removeItem('rpsPlayer');
-        document.getElementById("gameContainer").classList.add("hidden");
-        document.getElementById("userSetup").classList.remove("hidden");
-        battleDisplay.classList.add("hidden");
-      }
+      window.location.href = 'index.html';
     }
 
     async function startGame() {
-      player = document.getElementById("playerSelect").value;
-      if (!player) return alert("Please choose a username");
-      
-      // Save to local storage
-      localStorage.setItem('rpsPlayer', player);
+      if (!player) {
+          const savedProfile = localStorage.getItem('togetherProfile');
+          if (savedProfile) {
+              const userData = JSON.parse(savedProfile);
+              player = userData.name;
+          } else {
+              return alert("Please set up your profile on the home page first");
+          }
+      }
       
       try {
         await loadPlayerData();

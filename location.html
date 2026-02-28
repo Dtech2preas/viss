@@ -632,6 +632,25 @@
 
         async function updateLocation() {
             if (navigator.geolocation) {
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                };
+
+                try {
+                    // Try to ask for permissions explicitly if browser supports it
+                    if (navigator.permissions) {
+                        const permission = await navigator.permissions.query({ name: 'geolocation' });
+                        if (permission.state === 'denied') {
+                            showNotification('Location permission is denied. Please enable it in your browser settings.');
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.log("Permissions API not fully supported, continuing with geolocation request", e);
+                }
+
                 navigator.geolocation.getCurrentPosition(
                     async position => {
                         const newLocation = {
@@ -677,8 +696,13 @@
                         updateLocationHistory();
                     },
                     error => {
-                        showNotification('Error getting location: ' + error.message);
-                    }
+                        let errorMessage = "Error getting location";
+                        if (error.code === 1) errorMessage = "Location permission denied by user.";
+                        else if (error.code === 2) errorMessage = "Location position unavailable.";
+                        else if (error.code === 3) errorMessage = "Location request timed out.";
+                        showNotification(errorMessage);
+                    },
+                    options
                 );
             } else {
                 showNotification('Geolocation is not supported by this browser');
