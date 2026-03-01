@@ -109,6 +109,32 @@
         .cert-close { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 2rem; color: #aaa; cursor: pointer; }
         .cert-btn { margin-top: 20px; background: var(--gradient); color: white; border: none; padding: 12px 30px; border-radius: 50px; cursor: pointer; font-size: 1.1rem; font-family: 'Montserrat'; font-weight: bold;}
 
+        .toaster {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2000;
+            text-align: center;
+        }
+
+        .toaster.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            visibility: visible;
+        }
+
         @media (max-width: 600px) {
             .input-group { flex-direction: column; }
             .coupon-grid { grid-template-columns: 1fr; }
@@ -135,8 +161,10 @@
                 <div>Issued: <span id="certIssueDate"></span></div>
                 <div>Expires: <span id="certExpDate"></span></div>
             </div>
-            <button class="cert-btn" id="certRedeemBtn" onclick="">Redeem Now</button>
         </div>
+    </div>
+    <div id="toaster" class="toaster">
+        Bought! Check your inventory.
     </div>
     <div class="container">
         <header>
@@ -348,6 +376,9 @@
             const title = unescape(encodedTitle);
             if (couponState.balances[userData.name] < price) return;
 
+            const confirmPurchase = await appConfirm(`Are you sure you want to purchase ${title} for ${price} points?`);
+            if (!confirmPurchase) return;
+
             // Special logic for steal points
             if (id === 'hard4') {
                 if (couponState.balances[userData.partner.name] < 100) {
@@ -358,7 +389,7 @@
                 // Pay the cost
                 couponState.balances[userData.name] -= price;
 
-                appAlert("You stole 100 points!");
+                showToaster("Stole 100 points!");
                 updateUI();
                 await saveData();
                 return;
@@ -371,12 +402,24 @@
             couponState.inventory[userData.name].push({
                 id: Date.now().toString() + '_' + id,
                 title: title,
-                purchasedAt: Date.now()
+                purchasedAt: Date.now(),
+                redeemed: false
             });
 
             updateUI();
             await saveData();
-            appAlert("Coupon purchased successfully! It's in your inventory.");
+            showToaster("Bought! Check your inventory.");
+        }
+
+        function showToaster(message) {
+            const toaster = document.getElementById('toaster');
+            if (toaster) {
+                toaster.innerText = message;
+                toaster.classList.add('show');
+                setTimeout(() => {
+                    toaster.classList.remove('show');
+                }, 3000);
+            }
         }
 
         function renderInventory() {
@@ -395,12 +438,22 @@
                 // We use escape to handle special chars in titles when passing to onclick
                 const safeTitle = escape(dynamicTitle);
                 const issueDate = item.id.split('_')[0]; // The timestamp when it was bought
-                list.innerHTML += `
-                    <div class="inventory-item" style="cursor: pointer;" onclick="viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">
-                        <div style="font-weight:600;">🎟️ ${dynamicTitle}</div>
-                        <button class="btn-redeem" onclick="event.stopPropagation(); viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">View</button>
-                    </div>
-                `;
+
+                if (item.redeemed) {
+                    list.innerHTML += `
+                        <div class="inventory-item" style="cursor: pointer;" onclick="viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">
+                            <div style="font-weight:600; color: #aaa;">🎟️ ${dynamicTitle} (Redeemed)</div>
+                            <button class="btn-redeem" style="background: var(--primary-color);" onclick="event.stopPropagation(); viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">View</button>
+                        </div>
+                    `;
+                } else {
+                    list.innerHTML += `
+                        <div class="inventory-item">
+                            <div style="font-weight:600;">🎟️ ${dynamicTitle}</div>
+                            <button class="btn-redeem" onclick="event.stopPropagation(); redeemCoupon('${item.id}')">Redeem</button>
+                        </div>
+                    `;
+                }
             });
         }
 
@@ -416,9 +469,6 @@
             document.getElementById('certIssueDate').innerText = issueDate.toLocaleDateString();
             document.getElementById('certExpDate').innerText = expDate.toLocaleDateString();
 
-            const btn = document.getElementById('certRedeemBtn');
-            btn.onclick = () => redeemCoupon(inventoryId);
-
             document.getElementById('certModal').style.display = 'flex';
         }
 
@@ -427,17 +477,15 @@
         }
 
         async function redeemCoupon(inventoryId) {
-            const result = await appConfirm("Are you sure you want to redeem this now? It will notify your partner and be removed from your inventory.");
+            const result = await appConfirm("Are you sure you want to redeem this now?");
             if (!result) return;
 
             const myInventory = couponState.inventory[userData.name];
             const itemIndex = myInventory.findIndex(i => i.id === inventoryId);
 
             if (itemIndex > -1) {
-                const item = myInventory[itemIndex];
-                myInventory.splice(itemIndex, 1);
+                myInventory[itemIndex].redeemed = true;
 
-                closeCert();
                 updateUI();
                 await saveData();
                 appAlert(`Coupon Redeemed! Make sure to tell ${userData.partner.name} to fulfill it!`);
