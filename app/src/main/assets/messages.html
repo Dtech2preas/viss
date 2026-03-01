@@ -306,9 +306,7 @@
                 <textarea id="dailyMessage" placeholder="Express your feelings..."></textarea>
             </div>
 
-            <div class="countdown" id="messageCountdown">You can send a message now!</div>
-
-            <button class="btn" id="sendMessageBtn" onclick="sendDailyMessage()">Send Message</button>
+            <button class="btn" id="sendMessageBtn" onclick="sendDailyMessage()" style="margin-top: 15px;">Send Message</button>
         </div>
 
         <div class="card">
@@ -343,7 +341,6 @@
 
             localUser = JSON.parse(savedProfile);
             loadMessages();
-            updateMessageCountdown();
 
             document.getElementById('personalGistCard').style.display = 'none';
 
@@ -360,14 +357,6 @@
 
             if (!messageText) {
                 showNotification('Please enter a message');
-                return;
-            }
-
-            const today = new Date().toDateString();
-            const lastMessageDate = localUser.lastMessageDate ? new Date(localUser.lastMessageDate).toDateString() : null;
-
-            if (lastMessageDate === today) {
-                showNotification('You can only send one message per day');
                 return;
             }
 
@@ -416,7 +405,6 @@
 
                 if (res.ok) {
                     document.getElementById('dailyMessage').value = '';
-                    updateMessageCountdown();
                     loadMessages();
                     showNotification('Message sent to your partner!');
                 } else {
@@ -427,35 +415,6 @@
                 showNotification('Error sending message: ' + error.message);
             } finally {
                 sendBtn.innerHTML = originalText;
-                sendBtn.disabled = false;
-            }
-        }
-
-        function updateMessageCountdown() {
-            const countdownEl = document.getElementById('messageCountdown');
-            const sendBtn = document.getElementById('sendMessageBtn');
-
-            if (!localUser.lastMessageDate) {
-                countdownEl.textContent = 'You can send a message now!';
-                sendBtn.disabled = false;
-                return;
-            }
-
-            const lastMessageDate = new Date(localUser.lastMessageDate);
-            const now = new Date();
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 0, 0);
-
-            const timeRemaining = tomorrow - now;
-            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-
-            if (timeRemaining > 0) {
-                countdownEl.textContent = `Next message in: ${hours}h ${minutes}m`;
-                sendBtn.disabled = true;
-            } else {
-                countdownEl.textContent = 'You can send a message now!';
                 sendBtn.disabled = false;
             }
         }
