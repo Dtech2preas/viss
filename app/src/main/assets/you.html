@@ -374,6 +374,66 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Passcode Modal Styles */
+        .custom-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(2px);
+            font-family: 'Montserrat', sans-serif;
+        }
+        .custom-modal-content {
+            background: #fff5f9;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(255, 126, 185, 0.2);
+            min-width: 280px;
+            max-width: 80%;
+            border: 2px solid #ff7eb9;
+        }
+        .custom-modal-content p {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .custom-modal-input {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ff7eb9;
+            border-radius: 10px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+        }
+        .custom-modal-buttons {
+            display: flex; justify-content: center; gap: 15px;
+        }
+        .custom-modal-btn {
+            background: linear-gradient(45deg, #ff7eb9, #ff65a3);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .custom-modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,126,185,0.4);
+        }
+        .custom-modal-btn.cancel {
+            background: #ccc;
+            color: #333;
+        }
+        .custom-modal-btn.cancel:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
     </style>
 <script src="custom-alerts.js"></script>
 </head>
