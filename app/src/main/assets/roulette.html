@@ -370,9 +370,7 @@
         }
 
         function checkSpinStatus() {
-            const now = Date.now();
-            const daysSinceSpin = (now - rouletteState.lastSpinTime) / (1000 * 60 * 60 * 24);
-            const cooldownDays = 7;
+            const now = new Date();
             const myName = userData.name;
             const partnerName = userData.partner.name;
 
@@ -388,9 +386,28 @@
 
             const { isMeOnline, isPartnerOnline } = checkOnlineStatus();
 
-            if (daysSinceSpin < cooldownDays) {
+            // Calculate when the last Saturday at midnight was
+            const lastSaturday = new Date(now);
+            // day of week: 0 is Sunday, 6 is Saturday
+            const currentDay = lastSaturday.getDay();
+            // To get to last Saturday, we subtract (currentDay + 1) days, UNLESS it's exactly Saturday,
+            // in which case it was today at midnight.
+            const daysSinceSaturday = (currentDay === 6) ? 0 : (currentDay + 1);
+            lastSaturday.setDate(lastSaturday.getDate() - daysSinceSaturday);
+            lastSaturday.setHours(0, 0, 0, 0);
+
+            // They are in cooldown if their last spin was ON OR AFTER the most recent Saturday midnight
+            const isInCooldown = rouletteState.lastSpinTime >= lastSaturday.getTime();
+
+            if (isInCooldown) {
+                // Calculate days left until NEXT Saturday midnight
+                const nextSaturday = new Date(lastSaturday);
+                nextSaturday.setDate(lastSaturday.getDate() + 7);
+
+                const msLeft = nextSaturday.getTime() - now.getTime();
+                const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
                 // Cooldown active
-                const daysLeft = Math.ceil(cooldownDays - daysSinceSpin);
                 turnStatusEl.innerHTML = `⏳ Waiting for <b>${daysLeft} day(s)</b> before the next spin by <b>${rouletteState.nextTurn}</b>.`;
                 spinBtn.disabled = true;
 
