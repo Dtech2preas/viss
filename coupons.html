@@ -143,6 +143,58 @@
             .cert-inner { padding: 30px 15px; }
             .cert-footer { flex-direction: column; gap: 10px; text-align: center; }
         }
+
+        /* Static Modal Styles */
+        .custom-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(2px);
+            font-family: 'Montserrat', sans-serif;
+        }
+        .custom-modal-content {
+            background: #fff5f9;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(255, 126, 185, 0.2);
+            min-width: 280px;
+            max-width: 80%;
+            border: 2px solid #ff7eb9;
+        }
+        .custom-modal-content p {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .custom-modal-buttons {
+            display: flex; justify-content: center; gap: 15px;
+        }
+        .custom-modal-btn {
+            background: linear-gradient(45deg, #ff7eb9, #ff65a3);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .custom-modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,126,185,0.4);
+        }
+        .custom-modal-btn.cancel {
+            background: #ccc;
+            color: #333;
+        }
+        .custom-modal-btn.cancel:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
     </style>
 <script src="custom-alerts.js"></script>
 </head>
@@ -163,6 +215,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Static HTML Modal for Alert -->
+    <div id="static-alert-modal" class="custom-modal" style="display: none;">
+        <div class="custom-modal-content">
+            <p id="static-alert-text" class="custom-modal-text"></p>
+            <div class="custom-modal-buttons">
+                <button id="static-alert-ok" class="custom-modal-btn confirm">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Static HTML Modal for Confirm -->
+    <div id="static-confirm-modal" class="custom-modal" style="display: none;">
+        <div class="custom-modal-content">
+            <p id="static-confirm-text" class="custom-modal-text"></p>
+            <div class="custom-modal-buttons">
+                <button id="static-confirm-cancel" class="custom-modal-btn cancel">Cancel</button>
+                <button id="static-confirm-ok" class="custom-modal-btn confirm">OK</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toaster" class="toaster">
         Bought! Check your inventory.
     </div>
@@ -252,6 +326,45 @@
 
         let currentTab = 'store';
 
+        function showStaticAlert(message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('static-alert-modal');
+                const text = document.getElementById('static-alert-text');
+                const okBtn = document.getElementById('static-alert-ok');
+
+                text.innerText = message;
+                modal.style.display = 'flex';
+
+                okBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    resolve();
+                };
+            });
+        }
+
+        function showStaticConfirm(message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('static-confirm-modal');
+                const text = document.getElementById('static-confirm-text');
+                const cancelBtn = document.getElementById('static-confirm-cancel');
+                const okBtn = document.getElementById('static-confirm-ok');
+
+                text.innerText = message;
+                modal.style.display = 'flex';
+
+                cancelBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    resolve(false);
+                };
+
+                okBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    resolve(true);
+                };
+            });
+        }
+
+
         const defaultCoupons = [
             { id: 'hard1', title: 'Call by {partner}', price: 50 },
             { id: 'hard2', title: 'Receive a vid call from {partner}', price: 100 },
@@ -297,7 +410,7 @@
 
             } catch (e) {
                 console.error("Error loading coupon data", e);
-                appAlert("Failed to load. Try again.");
+                showStaticAlert("Failed to load. Try again.");
             } finally {
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
@@ -338,13 +451,13 @@
 
         async function awardPoints() {
             const amount = parseInt(document.getElementById('awardAmount').value);
-            if (isNaN(amount) || amount <= 0) return appAlert("Enter a valid amount");
+            if (isNaN(amount) || amount <= 0) return showStaticAlert("Enter a valid amount");
 
             couponState.balances[userData.partner.name] += amount;
             document.getElementById('awardAmount').value = 10;
             updateUI();
             await saveData();
-            appAlert(`Awarded ${amount} points to ${userData.partner.name}!`);
+            showStaticAlert(`Awarded ${amount} points to ${userData.partner.name}!`);
         }
 
         function renderStore() {
@@ -376,13 +489,13 @@
             const title = unescape(encodedTitle);
             if (couponState.balances[userData.name] < price) return;
 
-            const confirmPurchase = await appConfirm(`Are you sure you want to purchase ${title} for ${price} points?`);
+            const confirmPurchase = await showStaticConfirm(`Are you sure you want to purchase ${title} for ${price} points?`);
             if (!confirmPurchase) return;
 
             // Special logic for steal points
             if (id === 'hard4') {
                 if (couponState.balances[userData.partner.name] < 100) {
-                    return appAlert("Your partner doesn't have 100 points to steal!");
+                    return showStaticAlert("Your partner doesn't have 100 points to steal!");
                 }
                 couponState.balances[userData.partner.name] -= 100;
                 couponState.balances[userData.name] += 100;
@@ -477,7 +590,7 @@
         }
 
         async function redeemCoupon(inventoryId) {
-            const result = await appConfirm("Are you sure you want to redeem this now?");
+            const result = await showStaticConfirm("Are you sure you want to redeem this now?");
             if (!result) return;
 
             const myInventory = couponState.inventory[userData.name];
@@ -488,7 +601,7 @@
 
                 updateUI();
                 await saveData();
-                appAlert(`Coupon Redeemed! Make sure to tell ${userData.partner.name} to fulfill it!`);
+                showStaticAlert(`Coupon Redeemed! Make sure to tell ${userData.partner.name} to fulfill it!`);
             }
         }
 
@@ -501,7 +614,7 @@
             const price = parseInt(priceInput.value);
 
             if (!task || isNaN(price) || price <= 0) {
-                appAlert("Please enter a valid description and price.");
+                showStaticAlert("Please enter a valid description and price.");
                 return;
             }
 
@@ -520,7 +633,7 @@
 
             updateUI();
             await saveData();
-            appAlert("Proposed! Waiting for partner to approve.");
+            showStaticAlert("Proposed! Waiting for partner to approve.");
         }
 
         async function acceptProposal(id) {
@@ -540,7 +653,7 @@
 
                 updateUI();
                 await saveData();
-                appAlert("Added to store!");
+                showStaticAlert("Added to store!");
             }
         }
 
@@ -551,7 +664,7 @@
                 const newPrice = parseInt(document.getElementById(inputId).value);
 
                 if (isNaN(newPrice) || newPrice <= 0) {
-                    appAlert("Enter a valid price.");
+                    showStaticAlert("Enter a valid price.");
                     return;
                 }
 
