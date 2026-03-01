@@ -113,6 +113,29 @@ class CoupleService : Service() {
                     }
                 }
 
+                var lastRouletteProposalsCount = sharedPref.getInt("lastRouletteProposalsCount_$partnerName", -1)
+                if (globalState.has("rouletteState")) {
+                    val rouletteState = globalState.getJSONObject("rouletteState")
+                    if (rouletteState.has("proposals")) {
+                        val proposals = rouletteState.getJSONArray("proposals")
+                        var partnerProposalsCount = 0
+                        for (i in 0 until proposals.length()) {
+                            val proposal = proposals.getJSONObject(i)
+                            if (proposal.has("author") && proposal.getString("author") == partnerName) {
+                                partnerProposalsCount++
+                            }
+                        }
+
+                        if (lastRouletteProposalsCount != -1 && partnerProposalsCount > lastRouletteProposalsCount) {
+                            sendNotification("$partnerName added a suggestion to roulette")
+                        }
+                        with(sharedPref.edit()) {
+                            putInt("lastRouletteProposalsCount_$partnerName", partnerProposalsCount)
+                            apply()
+                        }
+                    }
+                }
+
                 if (globalState.has(partnerName)) {
                     val partnerStateStr = globalState.getJSONObject(partnerName).toString()
                     val lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
@@ -195,6 +218,15 @@ class CoupleService : Service() {
             }
         }
 
+        if (currentState.has("messages")) {
+            val currentMessages = currentState.getJSONArray("messages")
+            val lastMessagesCount = if (lastState.has("messages")) lastState.getJSONArray("messages").length() else 0
+
+            if (currentMessages.length() > lastMessagesCount) {
+                sendNotification("$partnerName send you a message")
+            }
+        }
+
         if (currentState.has("coupons")) {
             val currentCoupons = currentState.getJSONObject("coupons")
             val lastCoupons = if (lastState.has("coupons")) lastState.getJSONObject("coupons") else null
@@ -244,9 +276,10 @@ class CoupleService : Service() {
                             val lastUserPoints = lastBalances.getInt(localUserName)
 
                             if (currentUserPoints > lastUserPoints) {
+                                val difference = currentUserPoints - lastUserPoints
                                 // Either partner awarded points or stole points (but stealing subtracts from partner).
                                 // We just say points received.
-                                sendNotification("$partnerName gave you some points! 💖")
+                                sendNotification("$partnerName had awarded you $difference points")
                             }
                         }
                     }
