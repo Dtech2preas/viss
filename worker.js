@@ -1,8 +1,15 @@
 export default {
   async fetch(request, env) {
+    // Check request origin
+    const origin = request.headers.get('Origin');
+    let allowedOrigin = 'https://together.preasx24.co.za';
+    if (origin === 'http://together.preasx24.co.za' || origin === 'https://together.preasx24.co.za') {
+      allowedOrigin = origin;
+    }
+
     // Add CORS headers to all responses
     const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };

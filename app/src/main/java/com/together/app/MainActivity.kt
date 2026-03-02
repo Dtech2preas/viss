@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidBridge")
 
         // Load the initial HTML file
-        webView.loadUrl("file:///android_asset/you.html")
+        webView.loadUrl("https://together.preasx24.co.za/you.html")
     }
 
     private fun askForPermissions() {
