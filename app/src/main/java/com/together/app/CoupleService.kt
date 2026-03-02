@@ -92,6 +92,7 @@ class CoupleService : Service() {
 
             val request = Request.Builder()
                 .url(apiUrl)
+                .addHeader("Authorization", "Bearer auth_token_jonas_owami_secure_2024")
                 .build()
 
             val response = client.newCall(request).execute()
