@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -587,7 +588,7 @@
 
         async function loadLocationData() {
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 if(!response.ok) throw new Error("Failed to load shared state");
                 globalState = await response.json();
 
@@ -640,7 +641,7 @@
                         };
 
                         // Fetch latest global state
-                        const res = await fetch(`${API_URL}/api/couple`);
+                        const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
                         if (res.ok) {
                            globalState = await res.json();
                         }
@@ -659,7 +660,7 @@
                             const address = await getAddressFromCoords(newLocation.lat, newLocation.lng);
                             document.getElementById('userAddress').textContent = address;
 
-                            const response = await fetch(`${API_URL}/api/couple`, {
+                            const response = await window.authenticatedFetch(`${API_URL}/api/couple`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -718,7 +719,7 @@
 
         async function updatePartnerLocation() {
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 if(!response.ok) throw new Error("Failed to load shared state");
                 globalState = await response.json();
 
@@ -776,7 +777,7 @@
 
             if (updated) {
                 try {
-                    await fetch(`${API_URL}/api/couple`, {
+                    await window.authenticatedFetch(`${API_URL}/api/couple`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

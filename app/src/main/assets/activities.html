@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -463,7 +464,7 @@
 
             try {
                 // Fetch the latest global state
-                const res = await fetch(`${API_URL}/api/couple`);
+                const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 let globalState = {};
                 if (res.ok) {
                     globalState = await res.json();
@@ -485,7 +486,7 @@
                     globalState[localUser.name].activities = globalState[localUser.name].activities.slice(-20);
                 }
 
-                const response = await fetch(`${API_URL}/api/couple`, {
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -510,7 +511,7 @@
         async function loadPartnerActivities() {
             try {
                 const partnerName = localUser.partner.name;
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 if(!response.ok) throw new Error("Failed to load shared state");
                 const globalState = await response.json();
 

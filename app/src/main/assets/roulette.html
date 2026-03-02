@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -280,7 +281,7 @@
             document.getElementById('app-content').style.display = 'none';
 
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const data = await response.json();
 
                 if (data.rouletteState) {
@@ -304,7 +305,7 @@
         async function pollData() {
             if (isSpinning) return; // Don't interrupt animations
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const data = await response.json();
                 if (data.rouletteState) {
                     const prevSpinEvent = rouletteState.currentSpinEvent;
@@ -337,7 +338,7 @@
 
         async function saveData() {
             try {
-                await fetch(`${API_URL}/api/couple`, {
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rouletteState: rouletteState })
