@@ -87,8 +87,11 @@ class CoupleService : Service() {
 
         try {
             val profile = JSONObject(profileJson)
-            val localUserName = profile.getString("name")
-            val partnerName = profile.getJSONObject("partner").getString("name")
+            val localUserName = profile.optString("name", "")
+            val partnerObj = profile.optJSONObject("partner")
+            val partnerName = partnerObj?.optString("name", "") ?: ""
+
+            if (localUserName.isEmpty() || partnerName.isEmpty()) return
 
             val request = Request.Builder()
                 .url(apiUrl)
@@ -104,8 +107,8 @@ class CoupleService : Service() {
 
                 // Track root level secret additions (bucketList & rouletteState)
                 var lastBucketCount = sharedPref.getInt("lastBucketCount_$partnerName", -1)
-                if (globalState.has("bucketList")) {
-                    val bucketList = globalState.getJSONArray("bucketList")
+                val bucketList = globalState.optJSONArray("bucketList")
+                if (bucketList != null) {
                     if (lastBucketCount != -1 && bucketList.length() > lastBucketCount) {
                         sendNotification("$partnerName added a new item to the bucket list! ✨")
                     }
@@ -116,14 +119,14 @@ class CoupleService : Service() {
                 }
 
                 var lastRouletteProposalsCount = sharedPref.getInt("lastRouletteProposalsCount_$partnerName", -1)
-                if (globalState.has("rouletteState")) {
-                    val rouletteState = globalState.getJSONObject("rouletteState")
-                    if (rouletteState.has("proposals")) {
-                        val proposals = rouletteState.getJSONArray("proposals")
+                val rouletteState = globalState.optJSONObject("rouletteState")
+                if (rouletteState != null) {
+                    val proposals = rouletteState.optJSONArray("proposals")
+                    if (proposals != null) {
                         var partnerProposalsCount = 0
                         for (i in 0 until proposals.length()) {
-                            val proposal = proposals.getJSONObject(i)
-                            if (proposal.has("author") && proposal.getString("author") == partnerName) {
+                            val proposal = proposals.optJSONObject(i)
+                            if (proposal != null && proposal.optString("author") == partnerName) {
                                 partnerProposalsCount++
                             }
                         }
@@ -138,8 +141,9 @@ class CoupleService : Service() {
                     }
                 }
 
-                if (globalState.has("couponState")) {
-                    val couponStateStr = globalState.getJSONObject("couponState").toString()
+                val couponStateObj = globalState.optJSONObject("couponState")
+                if (couponStateObj != null) {
+                    val couponStateStr = couponStateObj.toString()
                     val lastCouponStateStr = sharedPref.getString("lastCouponState", "{}") ?: "{}"
 
                     if (couponStateStr != lastCouponStateStr) {
@@ -147,13 +151,12 @@ class CoupleService : Service() {
                         val lastCouponState = JSONObject(lastCouponStateStr)
 
                         // Check if points changed
-                        if (currentCouponState.has("balances") && lastCouponState.has("balances")) {
-                            val currentBalances = currentCouponState.getJSONObject("balances")
-                            val lastBalances = lastCouponState.getJSONObject("balances")
-
+                        val currentBalances = currentCouponState.optJSONObject("balances")
+                        val lastBalances = lastCouponState.optJSONObject("balances")
+                        if (currentBalances != null && lastBalances != null) {
                             if (currentBalances.has(localUserName) && lastBalances.has(localUserName)) {
-                                val currentUserPoints = currentBalances.getInt(localUserName)
-                                val lastUserPoints = lastBalances.getInt(localUserName)
+                                val currentUserPoints = currentBalances.optInt(localUserName, 0)
+                                val lastUserPoints = lastBalances.optInt(localUserName, 0)
 
                                 if (currentUserPoints > lastUserPoints) {
                                     val difference = currentUserPoints - lastUserPoints
@@ -163,13 +166,12 @@ class CoupleService : Service() {
                         }
 
                         // Check if partner's inventory decreased (they redeemed a coupon)
-                        if (currentCouponState.has("inventory") && lastCouponState.has("inventory")) {
-                            val currentInventory = currentCouponState.getJSONObject("inventory")
-                            val lastInventory = lastCouponState.getJSONObject("inventory")
-
-                            if (currentInventory.has(partnerName) && lastInventory.has(partnerName)) {
-                                val currentPartnerInv = currentInventory.getJSONArray(partnerName)
-                                val lastPartnerInv = lastInventory.getJSONArray(partnerName)
+                        val currentInventory = currentCouponState.optJSONObject("inventory")
+                        val lastInventory = lastCouponState.optJSONObject("inventory")
+                        if (currentInventory != null && lastInventory != null) {
+                            val currentPartnerInv = currentInventory.optJSONArray(partnerName)
+                            val lastPartnerInv = lastInventory.optJSONArray(partnerName)
+                            if (currentPartnerInv != null && lastPartnerInv != null) {
                                 if (currentPartnerInv.length() < lastPartnerInv.length()) {
                                     sendNotification("$partnerName redeemed a coupon!")
                                 } else if (currentPartnerInv.length() > lastPartnerInv.length()) {
@@ -185,8 +187,9 @@ class CoupleService : Service() {
                     }
                 }
 
-                if (globalState.has(partnerName)) {
-                    val partnerStateStr = globalState.getJSONObject(partnerName).toString()
+                val partnerStateObj = globalState.optJSONObject(partnerName)
+                if (partnerStateObj != null) {
+                    val partnerStateStr = partnerStateObj.toString()
                     val lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
 
                     if (partnerStateStr != lastPartnerStateStr) {
@@ -208,24 +211,24 @@ class CoupleService : Service() {
     }
 
     private fun checkAndNotify(partnerName: String, currentState: JSONObject, lastState: JSONObject) {
-        if (currentState.has("activities")) {
-            val currentActivities = currentState.getJSONArray("activities")
-            val lastActivities = if (lastState.has("activities")) lastState.getJSONArray("activities") else null
+        val currentActivities = currentState.optJSONArray("activities")
+        if (currentActivities != null && currentActivities.length() > 0) {
+            val lastActivities = lastState.optJSONArray("activities")
 
-            if (currentActivities.length() > 0) {
-                val latestActivity = currentActivities.getJSONObject(currentActivities.length() - 1)
-                val type = latestActivity.getString("type")
-                val timestamp = latestActivity.getString("timestamp")
+            val latestActivity = currentActivities.optJSONObject(currentActivities.length() - 1)
+            if (latestActivity != null) {
+                val type = latestActivity.optString("type", "")
+                val timestamp = latestActivity.optString("timestamp", "")
 
                 var isNew = true
                 if (lastActivities != null && lastActivities.length() > 0) {
-                    val lastLatestActivity = lastActivities.getJSONObject(lastActivities.length() - 1)
-                    if (lastLatestActivity.getString("timestamp") == timestamp && lastLatestActivity.getString("type") == type) {
+                    val lastLatestActivity = lastActivities.optJSONObject(lastActivities.length() - 1)
+                    if (lastLatestActivity != null && lastLatestActivity.optString("timestamp", "") == timestamp && lastLatestActivity.optString("type", "") == type) {
                         isNew = false
                     }
                 }
 
-                if (isNew) {
+                if (isNew && type.isNotEmpty()) {
                     val formattedType = formatActivityType(type)
                     sendNotification("$partnerName is $formattedType")
                 }
@@ -233,33 +236,31 @@ class CoupleService : Service() {
         }
 
         if (currentState.has("mood")) {
-            val currentMood = currentState.getString("mood")
-            val lastMood = if (lastState.has("mood")) lastState.getString("mood") else null
+            val currentMood = currentState.optString("mood", "")
+            val lastMood = lastState.optString("mood", "")
             if (currentMood != lastMood && currentMood.isNotEmpty()) {
                 sendNotification("$partnerName is feeling $currentMood")
             }
         }
 
-        if (currentState.has("studyLogs")) {
-            val currentLogs = currentState.getJSONArray("studyLogs")
-            val lastLogsCount = if (lastState.has("studyLogs")) lastState.getJSONArray("studyLogs").length() else 0
+        val currentLogs = currentState.optJSONArray("studyLogs")
+        if (currentLogs != null) {
+            val lastLogs = lastState.optJSONArray("studyLogs")
+            val lastLogsCount = lastLogs?.length() ?: 0
 
             if (currentLogs.length() > lastLogsCount) {
-                val latestLog = currentLogs.getJSONObject(currentLogs.length() - 1)
                 sendNotification("$partnerName finished studying! 📚")
             }
         }
 
-        if (currentState.has("gameData")) {
-            val currentGameData = currentState.getJSONObject("gameData")
-            val currentTotalScore = if (currentGameData.has("totalScore")) currentGameData.getInt("totalScore") else 0
+        val currentGameData = currentState.optJSONObject("gameData")
+        if (currentGameData != null) {
+            val currentTotalScore = currentGameData.optInt("totalScore", 0)
 
             var lastTotalScore = 0
-            if (lastState.has("gameData")) {
-                val lastGameData = lastState.getJSONObject("gameData")
-                if (lastGameData.has("totalScore")) {
-                    lastTotalScore = lastGameData.getInt("totalScore")
-                }
+            val lastGameData = lastState.optJSONObject("gameData")
+            if (lastGameData != null) {
+                lastTotalScore = lastGameData.optInt("totalScore", 0)
             }
 
             if (currentTotalScore > lastTotalScore) {
@@ -267,15 +268,15 @@ class CoupleService : Service() {
             }
         }
 
-        if (currentState.has("messages")) {
-            val currentMessages = currentState.getJSONArray("messages")
-            val lastMessagesCount = if (lastState.has("messages")) lastState.getJSONArray("messages").length() else 0
+        val currentMessages = currentState.optJSONArray("messages")
+        if (currentMessages != null) {
+            val lastMessages = lastState.optJSONArray("messages")
+            val lastMessagesCount = lastMessages?.length() ?: 0
 
             if (currentMessages.length() > lastMessagesCount) {
                 sendNotification("$partnerName send you a message")
             }
         }
-
     }
 
     private fun formatActivityType(type: String): String {

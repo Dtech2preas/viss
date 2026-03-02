@@ -63,9 +63,14 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 // Inject JavaScript to intercept localStorage profile changes
+                // We use setInterval because the page might redirect, load slowly, or the JS app might
+                // not have set the value yet.
                 view?.evaluateJavascript(
                     """
                     (function() {
+                        if (window.androidBridgeInitialized) return;
+                        window.androidBridgeInitialized = true;
+
                         var originalSetItem = localStorage.setItem;
                         localStorage.setItem = function(key, value) {
                             var event = new Event('itemInserted');
@@ -73,16 +78,26 @@ class MainActivity : AppCompatActivity() {
                             event.key = key;
                             document.dispatchEvent(event);
                             originalSetItem.apply(this, arguments);
-                            if (key === 'togetherProfile') {
-                                AndroidBridge.saveProfile(value);
+                            if (key === 'togetherProfile' && window.AndroidBridge) {
+                                window.AndroidBridge.saveProfile(value);
                             }
                         };
 
-                        // Also check on load in case it's already set
+                        // Check on load in case it's already set
                         var profile = localStorage.getItem('togetherProfile');
-                        if (profile) {
-                            AndroidBridge.saveProfile(profile);
+                        if (profile && window.AndroidBridge) {
+                            window.AndroidBridge.saveProfile(profile);
                         }
+
+                        // Polling fallback in case localStorage was written before injection
+                        var lastProfile = profile;
+                        setInterval(function() {
+                            var currentProfile = localStorage.getItem('togetherProfile');
+                            if (currentProfile && currentProfile !== lastProfile && window.AndroidBridge) {
+                                lastProfile = currentProfile;
+                                window.AndroidBridge.saveProfile(currentProfile);
+                            }
+                        }, 2000);
                     })();
                     """.trimIndent(), null
                 )
