@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -383,7 +384,7 @@
         async function syncStudyStatus() {
             if (!userData) return;
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const coupleData = await response.json();
 
                 const myName = userData.name;
@@ -426,14 +427,14 @@
 
         async function sendLovesAndKisses() {
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const coupleData = await response.json();
                 const myName = userData.name;
                 const myData = coupleData[myName] || {};
 
                 const kissesSent = (myData.kissesSent || 0) + 1;
 
-                await fetch(`${API_URL}/api/couple`, {
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -543,12 +544,12 @@
 
             // Set isStudying to true in backend
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const coupleData = await response.json();
                 const userName = userData.name;
                 const userObj = coupleData[userName] || {};
 
-                await fetch(`${API_URL}/api/couple`, {
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -590,7 +591,7 @@
 
             try {
                 // Fetch current user data from backend first to append to array
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const coupleData = await response.json();
 
                 const userName = userData.name;
@@ -601,7 +602,7 @@
                 studyLogs.push(sessionData);
 
                 // Update backend
-                await fetch(`${API_URL}/api/couple`, {
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -680,12 +681,12 @@
                 // Remove the current session locally to clear state when back button is pressed.
                 localStorage.removeItem('currentStudySession');
                 try {
-                    const response = await fetch(`${API_URL}/api/couple`);
+                    const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                     const coupleData = await response.json();
                     const userName = userData.name;
                     const userObj = coupleData[userName] || {};
 
-                    await fetch(`${API_URL}/api/couple`, {
+                    await window.authenticatedFetch(`${API_URL}/api/couple`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

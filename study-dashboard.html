@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -350,7 +351,7 @@
 
         async function fetchAndProcessData() {
             try {
-                const response = await fetch(`${API_URL}/api/couple`);
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 coupleData = await response.json();
 
                 processData();

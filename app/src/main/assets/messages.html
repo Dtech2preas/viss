@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -367,7 +368,7 @@
 
             try {
                 // Fetch the latest global state
-                const resState = await fetch(`${API_URL}/api/couple`);
+                const resState = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 let globalState = {};
                 if (resState.ok) {
                     globalState = await resState.json();
@@ -395,7 +396,7 @@
                 localUser.lastMessageDate = myState.lastMessageDate;
                 localStorage.setItem('togetherProfile', JSON.stringify(localUser));
 
-                const res = await fetch(`${API_URL}/api/couple`, {
+                const res = await window.authenticatedFetch(`${API_URL}/api/couple`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -424,7 +425,7 @@
                 const messageHistory = document.getElementById('messageHistory');
                 let allMessages = [];
 
-                const res = await fetch(`${API_URL}/api/couple`);
+                const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 if (res.ok) {
                     const globalState = await res.json();
 
