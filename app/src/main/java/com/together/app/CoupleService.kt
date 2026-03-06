@@ -12,10 +12,16 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.concurrent.thread
+import kotlin.math.*
 
 class CoupleService : Service() {
 
@@ -104,6 +110,97 @@ class CoupleService : Service() {
             val responseBody = response.body?.string()
             if (!responseBody.isNullOrEmpty()) {
                 val globalState = JSONObject(responseBody)
+
+                // Track root level secret additions (bucketList & rouletteState)
+                // Widget Data Extraction
+                val partnerStateForWidget = globalState.optJSONObject(partnerName)
+                val localStateForWidget = globalState.optJSONObject(localUserName)
+
+                var partnerLat = 0.0
+                var partnerLon = 0.0
+                var localLat = 0.0
+                var localLon = 0.0
+                var partnerMood = "Unknown"
+
+                if (partnerStateForWidget != null) {
+                    val location = partnerStateForWidget.optJSONObject("location")
+                    if (location != null) {
+                        partnerLat = location.optDouble("latitude", 0.0)
+                        partnerLon = location.optDouble("longitude", 0.0)
+                    }
+                    partnerMood = partnerStateForWidget.optString("mood", "Unknown")
+                }
+
+                if (localStateForWidget != null) {
+                    val location = localStateForWidget.optJSONObject("location")
+                    if (location != null) {
+                        localLat = location.optDouble("latitude", 0.0)
+                        localLon = location.optDouble("longitude", 0.0)
+                    }
+                }
+
+                val distance = if (partnerLat != 0.0 && partnerLon != 0.0 && localLat != 0.0 && localLon != 0.0) {
+                    "${calculateDistance(localLat, localLon, partnerLat, partnerLon)} km"
+                } else {
+                    "Unknown"
+                }
+
+                // Handle Streak Logic
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val streakState = globalState.optJSONObject("streakState") ?: JSONObject()
+
+                val lastActiveDate = sharedPref.getString("last_active_date", "")
+
+                val lastLocalLogin = streakState.optString("${localUserName}_last_login", "")
+                val lastPartnerLogin = streakState.optString("${partnerName}_last_login", "")
+                var currentStreak = streakState.optInt("current_streak", 0)
+                val streakLastUpdated = streakState.optString("last_updated", "")
+
+                var needsStreakUpdate = false
+
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val todayDate = sdf.parse(today)
+                var lastUpdatedDate: Date? = null
+                if (streakLastUpdated.isNotEmpty()) {
+                    lastUpdatedDate = sdf.parse(streakLastUpdated)
+                }
+
+                // Check if streak was broken (last updated was more than 1 day ago)
+                if (lastUpdatedDate != null && todayDate != null) {
+                    val diffInMillis = todayDate.time - lastUpdatedDate.time
+                    val diffInDays = (diffInMillis / (1000 * 60 * 60 * 24)).toInt()
+                    if (diffInDays > 1) {
+                        currentStreak = 0
+                        streakState.put("current_streak", 0)
+                        streakState.put("last_updated", "")
+                        needsStreakUpdate = true
+                    }
+                }
+
+                // If local user was active today, mark them as logged in
+                if (lastActiveDate == today && lastLocalLogin != today) {
+                    streakState.put("${localUserName}_last_login", today)
+                    needsStreakUpdate = true
+                }
+
+                // If both logged in today and streak hasn't been updated today, increment streak
+                if (streakState.optString("${localUserName}_last_login") == today &&
+                    streakState.optString("${partnerName}_last_login") == today &&
+                    streakLastUpdated != today) {
+                    currentStreak += 1
+                    streakState.put("current_streak", currentStreak)
+                    streakState.put("last_updated", today)
+                    needsStreakUpdate = true
+                }
+
+                if (needsStreakUpdate) {
+                    globalState.put("streakState", streakState)
+                    updateServerState(globalState)
+                }
+
+                // Update Widget
+                updateWidgetData(distance, partnerMood, currentStreak)
+
 
                 // Track root level secret additions (bucketList & rouletteState)
                 var lastBucketCount = sharedPref.getInt("lastBucketCount_$partnerName", -1)
@@ -335,6 +432,52 @@ class CoupleService : Service() {
                 Log.e("CoupleService", "Notification permission not granted", e)
             }
         }
+    }
+
+    private fun updateServerState(fullState: JSONObject) {
+        thread {
+            try {
+                val requestBody = fullState.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url(apiUrl)
+                    .addHeader("Authorization", "Bearer auth_token_jonas_owami_secure_2024")
+                    .post(requestBody)
+                    .build()
+
+                client.newCall(request).execute()
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Failed to update state", e)
+            }
+        }
+    }
+
+    private fun updateWidgetData(distance: String, mood: String, streak: Int) {
+        val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putString("widget_distance", distance)
+            putString("widget_mood", mood)
+            putInt("widget_streak", streak)
+            apply()
+        }
+
+        val intent = Intent("com.together.app.ACTION_UPDATE_WIDGET").apply {
+            setPackage(applicationContext.packageName)
+            putExtra("distance", distance)
+            putExtra("mood", mood)
+            putExtra("streak", streak)
+        }
+        applicationContext.sendBroadcast(intent)
+    }
+
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Int {
+        val r = 6371.0 // Radius of earth in km
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return (r * c).roundToInt()
     }
 
     override fun onDestroy() {
