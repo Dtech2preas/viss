@@ -14,9 +14,18 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
+        webView.visibility = View.INVISIBLE // Hide initially
         setContentView(webView)
 
         // Request necessary permissions
@@ -106,6 +116,61 @@ class MainActivity : AppCompatActivity() {
 
         // Add Javascript Interface
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidBridge")
+
+        // Authenticate before loading URL
+        authenticateUser()
+    }
+
+    private fun authenticateUser() {
+        val biometricManager = BiometricManager.from(this)
+        val canAuthenticate = biometricManager.canAuthenticate(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
+
+        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
+            val executor = ContextCompat.getMainExecutor(this)
+            val biometricPrompt = BiometricPrompt(this, executor,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        super.onAuthenticationError(errorCode, errString)
+                        Toast.makeText(applicationContext, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
+                        finish() // Close app if authentication fails/is canceled
+                    }
+
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        super.onAuthenticationSucceeded(result)
+                        onAuthenticationSuccessful()
+                    }
+
+                    override fun onAuthenticationFailed() {
+                        super.onAuthenticationFailed()
+                        Toast.makeText(applicationContext, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    }
+                })
+
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Unlock Together")
+                .setSubtitle("Use your biometric credential or PIN to unlock")
+                .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
+                .build()
+
+            biometricPrompt.authenticate(promptInfo)
+        } else {
+            // Biometrics/PIN not enrolled or available, bypass
+            onAuthenticationSuccessful()
+        }
+    }
+
+    private fun onAuthenticationSuccessful() {
+        webView.visibility = View.VISIBLE
+
+        // Save today's date to mark user as active today
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val today = dateFormat.format(Date())
+
+        val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putString("myLastActiveDate", today)
+            apply()
+        }
 
         // Load the initial HTML file
         webView.loadUrl("https://together.preasx24.co.za/you.html")
