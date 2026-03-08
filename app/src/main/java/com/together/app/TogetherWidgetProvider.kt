@@ -42,11 +42,35 @@ class TogetherWidgetProvider : AppWidgetProvider() {
             val distance = sharedPref.getString("widget_distance", "-- km")
             val mood = sharedPref.getString("widget_mood", "--")
             val streak = sharedPref.getString("widget_streak", "--")
+            val activity = sharedPref.getString("widget_activity", "--")
+            val points = sharedPref.getInt("widget_points", 0)
+
+            val profileJson = sharedPref.getString("togetherProfile", null)
+            var partnerName = "Partner"
+            if (!profileJson.isNullOrEmpty()) {
+                try {
+                    val profile = org.json.JSONObject(profileJson)
+                    val partnerObj = profile.optJSONObject("partner")
+                    if (partnerObj != null) {
+                        partnerName = partnerObj.optString("name", "Partner")
+                        partnerName = partnerName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
 
             val views = RemoteViews(context.packageName, R.layout.widget_together)
-            views.setTextViewText(R.id.widgetDistance, "Distance: $distance")
-            views.setTextViewText(R.id.widgetMood, "Mood: $mood")
-            views.setTextViewText(R.id.widgetStreak, "Streak: $streak days")
+
+            // Just use the distance output from CoupleService (e.g. "12 km" or "-- km")
+            // Wait, CoupleService creates distanceStr as "X km". Let's format it properly.
+            views.setTextViewText(R.id.widgetDistance, "📍 $distance")
+            views.setTextViewText(R.id.widgetMood, "🎭 $mood")
+            views.setTextViewText(R.id.widgetStreak, "🔥 $streak days")
+            views.setTextViewText(R.id.widgetPoints, "💰 $points pts")
+
+            val activityText = if (activity != "--") "$partnerName is $activity" else "$partnerName's activity: --"
+            views.setTextViewText(R.id.widgetActivity, activityText)
 
             // Intent to launch app when clicking the widget
             val intent = Intent(context, MainActivity::class.java)
@@ -56,10 +80,14 @@ class TogetherWidgetProvider : AppWidgetProvider() {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            // Make the entire widget clickable
+            views.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent)
             views.setOnClickPendingIntent(R.id.widgetTitle, pendingIntent)
             views.setOnClickPendingIntent(R.id.widgetDistance, pendingIntent)
             views.setOnClickPendingIntent(R.id.widgetMood, pendingIntent)
             views.setOnClickPendingIntent(R.id.widgetStreak, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widgetPoints, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widgetActivity, pendingIntent)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }

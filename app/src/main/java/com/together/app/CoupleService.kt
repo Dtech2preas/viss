@@ -299,6 +299,29 @@ class CoupleService : Service() {
             val partnerState = globalState.optJSONObject(partnerName)
             val partnerMood = partnerState?.optString("mood", "--") ?: "--"
 
+            // Extract Activity
+            var partnerActivity = "--"
+            val activities = partnerState?.optJSONArray("activities")
+            if (activities != null && activities.length() > 0) {
+                val latestActivity = activities.optJSONObject(activities.length() - 1)
+                if (latestActivity != null) {
+                    val type = latestActivity.optString("type", "")
+                    if (type.isNotEmpty()) {
+                        partnerActivity = formatActivityType(type)
+                    }
+                }
+            }
+
+            // Extract Points
+            var myPoints = 0
+            val couponStateObj = globalState.optJSONObject("couponState")
+            if (couponStateObj != null) {
+                val balances = couponStateObj.optJSONObject("balances")
+                if (balances != null) {
+                    myPoints = balances.optInt(localUserName, 0)
+                }
+            }
+
             // Extract Distance
             var distanceStr = "-- km"
             val myState = globalState.optJSONObject(localUserName)
@@ -331,6 +354,8 @@ class CoupleService : Service() {
                 putString("widget_distance", distanceStr)
                 putString("widget_mood", partnerMood)
                 putString("widget_streak", currentStreak.toString())
+                putString("widget_activity", partnerActivity)
+                putInt("widget_points", myPoints)
                 apply()
             }
 
