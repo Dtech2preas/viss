@@ -206,6 +206,32 @@
             display: none;
         }
 
+        .timeframe-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .timeframe-btn {
+            background: var(--light-color);
+            border: 1px solid #e6d4f7;
+            color: var(--dark-color);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timeframe-btn.active {
+            background: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
         .chart-container {
             position: relative;
             height: 300px;
@@ -303,13 +329,35 @@
                         <div id="stat-all" class="stat-value">0h 0m</div>
                         <div id="partner-stat-all" class="partner-stat-value">0h 0m</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Study Streak</div>
+                        <div id="stat-streak" class="stat-value">0 Days</div>
+                        <div id="partner-stat-streak" class="partner-stat-value">0 Days</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Average Session</div>
+                        <div id="stat-avg" class="stat-value">0m</div>
+                        <div id="partner-stat-avg" class="partner-stat-value">0m</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Longest Session</div>
+                        <div id="stat-longest" class="stat-value">0h 0m</div>
+                        <div id="partner-stat-longest" class="partner-stat-value">0h 0m</div>
+                    </div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
-                    <h3 style="color: var(--secondary-color); margin: 0 auto;">Weekly Progress</h3>
+                    <h3 id="chart-title" style="color: var(--secondary-color); margin: 0 auto;">Weekly Progress</h3>
                 </div>
 
-                <div class="chart-controls">
+                <div class="timeframe-controls">
+                    <button id="time-week" class="timeframe-btn active" onclick="setTimeframe('week')">This Week</button>
+                    <button id="time-month" class="timeframe-btn" onclick="setTimeframe('month')">This Month</button>
+                    <button id="time-year" class="timeframe-btn" onclick="setTimeframe('year')">This Year</button>
+                    <button id="time-all" class="timeframe-btn" onclick="setTimeframe('all')">All Time</button>
+                </div>
+
+                <div class="chart-controls" id="chart-type-controls">
                     <button id="btn-bar" class="chart-type-btn active" onclick="setChartType('bar')">Bar Chart</button>
                     <button id="btn-line" class="chart-type-btn" onclick="setChartType('line')">Line Graph</button>
                 </div>
@@ -325,18 +373,22 @@
         const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
         let currentView = 'me'; // 'me', 'partner', 'both'
         let currentChartType = 'bar'; // 'bar', 'line'
+        let currentTimeframe = 'week'; // 'week', 'month', 'year', 'all'
         let userData = null;
         let coupleData = {};
         let myChart = null;
 
         // Stats structured by user -> timeframe
         const stats = {
-            me: { yesterday: 0, week: 0, month: 0, year: 0, all: 0, chartData: [0,0,0,0,0,0,0] },
-            partner: { yesterday: 0, week: 0, month: 0, year: 0, all: 0, chartData: [0,0,0,0,0,0,0] }
+            me: { yesterday: 0, week: 0, month: 0, year: 0, all: 0, streak: 0, avg: 0, longest: 0,
+                  chartData: { week: [], month: [], year: [], all: [] } },
+            partner: { yesterday: 0, week: 0, month: 0, year: 0, all: 0, streak: 0, avg: 0, longest: 0,
+                       chartData: { week: [], month: [], year: [], all: [] } }
         };
 
-        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        let chartLabels = [];
+        const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const monthsOfYear = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        let chartLabels = { week: [], month: [], year: [], all: [] };
 
         window.onload = async function() {
             const savedProfile = localStorage.getItem('togetherProfile');
@@ -384,12 +436,9 @@
 
         function calculateStatsForUser(logs, userType) {
             const now = new Date();
-
-            // Set time boundaries
             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
             const startOfYesterday = startOfToday - (24 * 60 * 60 * 1000);
 
-            // Start of week (assuming Sunday as first day)
             const startOfWeekDate = new Date(now);
             startOfWeekDate.setDate(now.getDate() - now.getDay());
             startOfWeekDate.setHours(0, 0, 0, 0);
@@ -398,72 +447,147 @@
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
             const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
 
-            // Reset stats
-            stats[userType] = { yesterday: 0, week: 0, month: 0, year: 0, all: 0, chartData: [0,0,0,0,0,0,0] };
+            stats[userType] = {
+                yesterday: 0, week: 0, month: 0, year: 0, all: 0,
+                streak: 0, avg: 0, longest: 0,
+                chartData: { week: [], month: [], year: [], all: [] }
+            };
+
+            let totalSessions = 0;
+            let totalDuration = 0;
+            let longest = 0;
+            let studyDays = new Set();
 
             logs.forEach(log => {
                 const logTime = log.startTime || new Date(log.date).getTime();
                 const duration = log.durationSeconds || 0;
 
-                // All time
+                totalSessions++;
+                totalDuration += duration;
+                if (duration > longest) longest = duration;
+
+                const dateStr = new Date(logTime).toDateString();
+                studyDays.add(dateStr);
+
                 stats[userType].all += duration;
 
-                // Yesterday
                 if (logTime >= startOfYesterday && logTime < startOfToday) {
                     stats[userType].yesterday += duration;
                 }
-
-                // This Week
                 if (logTime >= startOfWeek) {
                     stats[userType].week += duration;
                 }
-
-                // This Month
                 if (logTime >= startOfMonth) {
                     stats[userType].month += duration;
                 }
-
-                // This Year
                 if (logTime >= startOfYear) {
                     stats[userType].year += duration;
                 }
             });
+
+            stats[userType].longest = longest;
+            stats[userType].avg = totalSessions > 0 ? Math.floor(totalDuration / totalSessions) : 0;
+
+            // Calculate Streak
+            let currentStreak = 0;
+            let checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            // Check if studied today
+            if (studyDays.has(checkDate.toDateString())) {
+                currentStreak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                // If not today, check yesterday
+                checkDate.setDate(checkDate.getDate() - 1);
+                if (studyDays.has(checkDate.toDateString())) {
+                    currentStreak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else {
+                    // No streak
+                    checkDate = null;
+                }
+            }
+
+            while (checkDate && studyDays.has(checkDate.toDateString())) {
+                currentStreak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+            stats[userType].streak = currentStreak;
         }
 
         function generateChartLabels() {
-            chartLabels = [];
+            chartLabels = { week: [], month: [], year: [], all: [] };
             const now = new Date();
-            // Generate last 7 days including today
+
+            // Week (Last 7 Days)
             for (let i = 6; i >= 0; i--) {
                 const d = new Date(now);
                 d.setDate(now.getDate() - i);
-                chartLabels.push(daysOfWeek[d.getDay()]);
+                chartLabels.week.push(daysOfWeek[d.getDay()]);
+            }
+
+            // Month (All days in current month)
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            for (let i = 1; i <= daysInMonth; i++) {
+                chartLabels.month.push(i.toString());
+            }
+
+            // Year (All months)
+            chartLabels.year = [...monthsOfYear];
+
+            // All Time (Last 5 years for simplicity, or dynamic based on data)
+            // For now, let's just do the last 5 years including this year
+            const currentYear = now.getFullYear();
+            for (let i = 4; i >= 0; i--) {
+                chartLabels.all.push((currentYear - i).toString());
             }
         }
 
         function calculateChartData(logs, userType) {
             const now = new Date();
-            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+            // Initialize arrays with 0s
+            stats[userType].chartData.week = new Array(7).fill(0);
+            stats[userType].chartData.month = new Array(chartLabels.month.length).fill(0);
+            stats[userType].chartData.year = new Array(12).fill(0);
+            stats[userType].chartData.all = new Array(5).fill(0);
+
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
 
             logs.forEach(log => {
                 const logTime = log.startTime || new Date(log.date).getTime();
-                const durationMinutes = (log.durationSeconds || 0) / 60; // Chart shows minutes
+                const logDate = new Date(logTime);
+                const durationMinutes = (log.durationSeconds || 0) / 60;
 
-                // Check if it falls in the last 7 days
-                const daysAgo = Math.floor((startOfToday - logTime) / (24 * 60 * 60 * 1000));
-
-                // If log is today, daysAgo could be slightly negative or 0 due to startOfToday vs exact logTime
-                // So let's handle it purely by date string comparison for accuracy
-                const logDateStr = new Date(logTime).toDateString();
-
+                // Week Data (Last 7 days)
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date(now);
                     d.setDate(now.getDate() - i);
-                    if (d.toDateString() === logDateStr) {
-                        const index = 6 - i; // map to 0-6 array
-                        stats[userType].chartData[index] += durationMinutes;
+                    if (d.toDateString() === logDate.toDateString()) {
+                        stats[userType].chartData.week[6 - i] += durationMinutes;
                         break;
                     }
+                }
+
+                // Month Data (Current Month)
+                if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+                    const day = logDate.getDate() - 1; // 0-indexed
+                    if (day >= 0 && day < stats[userType].chartData.month.length) {
+                        stats[userType].chartData.month[day] += durationMinutes;
+                    }
+                }
+
+                // Year Data (Current Year)
+                if (logDate.getFullYear() === currentYear) {
+                    const month = logDate.getMonth();
+                    stats[userType].chartData.year[month] += durationMinutes;
+                }
+
+                // All Time Data (Last 5 years)
+                const yearDiff = currentYear - logDate.getFullYear();
+                if (yearDiff >= 0 && yearDiff < 5) {
+                    stats[userType].chartData.all[4 - yearDiff] += durationMinutes;
                 }
             });
         }
@@ -508,25 +632,43 @@
 
         function updateUI() {
             const timeframes = ['yesterday', 'week', 'month', 'year', 'all'];
+            const extraStats = ['streak', 'avg', 'longest'];
 
-            timeframes.forEach(tf => {
-                const mainEl = document.getElementById(`stat-${tf}`);
-                const partnerEl = document.getElementById(`partner-stat-${tf}`);
+            [...timeframes, ...extraStats].forEach(key => {
+                const mainEl = document.getElementById(`stat-${key}`);
+                const partnerEl = document.getElementById(`partner-stat-${key}`);
+
+                if (!mainEl) return;
+
+                let myVal = stats.me[key];
+                let partnerVal = stats.partner[key];
+
+                // Formatting
+                if (key === 'streak') {
+                    myVal = `${myVal} Days`;
+                    partnerVal = `${partnerVal} Days`;
+                } else if (key === 'avg') {
+                    myVal = formatDuration(myVal);
+                    partnerVal = formatDuration(partnerVal);
+                } else {
+                    myVal = formatDuration(myVal);
+                    partnerVal = formatDuration(partnerVal);
+                }
 
                 if (currentView === 'me') {
-                    mainEl.textContent = formatDuration(stats.me[tf]);
+                    mainEl.textContent = myVal;
                     mainEl.style.color = 'var(--secondary-color)';
                     partnerEl.style.display = 'none';
                 } else if (currentView === 'partner') {
-                    mainEl.textContent = formatDuration(stats.partner[tf]);
+                    mainEl.textContent = partnerVal;
                     mainEl.style.color = 'var(--accent-color)';
                     partnerEl.style.display = 'none';
                 } else if (currentView === 'both') {
-                    mainEl.textContent = `${userData.name}: ${formatDuration(stats.me[tf])}`;
+                    mainEl.textContent = `${userData.name}: ${myVal}`;
                     mainEl.style.color = 'var(--secondary-color)';
                     mainEl.style.fontSize = '1.2rem';
 
-                    partnerEl.textContent = `${userData.partner.name}: ${formatDuration(stats.partner[tf])}`;
+                    partnerEl.textContent = `${userData.partner.name}: ${partnerVal}`;
                     partnerEl.style.display = 'block';
                 }
 
@@ -535,6 +677,33 @@
                     mainEl.style.fontSize = '1.8rem';
                 }
             });
+        }
+
+        function setTimeframe(tf) {
+            currentTimeframe = tf;
+
+            document.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`time-${tf}`).classList.add('active');
+
+            const titleMap = {
+                'week': 'Weekly Progress',
+                'month': 'Monthly Progress',
+                'year': 'Yearly Progress',
+                'all': 'All Time Progress'
+            };
+            document.getElementById('chart-title').textContent = titleMap[tf];
+
+            if (tf === 'week') {
+                document.getElementById('chart-type-controls').style.display = 'flex';
+                // Update chart type buttons to match currentChartType
+                document.querySelectorAll('.chart-type-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`btn-${currentChartType}`).classList.add('active');
+            } else {
+                document.getElementById('chart-type-controls').style.display = 'none';
+                currentChartType = 'line'; // Force line for larger data sets
+            }
+
+            updateChart();
         }
 
         function initChart() {
@@ -594,29 +763,38 @@
 
         function getChartDataConfig() {
             const config = {
-                labels: chartLabels,
+                labels: chartLabels[currentTimeframe],
                 datasets: []
             };
+
+            const type = currentTimeframe === 'week' ? currentChartType : 'line';
+            if (myChart) {
+                myChart.config.type = type;
+            }
 
             if (currentView === 'me' || currentView === 'both') {
                 config.datasets.push({
                     label: userData.name,
-                    data: stats.me.chartData,
+                    data: stats.me.chartData[currentTimeframe],
                     backgroundColor: 'rgba(79, 172, 254, 0.6)',
                     borderColor: 'rgba(79, 172, 254, 1)',
-                    borderWidth: 1,
-                    borderRadius: 5
+                    borderWidth: 2,
+                    borderRadius: type === 'bar' ? 5 : 0,
+                    tension: 0.3,
+                    fill: type === 'line'
                 });
             }
 
             if (currentView === 'partner' || currentView === 'both') {
                 config.datasets.push({
                     label: userData.partner.name,
-                    data: stats.partner.chartData,
+                    data: stats.partner.chartData[currentTimeframe],
                     backgroundColor: 'rgba(245, 87, 108, 0.6)',
                     borderColor: 'rgba(245, 87, 108, 1)',
-                    borderWidth: 1,
-                    borderRadius: 5
+                    borderWidth: 2,
+                    borderRadius: type === 'bar' ? 5 : 0,
+                    tension: 0.3,
+                    fill: type === 'line'
                 });
             }
 
