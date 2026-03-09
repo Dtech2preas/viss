@@ -445,6 +445,18 @@ class CoupleService : Service() {
 
             val myIsStudying = myState?.optBoolean("isStudying", false) ?: false
 
+            // Extract Game Scores
+            var myGameScore = 0
+            var partnerGameScore = 0
+            val myGameData = myState?.optJSONObject("gameData")
+            if (myGameData != null) {
+                myGameScore = myGameData.optInt("totalScore", 0)
+            }
+            val partnerGameData = partnerState?.optJSONObject("gameData")
+            if (partnerGameData != null) {
+                partnerGameScore = partnerGameData.optInt("totalScore", 0)
+            }
+
             // Save to SharedPreferences for Widget
             with(sharedPref.edit()) {
                 putString("widget_distance", distanceStr)
@@ -453,6 +465,8 @@ class CoupleService : Service() {
                 putString("widget_activity", partnerActivity)
                 putInt("widget_points", myPoints)
                 putBoolean("widget_is_studying", myIsStudying)
+                putInt("widget_my_game_score", myGameScore)
+                putInt("widget_partner_game_score", partnerGameScore)
                 apply()
             }
 

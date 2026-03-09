@@ -60,6 +60,8 @@ class TogetherWidgetProvider : AppWidgetProvider() {
             val activity = sharedPref.getString("widget_activity", "--")
             val points = sharedPref.getInt("widget_points", 0)
             val isStudying = sharedPref.getBoolean("widget_is_studying", false)
+            val myGameScore = sharedPref.getInt("widget_my_game_score", 0)
+            val partnerGameScore = sharedPref.getInt("widget_partner_game_score", 0)
 
             val profileJson = sharedPref.getString("togetherProfile", null)
             var partnerName = "Partner"
@@ -96,6 +98,18 @@ class TogetherWidgetProvider : AppWidgetProvider() {
             // Activity status
             val activityText = if (activity != "--") "$partnerName is $activity" else "$partnerName status: --"
             views.setTextViewText(R.id.widgetActivity, activityText)
+
+            // Game Stats setup
+            val diff = myGameScore - partnerGameScore
+            val gameWinningText = if (diff > 0) {
+                "$myName is winning by $diff points 👑"
+            } else if (diff < 0) {
+                "$partnerName is winning by ${Math.abs(diff)} points 👑"
+            } else {
+                "It's perfectly tied 💞"
+            }
+            views.setTextViewText(R.id.widgetGameScore, "Games: $myName $myGameScore - $partnerName $partnerGameScore")
+            views.setTextViewText(R.id.widgetGameWinning, gameWinningText)
 
             // Study Button UI Setup
             if (isStudying) {
