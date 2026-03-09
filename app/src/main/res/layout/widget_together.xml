@@ -40,12 +40,27 @@
         <!-- Distance Box -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="80dp"
             android:layout_weight="1"
             android:background="@drawable/widget_panel_bg"
             android:orientation="vertical"
             android:gravity="center"
             android:layout_marginRight="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DISTANCE"
+                android:textColor="#AEEA00"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <FrameLayout
+                android:layout_width="30dp"
+                android:layout_height="1dp"
+                android:background="#44FFFFFF"
+                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:id="@+id/widgetDistanceValue"
@@ -68,13 +83,28 @@
         <!-- Streak Box -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="80dp"
             android:layout_weight="1"
             android:background="@drawable/widget_panel_bg"
             android:orientation="vertical"
             android:gravity="center"
             android:layout_marginRight="4dp"
             android:layout_marginLeft="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="STREAK"
+                android:textColor="#00E5FF"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <FrameLayout
+                android:layout_width="30dp"
+                android:layout_height="1dp"
+                android:background="#44FFFFFF"
+                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:id="@+id/widgetStreakValue"
@@ -97,12 +127,27 @@
         <!-- Mood Box -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="80dp"
             android:layout_weight="1"
             android:background="@drawable/widget_panel_bg"
             android:orientation="vertical"
             android:gravity="center"
             android:layout_marginLeft="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MOOD"
+                android:textColor="#FF4081"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <FrameLayout
+                android:layout_width="30dp"
+                android:layout_height="1dp"
+                android:background="#44FFFFFF"
+                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:id="@+id/widgetMoodEmoji"
