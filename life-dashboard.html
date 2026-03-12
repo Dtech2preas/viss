@@ -124,6 +124,7 @@
         .filter-container {
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 20px;
         }
@@ -149,59 +150,91 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.5);
-            border: 1px solid rgba(126, 87, 194, 0.1);
-            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+            border: 1px solid rgba(126, 87, 194, 0.15);
+            border-radius: 20px;
             padding: 15px;
             text-align: center;
-            transition: transform 0.2s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+            backdrop-filter: blur(10px);
         }
 
         .stat-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 12px 25px rgba(126, 87, 194, 0.15);
+            border-color: rgba(126, 87, 194, 0.3);
         }
 
         .stat-icon {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
+            font-size: 2rem;
+            margin-bottom: 10px;
             display: block;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
         }
 
         .stat-title {
             font-size: 0.8rem;
             color: #777;
             margin-bottom: 5px;
-            font-weight: 500;
+            font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .stat-value {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             color: var(--dark-color);
             font-weight: 700;
         }
 
+        .metric-subtitle {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 350px;
             width: 100%;
             margin-top: 20px;
         }
 
         .pie-container {
             position: relative;
-            height: 250px;
+            height: 280px;
             width: 100%;
             display: flex;
             justify-content: center;
             margin-bottom: 20px;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-box {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(126, 87, 194, 0.1);
+            border-radius: 20px;
+            padding: 15px;
         }
 
         #loadingState {
@@ -246,9 +279,12 @@
             to { transform: rotate(360deg); }
         }
 
-        @media (max-width: 600px) {
-            .stats-grid {
+        @media (max-width: 768px) {
+            .stats-grid, .metrics-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            .chart-grid {
+                grid-template-columns: 1fr;
             }
             .dashboard-section {
                 padding: 20px;
@@ -281,24 +317,51 @@
                 <button class="filter-btn active" onclick="setFilter('today')" id="btn-today">Today</button>
                 <button class="filter-btn" onclick="setFilter('week')" id="btn-week">This Week</button>
                 <button class="filter-btn" onclick="setFilter('month')" id="btn-month">This Month</button>
+                <button class="filter-btn" onclick="setFilter('year')" id="btn-year">This Year</button>
                 <button class="filter-btn" onclick="setFilter('all')" id="btn-all">All Time</button>
             </div>
 
             <div class="dashboard-section">
-                <h2>Activity Distribution</h2>
-                <div class="pie-container">
-                    <canvas id="pieChart"></canvas>
-                </div>
-
-                <div class="stats-grid" id="statsGrid">
-                    <!-- Stat cards generated dynamically -->
+                <h2>Highlights & Insights</h2>
+                <div class="metrics-grid" id="metricsGrid">
+                    <!-- Metrics cards generated dynamically -->
                 </div>
             </div>
 
             <div class="dashboard-section">
-                <h2>Time Spent (Last 7 Days)</h2>
+                <h2>Overview & Distribution</h2>
+
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Stat cards generated dynamically -->
+                </div>
+
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <h3 style="text-align: center; color: var(--secondary-color); font-size: 1rem; margin-bottom: 10px;">Time Split</h3>
+                        <div class="pie-container" style="height: 220px;">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <h3 style="text-align: center; color: var(--secondary-color); font-size: 1rem; margin-bottom: 10px;">Life Balance</h3>
+                        <div class="pie-container" style="height: 220px;">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2 id="barChartTitle">Time Spent Trend</h2>
                 <div class="chart-container">
                     <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>Activity Timeline (Cumulative)</h2>
+                <div class="chart-container">
+                    <canvas id="lineChart"></canvas>
                 </div>
             </div>
         </div>
@@ -309,6 +372,8 @@
         let allLogs = [];
         let pieChartInstance = null;
         let barChartInstance = null;
+        let radarChartInstance = null;
+        let lineChartInstance = null;
         let currentFilter = 'today';
 
         const activityColors = {
@@ -414,6 +479,9 @@
                 } else if (currentFilter === 'month') {
                     const thirtyDaysAgo = today - (29 * 24 * 60 * 60 * 1000);
                     return logTime >= thirtyDaysAgo;
+                } else if (currentFilter === 'year') {
+                    const firstDayOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+                    return logTime >= firstDayOfYear;
                 }
                 return true;
             });
@@ -437,9 +505,91 @@
                 }
             });
 
+            updateMetrics(filteredLogs, totalsByActivity);
             updateStatCards(totalsByActivity);
             updatePieChart(totalsByActivity);
-            updateBarChart(); // Bar chart always shows last 7 days trend
+            updateRadarChart(totalsByActivity);
+            updateBarChart(filteredLogs);
+            updateLineChart(filteredLogs);
+        }
+
+        function updateMetrics(logs, totals) {
+            const metricsGrid = document.getElementById('metricsGrid');
+            metricsGrid.innerHTML = '';
+
+            if (logs.length === 0) {
+                metricsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:#999; padding: 20px;">No data to analyze for this period.</div>';
+                return;
+            }
+
+            // Metric 1: Most Tracked Activity
+            let maxActivity = '';
+            let maxTime = 0;
+            Object.keys(totals).forEach(activity => {
+                if (totals[activity] > maxTime) {
+                    maxTime = totals[activity];
+                    maxActivity = activity;
+                }
+            });
+
+            // Metric 2: Longest Single Session
+            let longestSession = 0;
+            let longestSessionActivity = '';
+            logs.forEach(log => {
+                if (log.durationSeconds > longestSession) {
+                    longestSession = log.durationSeconds;
+                    longestSessionActivity = log.activity;
+                }
+            });
+
+            // Metric 3: Most Active Day
+            const dayTotals = {};
+            logs.forEach(log => {
+                if (!dayTotals[log.date]) {
+                    dayTotals[log.date] = 0;
+                }
+                dayTotals[log.date] += log.durationSeconds;
+            });
+
+            let mostActiveDate = '';
+            let mostActiveTime = 0;
+            Object.keys(dayTotals).forEach(date => {
+                if (dayTotals[date] > mostActiveTime) {
+                    mostActiveTime = dayTotals[date];
+                    mostActiveDate = date;
+                }
+            });
+
+            let mostActiveDayStr = 'N/A';
+            if (mostActiveDate) {
+                const parts = mostActiveDate.split('-');
+                if (parts.length === 3) {
+                    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    mostActiveDayStr = days[d.getDay()];
+                }
+            }
+
+            const totalLoggedSeconds = Object.values(totals).reduce((a, b) => a + b, 0);
+
+            const metrics = [
+                { title: 'Top Activity', value: activityNames[maxActivity] || 'None', subtitle: maxTime > 0 ? formatTimeShort(maxTime) : '', icon: '🏆' },
+                { title: 'Longest Session', value: longestSessionActivity ? activityNames[longestSessionActivity] : 'None', subtitle: longestSession > 0 ? formatTimeShort(longestSession) : '', icon: '🔥' },
+                { title: 'Most Active Day', value: mostActiveDayStr, subtitle: mostActiveTime > 0 ? formatTimeShort(mostActiveTime) + ' tracked' : '', icon: '📅' },
+                { title: 'Total Time', value: formatTimeShort(totalLoggedSeconds), subtitle: 'Tracked ' + currentFilter, icon: '⏱️' }
+            ];
+
+            metrics.forEach(metric => {
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+                card.innerHTML = `
+                    <span class="stat-icon">${metric.icon}</span>
+                    <div class="stat-title">${metric.title}</div>
+                    <div class="stat-value" style="font-size: 1.1rem;">${metric.value}</div>
+                    ${metric.subtitle ? `<div class="metric-subtitle">${metric.subtitle}</div>` : ''}
+                `;
+                metricsGrid.appendChild(card);
+            });
         }
 
         function updateStatCards(totals) {
@@ -537,39 +687,163 @@
             });
         }
 
-        function updateBarChart() {
-            // Group data by last 7 days
-            const last7Days = [];
+        function updateRadarChart(totals) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+
+            const labels = [];
+            const data = [];
+            const pointColors = [];
+
+            Object.keys(totals).forEach(activity => {
+                labels.push(activityNames[activity]);
+                // Convert to hours for better readability on scale
+                data.push(totals[activity] / 3600);
+                pointColors.push(activityColors[activity]);
+            });
+
+            if (radarChartInstance) {
+                radarChartInstance.destroy();
+            }
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Time Spent (Hours)',
+                        data: data,
+                        backgroundColor: 'rgba(126, 87, 194, 0.2)',
+                        borderColor: 'rgba(126, 87, 194, 1)',
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: pointColors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0,0,0,0.1)' },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            pointLabels: {
+                                font: {
+                                    family: "'Montserrat', sans-serif",
+                                    size: 10
+                                }
+                            },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const totalSeconds = Math.floor(context.raw * 3600);
+                                    return formatTimeShort(totalSeconds);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getDatesForFilter() {
+            const dates = [];
             const labels = [];
             const now = new Date();
-
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                last7Days.push(dateStr);
-
-                // Format label as "Mon 12"
+            let numDays = 7;
+            let formatFn = (d) => {
                 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                labels.push(`${days[d.getDay()]} ${d.getDate()}`);
+                return `${days[d.getDay()]} ${d.getDate()}`;
+            };
+
+            if (currentFilter === 'today') {
+                numDays = 1;
+                formatFn = () => 'Today';
+            } else if (currentFilter === 'month') {
+                numDays = 30;
+                formatFn = (d) => `${d.getMonth()+1}/${d.getDate()}`;
+            } else if (currentFilter === 'year') {
+                numDays = 365;
+            } else if (currentFilter === 'all') {
+                // Find earliest log date or default to 30 days
+                if (allLogs.length > 0) {
+                    const earliest = allLogs.reduce((min, log) => log.startTime < min ? log.startTime : min, allLogs[0].startTime);
+                    const daysDiff = Math.ceil((now.getTime() - earliest) / (1000 * 60 * 60 * 24));
+                    numDays = Math.max(7, Math.min(daysDiff + 1, 365)); // Cap at 365 for performance
+                } else {
+                    numDays = 7;
+                }
             }
+
+            // If numDays is large (e.g. year), group by week or month to avoid crowding
+            let step = 1;
+            if (numDays > 60) step = 7;
+            if (numDays > 180) step = 30;
+
+            for (let i = numDays - 1; i >= 0; i -= step) {
+                const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+
+                if (step === 30) {
+                    // Month label
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    labels.push(`${months[d.getMonth()]} '${String(d.getFullYear()).substring(2)}`);
+                } else if (step === 7) {
+                    // Week label
+                    labels.push(`Week of ${d.getMonth()+1}/${d.getDate()}`);
+                } else {
+                    labels.push(formatFn(d));
+                }
+
+                // Store array of date strings that fall into this bucket
+                const bucketDates = [];
+                for(let j=0; j<step; j++) {
+                    const bd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + j);
+                    if (bd.getTime() <= now.getTime()) {
+                        bucketDates.push(`${bd.getFullYear()}-${String(bd.getMonth() + 1).padStart(2, '0')}-${String(bd.getDate()).padStart(2, '0')}`);
+                    }
+                }
+                dates.push(bucketDates);
+            }
+
+            return { dates, labels };
+        }
+
+        function updateBarChart(filteredLogs) {
+            const { dates: dateBuckets, labels } = getDatesForFilter();
+
+            // Update Title
+            const titleMap = {
+                'today': 'Time Spent Today',
+                'week': 'Time Spent (Last 7 Days)',
+                'month': 'Time Spent (Last 30 Days)',
+                'year': 'Time Spent (This Year)',
+                'all': 'Time Spent (All Time)'
+            };
+            document.getElementById('barChartTitle').textContent = titleMap[currentFilter];
 
             // Initialize datasets
             const datasets = Object.keys(activityNames).map(activity => {
                 return {
                     label: activityNames[activity],
-                    data: new Array(7).fill(0),
+                    data: new Array(labels.length).fill(0),
                     backgroundColor: activityColors[activity],
                     borderRadius: 5
                 };
             });
 
-            // Fill datasets
-            allLogs.forEach(log => {
-                const dayIndex = last7Days.indexOf(log.date);
-                if (dayIndex !== -1) {
+            // Fill datasets using filtered logs
+            filteredLogs.forEach(log => {
+                const bucketIndex = dateBuckets.findIndex(bucket => bucket.includes(log.date));
+                if (bucketIndex !== -1) {
                     const dataset = datasets.find(ds => ds.label === activityNames[log.activity]);
                     if (dataset) {
-                        dataset.data[dayIndex] += (log.durationSeconds / 3600); // Convert to hours
+                        dataset.data[bucketIndex] += (log.durationSeconds / 3600); // Convert to hours
                     }
                 }
             });
@@ -595,14 +869,18 @@
                     scales: {
                         x: {
                             stacked: true,
-                            grid: { display: false }
+                            grid: { display: false },
+                            ticks: {
+                                font: { family: "'Montserrat', sans-serif" }
+                            }
                         },
                         y: {
                             stacked: true,
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Hours'
+                                text: 'Hours',
+                                font: { family: "'Montserrat', sans-serif" }
                             }
                         }
                     },
@@ -617,14 +895,116 @@
                             }
                         },
                         tooltip: {
+                            mode: 'index',
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
                                     if (label) {
                                         label += ': ';
                                     }
+                                    if (context.parsed.y !== null && context.parsed.y > 0) {
+                                        const totalSeconds = Math.floor(context.parsed.y * 3600);
+                                        label += formatTimeShort(totalSeconds);
+                                        return label;
+                                    }
+                                    return null;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateLineChart(filteredLogs) {
+            const { dates: dateBuckets, labels } = getDatesForFilter();
+
+            const datasets = Object.keys(activityNames).map(activity => {
+                return {
+                    label: activityNames[activity],
+                    data: new Array(labels.length).fill(0),
+                    borderColor: activityColors[activity],
+                    backgroundColor: activityColors[activity] + '22',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 2,
+                    pointHoverRadius: 5
+                };
+            });
+
+            // Fill datasets with cumulative data
+            const cumulativeTotals = {};
+            Object.keys(activityNames).forEach(k => cumulativeTotals[k] = 0);
+
+            dateBuckets.forEach((bucket, index) => {
+                // Find logs in this bucket
+                const bucketLogs = filteredLogs.filter(log => bucket.includes(log.date));
+
+                // Add to cumulative
+                bucketLogs.forEach(log => {
+                    if (cumulativeTotals[log.activity] !== undefined) {
+                        cumulativeTotals[log.activity] += (log.durationSeconds / 3600);
+                    }
+                });
+
+                // Set point data
+                Object.keys(activityNames).forEach(activity => {
+                    const dataset = datasets.find(ds => ds.label === activityNames[activity]);
+                    if (dataset) {
+                        dataset.data[index] = cumulativeTotals[activity];
+                    }
+                });
+            });
+
+            const activeDatasets = datasets.filter(ds => ds.data[ds.data.length-1] > 0);
+
+            const ctx = document.getElementById('lineChart').getContext('2d');
+
+            if (lineChartInstance) {
+                lineChartInstance.destroy();
+            }
+
+            lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: activeDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: "'Montserrat', sans-serif" } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Cumulative Hours',
+                                font: { family: "'Montserrat', sans-serif" }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: { family: "'Montserrat', sans-serif" }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
                                     if (context.parsed.y !== null) {
-                                        // Convert decimal hours back to readable format for tooltip
                                         const totalSeconds = Math.floor(context.parsed.y * 3600);
                                         label += formatTimeShort(totalSeconds);
                                     }
@@ -636,6 +1016,7 @@
                 }
             });
         }
+
 
         function formatTimeShort(totalSeconds) {
             if (totalSeconds < 60) return `${totalSeconds}s`;
