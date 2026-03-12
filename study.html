@@ -324,7 +324,10 @@
                 <div class="loader" id="stopLoader"></div>
             </button>
 
-            <a href="study-dashboard.html" class="btn-dashboard">View Dashboard</a>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%; margin-top: 20px;">
+                <a href="study-dashboard.html" class="btn-dashboard" style="margin-top: 0;">View Dashboard</a>
+                <a href="life-stats.html" id="lifeStatsBtn" class="btn-dashboard" style="margin-top: 0; display: none; background: var(--study-gradient); color: white; border: none;">Life Stats</a>
+            </div>
 
             <div id="bothStudyingMessage" style="display: none; margin-top: 25px; padding: 15px; background: rgba(255, 126, 185, 0.1); border-radius: 15px; border: 1px solid var(--primary-color); animation: fadeIn 0.5s ease-out;">
                 <p style="color: var(--secondary-color); font-weight: 600; margin-bottom: 10px;">You and <span id="partnerNameDisplay">your partner</span> are both studying right now! ❤️</p>
@@ -381,6 +384,22 @@
             syncStudyStatus(); // Initial call
         };
 
+        function updateLifeStatsButtonVisibility(coupleData) {
+            const lifeStatsBtn = document.getElementById('lifeStatsBtn');
+            const myName = userData.name;
+            const jonasData = coupleData['Jonas'] || {};
+
+            if (myName === 'Jonas') {
+                lifeStatsBtn.style.display = 'inline-block';
+            } else if (myName === 'Owami') {
+                if (jonasData.isLifeStatsVisibleToOwami) {
+                    lifeStatsBtn.style.display = 'inline-block';
+                } else {
+                    lifeStatsBtn.style.display = 'none';
+                }
+            }
+        }
+
         async function syncStudyStatus() {
             if (!userData) return;
             try {
@@ -392,6 +411,8 @@
 
                 const myData = coupleData[myName] || {};
                 const partnerData = coupleData[partnerName] || {};
+
+                updateLifeStatsButtonVisibility(coupleData);
 
                 // Handle both studying UI
                 const bothStudyingElement = document.getElementById('bothStudyingMessage');

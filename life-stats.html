@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="auth-check.js"></script>
+    <link rel="icon" type="image/png" href="logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Tracker - Together Forever</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff7eb9;
+            --secondary-color: #7e57c2;
+            --accent-color: #ff4d8d;
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --study-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --sleep-gradient: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+            --eat-gradient: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            --owami-gradient: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+            --dtech-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --stop-gradient: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            padding-top: 80px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: var(--secondary-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 8px 20px rgba(166, 94, 166, 0.3);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease-out;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+
+        .tracker-section {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            width: 100%;
+            box-shadow: 0 15px 40px rgba(166, 94, 166, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .tracker-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--tracker-header-gradient, var(--owami-gradient));
+            transition: background 0.5s ease;
+            id: header-bar;
+        }
+
+        .status-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 10px;
+            min-height: 24px;
+        }
+
+        .active-activity {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            min-height: 35px;
+            text-transform: capitalize;
+            animation: pulse-text 2s infinite;
+        }
+
+        .timer-display {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .activities-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .btn-activity {
+            border: none;
+            color: white;
+            padding: 15px 10px;
+            border-radius: 15px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-activity:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn-activity:active {
+            transform: scale(0.95);
+        }
+
+        .btn-activity.active {
+            box-shadow: 0 0 0 4px white, 0 0 0 8px rgba(0,0,0,0.1);
+            transform: scale(1.05);
+            z-index: 2;
+        }
+
+        .btn-owami { background: var(--owami-gradient); }
+        .btn-dtech { background: var(--dtech-gradient); }
+        .btn-sleep { background: var(--sleep-gradient); }
+        .btn-academics { background: var(--study-gradient); }
+        .btn-eating { background: var(--eat-gradient); }
+        .btn-stop { background: var(--stop-gradient); grid-column: span 2; }
+
+        .btn-dashboard {
+            background: white;
+            color: var(--secondary-color);
+            border: 2px solid var(--secondary-color);
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 250px;
+        }
+
+        .btn-dashboard:hover {
+            background: var(--secondary-color);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(126, 87, 194, 0.3);
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(126, 87, 194, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(126, 87, 194, 0.2);
+        }
+
+        .toggle-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--dark-color);
+            text-align: left;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--secondary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.5s ease;
+            z-index: 1000;
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        #notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .loader {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-text {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Disabled state for Owami */
+        .read-only-mode .activities-grid,
+        .read-only-mode .toggle-container {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .timer-display { font-size: 3.5rem; }
+            .tracker-section { padding: 20px; }
+            .activities-grid { gap: 10px; }
+        }
+    </style>
+<script src="custom-alerts.js"></script>
+</head>
+<body>
+    <a href="study.html" class="back-btn">← Back</a>
+
+    <div class="container">
+        <header>
+            <h1>Life Stats</h1>
+            <p>Track your time, understand your life</p>
+        </header>
+
+        <div class="tracker-section" id="trackerSection">
+            <div id="statusText" class="status-text">Currently Tracking:</div>
+            <div id="activeActivityDisplay" class="active-activity">Nothing</div>
+            <div id="timerDisplay" class="timer-display">00:00:00</div>
+
+            <div class="activities-grid" id="activitiesGrid">
+                <button class="btn-activity btn-owami" onclick="switchActivity('owami')" id="btn-owami">
+                    <span class="btn-text">Owami</span>
+                    <div class="loader" id="loader-owami"></div>
+                </button>
+                <button class="btn-activity btn-dtech" onclick="switchActivity('dtech')" id="btn-dtech">
+                    <span class="btn-text">DTECH</span>
+                    <div class="loader" id="loader-dtech"></div>
+                </button>
+                <button class="btn-activity btn-sleep" onclick="switchActivity('sleep')" id="btn-sleep">
+                    <span class="btn-text">Sleep</span>
+                    <div class="loader" id="loader-sleep"></div>
+                </button>
+                <button class="btn-activity btn-academics" onclick="switchActivity('academics')" id="btn-academics">
+                    <span class="btn-text">Academics</span>
+                    <div class="loader" id="loader-academics"></div>
+                </button>
+                <button class="btn-activity btn-eating" onclick="switchActivity('eating')" id="btn-eating">
+                    <span class="btn-text">Eating & Anime</span>
+                    <div class="loader" id="loader-eating"></div>
+                </button>
+                <button class="btn-activity btn-stop" onclick="switchActivity('stop')" id="btn-stop">
+                    <span class="btn-text">Stop Tracking</span>
+                    <div class="loader" id="loader-stop"></div>
+                </button>
+            </div>
+
+            <a href="life-dashboard.html" class="btn-dashboard">Analytics Dashboard</a>
+
+            <div class="toggle-container" id="visibilityToggleContainer">
+                <span class="toggle-label">Allow Owami to see Life Stats button</span>
+                <label class="switch">
+                    <input type="checkbox" id="visibilityToggle" onchange="toggleOwamiVisibility()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
+        let timerInterval;
+        let userData = null;
+        let currentActivity = null;
+        let currentStartTime = null;
+        let isSaving = false;
+
+        const activityGradients = {
+            'owami': 'var(--owami-gradient)',
+            'dtech': 'var(--dtech-gradient)',
+            'sleep': 'var(--sleep-gradient)',
+            'academics': 'var(--study-gradient)',
+            'eating': 'var(--eat-gradient)',
+            'stop': 'var(--secondary-color)',
+            'nothing': 'var(--secondary-color)'
+        };
+
+        const activityNames = {
+            'owami': 'Owami',
+            'dtech': 'DTECH',
+            'sleep': 'Sleep',
+            'academics': 'Academics',
+            'eating': 'Eating & Anime',
+            'stop': 'Nothing'
+        };
+
+        window.onload = async function() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (savedProfile) {
+                userData = JSON.parse(savedProfile);
+            } else {
+                window.location.href = 'you.html';
+                return;
+            }
+
+            // Apply read-only mode for Owami
+            if (userData.name === 'Owami') {
+                document.getElementById('trackerSection').classList.add('read-only-mode');
+                // Poll Jonas's data so Owami can see what he's tracking live
+                setInterval(fetchCurrentState, 5000);
+            }
+
+            await fetchCurrentState();
+        };
+
+        async function fetchCurrentState() {
+            try {
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
+                const coupleData = await response.json();
+
+                // Always fetch from Jonas's data for life stats
+                const jonasData = coupleData['Jonas'] || {};
+
+                if (userData.name === 'Jonas') {
+                    // Update toggle state
+                    document.getElementById('visibilityToggle').checked = !!jonasData.isLifeStatsVisibleToOwami;
+                }
+
+                // Restore active timer
+                const activeLifeActivity = jonasData.activeLifeActivity;
+
+                if (activeLifeActivity && activeLifeActivity.activity !== 'stop') {
+                    currentActivity = activeLifeActivity.activity;
+                    currentStartTime = activeLifeActivity.startTime;
+
+                    if (timerInterval) clearInterval(timerInterval);
+                    timerInterval = setInterval(updateTimerDisplay, 1000);
+                    updateTimerDisplay();
+                    updateUIForActivity(currentActivity);
+                } else {
+                    currentActivity = 'stop';
+                    currentStartTime = null;
+                    if (timerInterval) clearInterval(timerInterval);
+                    document.getElementById('timerDisplay').textContent = "00:00:00";
+                    updateUIForActivity('stop');
+                }
+
+            } catch (e) {
+                console.error("Failed to fetch initial state", e);
+                showNotification("Failed to load current tracking state.");
+            }
+        }
+
+        async function switchActivity(newActivity) {
+            if (isSaving || (newActivity === currentActivity && newActivity !== 'stop')) return;
+            if (userData.name !== 'Jonas') return; // Only Jonas can switch activities
+
+            isSaving = true;
+            showLoader(newActivity);
+
+            try {
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
+                const coupleData = await response.json();
+                const jonasData = coupleData['Jonas'] || {};
+                const lifeStatsLogs = jonasData.lifeStatsLogs || [];
+                const now = new Date().getTime();
+
+                // 1. If there's an active activity (and it's not 'stop'), log it
+                if (currentActivity && currentActivity !== 'stop' && currentStartTime) {
+                    const durationSeconds = Math.floor((now - currentStartTime) / 1000);
+
+                    if (durationSeconds > 10) { // Only log if longer than 10 seconds to avoid spam
+                        const dateObj = new Date(currentStartTime);
+                        const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+
+                        lifeStatsLogs.push({
+                            id: currentStartTime.toString(),
+                            activity: currentActivity,
+                            date: dateStr,
+                            startTime: currentStartTime,
+                            endTime: now,
+                            durationSeconds: durationSeconds
+                        });
+                        showNotification(`Logged ${formatTime(durationSeconds)} of ${activityNames[currentActivity]}.`);
+                    }
+                }
+
+                // 2. Set the new active activity
+                const newActiveLifeActivity = newActivity === 'stop' ? null : {
+                    activity: newActivity,
+                    startTime: now
+                };
+
+                // 3. Save to backend
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        'Jonas': {
+                            ...jonasData,
+                            activeLifeActivity: newActiveLifeActivity,
+                            lifeStatsLogs: lifeStatsLogs
+                        }
+                    })
+                });
+
+                // 4. Update local state and UI
+                currentActivity = newActivity;
+                currentStartTime = newActivity === 'stop' ? null : now;
+
+                if (timerInterval) clearInterval(timerInterval);
+
+                if (newActivity !== 'stop') {
+                    timerInterval = setInterval(updateTimerDisplay, 1000);
+                    updateTimerDisplay();
+                } else {
+                    document.getElementById('timerDisplay').textContent = "00:00:00";
+                }
+
+                updateUIForActivity(newActivity);
+
+            } catch (e) {
+                console.error("Failed to switch activity", e);
+                showNotification("Error switching activity. Please try again.");
+            } finally {
+                hideLoader(newActivity);
+                isSaving = false;
+            }
+        }
+
+        async function toggleOwamiVisibility() {
+            if (userData.name !== 'Jonas') return;
+
+            const isVisible = document.getElementById('visibilityToggle').checked;
+            try {
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
+                const coupleData = await response.json();
+                const jonasData = coupleData['Jonas'] || {};
+
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        'Jonas': { ...jonasData, isLifeStatsVisibleToOwami: isVisible }
+                    })
+                });
+
+                showNotification(isVisible ? "Owami can now see the Life Stats button." : "Life Stats hidden from Owami.");
+            } catch (e) {
+                console.error("Failed to update visibility", e);
+                showNotification("Failed to save visibility setting.");
+                // Revert toggle
+                document.getElementById('visibilityToggle').checked = !isVisible;
+            }
+        }
+
+        function updateUIForActivity(activity) {
+            // Update Text
+            document.getElementById('activeActivityDisplay').textContent = activity === 'stop' ? 'Nothing' : activityNames[activity];
+
+            // Update Header Bar Color
+            const trackerSection = document.getElementById('trackerSection');
+            trackerSection.style.setProperty('--tracker-header-gradient', activityGradients[activity === 'stop' ? 'nothing' : activity]);
+
+            if (userData.name === 'Jonas') {
+                // Update Button Active States
+                const buttons = document.querySelectorAll('.btn-activity');
+                buttons.forEach(btn => btn.classList.remove('active'));
+
+                if (activity !== 'stop' && activity !== null) {
+                    const activeBtn = document.getElementById(`btn-${activity}`);
+                    if (activeBtn) activeBtn.classList.add('active');
+                }
+            }
+        }
+
+        function updateTimerDisplay() {
+            if (!currentStartTime) return;
+            const now = new Date().getTime();
+            const elapsedSeconds = Math.floor((now - currentStartTime) / 1000);
+            document.getElementById('timerDisplay').textContent = formatTime(elapsedSeconds);
+        }
+
+        function formatTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function showLoader(activityId) {
+            const btn = document.getElementById(`btn-${activityId}`);
+            if (btn) {
+                btn.querySelector('.btn-text').style.opacity = '0';
+                btn.querySelector('.loader').style.display = 'block';
+                btn.disabled = true;
+            }
+        }
+
+        function hideLoader(activityId) {
+            const btn = document.getElementById(`btn-${activityId}`);
+            if (btn) {
+                btn.querySelector('.btn-text').style.opacity = '1';
+                btn.querySelector('.loader').style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            notificationText.textContent = message;
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

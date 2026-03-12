@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="auth-check.js"></script>
+    <link rel="icon" type="image/png" href="logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Analytics - Together Forever</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #ff7eb9;
+            --secondary-color: #7e57c2;
+            --accent-color: #ff4d8d;
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --study-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --sleep-gradient: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+            --eat-gradient: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            --owami-gradient: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+            --dtech-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            padding-top: 80px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: var(--secondary-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 8px 20px rgba(166, 94, 166, 0.3);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease-out;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+
+        .dashboard-section {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            width: 100%;
+            box-shadow: 0 15px 40px rgba(166, 94, 166, 0.15);
+            margin-bottom: 30px;
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--dtech-gradient);
+        }
+
+        h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            background: rgba(126, 87, 194, 0.1);
+            color: var(--secondary-color);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: var(--secondary-color);
+            color: white;
+            box-shadow: 0 5px 15px rgba(126, 87, 194, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(126, 87, 194, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .stat-title {
+            font-size: 0.8rem;
+            color: #777;
+            margin-bottom: 5px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            color: var(--dark-color);
+            font-weight: 700;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .pie-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        #loadingState {
+            text-align: center;
+            padding: 40px;
+            color: var(--secondary-color);
+            font-weight: 500;
+            width: 100%;
+        }
+
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(126, 87, 194, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--secondary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 15px auto;
+        }
+
+        #dashboardContent {
+            display: none;
+            width: 100%;
+        }
+
+        #emptyState {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #777;
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .dashboard-section {
+                padding: 20px;
+            }
+        }
+    </style>
+<script src="custom-alerts.js"></script>
+</head>
+<body>
+    <a href="life-stats.html" class="back-btn">← Back</a>
+
+    <div class="container">
+        <header>
+            <h1>Life Analytics</h1>
+            <p>Your time, beautifully visualized</p>
+        </header>
+
+        <div id="loadingState">
+            <div class="loader"></div>
+            <p>Analyzing life data...</p>
+        </div>
+
+        <div id="emptyState">
+            <h2>No Data Yet</h2>
+            <p>Start tracking your activities on the Life Stats page to see your beautiful charts here!</p>
+        </div>
+
+        <div id="dashboardContent">
+            <div class="filter-container">
+                <button class="filter-btn active" onclick="setFilter('today')" id="btn-today">Today</button>
+                <button class="filter-btn" onclick="setFilter('week')" id="btn-week">This Week</button>
+                <button class="filter-btn" onclick="setFilter('month')" id="btn-month">This Month</button>
+                <button class="filter-btn" onclick="setFilter('all')" id="btn-all">All Time</button>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>Activity Distribution</h2>
+                <div class="pie-container">
+                    <canvas id="pieChart"></canvas>
+                </div>
+
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Stat cards generated dynamically -->
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>Time Spent (Last 7 Days)</h2>
+                <div class="chart-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
+        let allLogs = [];
+        let pieChartInstance = null;
+        let barChartInstance = null;
+        let currentFilter = 'today';
+
+        const activityColors = {
+            'owami': '#ff758c',
+            'dtech': '#11998e',
+            'sleep': '#330867',
+            'academics': '#4facfe',
+            'eating': '#f6d365'
+        };
+
+        const activityNames = {
+            'owami': 'Owami',
+            'dtech': 'DTECH',
+            'sleep': 'Sleep',
+            'academics': 'Academics',
+            'eating': 'Eating/Anime'
+        };
+
+        const activityIcons = {
+            'owami': '❤️',
+            'dtech': '💻',
+            'sleep': '😴',
+            'academics': '📚',
+            'eating': '🍕'
+        };
+
+        window.onload = async function() {
+            const savedProfile = localStorage.getItem('togetherProfile');
+            if (!savedProfile) {
+                window.location.href = 'you.html';
+                return;
+            }
+            await fetchLifeData();
+        };
+
+        async function fetchLifeData() {
+            try {
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
+                const coupleData = await response.json();
+
+                // Always use Jonas's logs for Life Stats dashboard
+                const jonasData = coupleData['Jonas'] || {};
+                allLogs = jonasData.lifeStatsLogs || [];
+
+                // Pre-process: calculate ongoing active activity duration to add to 'Today'
+                const activeActivity = jonasData.activeLifeActivity;
+                if (activeActivity && activeActivity.activity !== 'stop' && activeActivity.startTime) {
+                    const now = new Date().getTime();
+                    const durationSeconds = Math.floor((now - activeActivity.startTime) / 1000);
+
+                    const dateObj = new Date(activeActivity.startTime);
+                    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+
+                    allLogs.push({
+                        id: 'active_session',
+                        activity: activeActivity.activity,
+                        date: dateStr,
+                        startTime: activeActivity.startTime,
+                        endTime: now,
+                        durationSeconds: durationSeconds
+                    });
+                }
+
+                document.getElementById('loadingState').style.display = 'none';
+
+                if (allLogs.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                } else {
+                    document.getElementById('dashboardContent').style.display = 'block';
+                    updateDashboard();
+                }
+
+            } catch (e) {
+                console.error("Failed to fetch life data", e);
+                document.getElementById('loadingState').innerHTML = '<p>Error loading data. Please try refreshing.</p>';
+            }
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+
+            // Update active button state
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${filterType}`).classList.add('active');
+
+            updateDashboard();
+        }
+
+        function getFilteredLogs() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+            return allLogs.filter(log => {
+                if (currentFilter === 'all') return true;
+
+                const logTime = log.startTime;
+
+                if (currentFilter === 'today') {
+                    return logTime >= today;
+                } else if (currentFilter === 'week') {
+                    const sevenDaysAgo = today - (6 * 24 * 60 * 60 * 1000);
+                    return logTime >= sevenDaysAgo;
+                } else if (currentFilter === 'month') {
+                    const thirtyDaysAgo = today - (29 * 24 * 60 * 60 * 1000);
+                    return logTime >= thirtyDaysAgo;
+                }
+                return true;
+            });
+        }
+
+        function updateDashboard() {
+            const filteredLogs = getFilteredLogs();
+
+            // Aggregate totals by activity
+            const totalsByActivity = {
+                'owami': 0,
+                'dtech': 0,
+                'sleep': 0,
+                'academics': 0,
+                'eating': 0
+            };
+
+            filteredLogs.forEach(log => {
+                if (totalsByActivity[log.activity] !== undefined) {
+                    totalsByActivity[log.activity] += log.durationSeconds;
+                }
+            });
+
+            updateStatCards(totalsByActivity);
+            updatePieChart(totalsByActivity);
+            updateBarChart(); // Bar chart always shows last 7 days trend
+        }
+
+        function updateStatCards(totals) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = '';
+
+            Object.keys(totals).forEach(activity => {
+                const totalSeconds = totals[activity];
+                if (totalSeconds > 0) {
+                    const card = document.createElement('div');
+                    card.className = 'stat-card';
+                    card.innerHTML = `
+                        <span class="stat-icon">${activityIcons[activity]}</span>
+                        <div class="stat-title">${activityNames[activity]}</div>
+                        <div class="stat-value">${formatTimeShort(totalSeconds)}</div>
+                    `;
+                    statsGrid.appendChild(card);
+                }
+            });
+
+            if (statsGrid.innerHTML === '') {
+                statsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:#999; padding: 20px;">No activity logged for this period.</div>';
+            }
+        }
+
+        function updatePieChart(totals) {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+
+            const labels = [];
+            const data = [];
+            const backgroundColors = [];
+
+            Object.keys(totals).forEach(activity => {
+                if (totals[activity] > 0) {
+                    labels.push(activityNames[activity]);
+                    data.push(totals[activity]);
+                    backgroundColors.push(activityColors[activity]);
+                }
+            });
+
+            if (pieChartInstance) {
+                pieChartInstance.destroy();
+            }
+
+            let chartLabels = [...labels];
+            let chartData = [...data];
+            let chartColors = [...backgroundColors];
+
+            if (chartData.length === 0) {
+                chartLabels = ["Nothing"];
+                chartData = [1];
+                chartColors = ["#eee"];
+            }
+
+            pieChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: chartColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    family: "'Montserrat', sans-serif",
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (chartData.length === 1 && chartData[0] === 1 && chartLabels[0] === "Nothing") return "No Data";
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += formatTimeShort(context.raw);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function updateBarChart() {
+            // Group data by last 7 days
+            const last7Days = [];
+            const labels = [];
+            const now = new Date();
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                last7Days.push(dateStr);
+
+                // Format label as "Mon 12"
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                labels.push(`${days[d.getDay()]} ${d.getDate()}`);
+            }
+
+            // Initialize datasets
+            const datasets = Object.keys(activityNames).map(activity => {
+                return {
+                    label: activityNames[activity],
+                    data: new Array(7).fill(0),
+                    backgroundColor: activityColors[activity],
+                    borderRadius: 5
+                };
+            });
+
+            // Fill datasets
+            allLogs.forEach(log => {
+                const dayIndex = last7Days.indexOf(log.date);
+                if (dayIndex !== -1) {
+                    const dataset = datasets.find(ds => ds.label === activityNames[log.activity]);
+                    if (dataset) {
+                        dataset.data[dayIndex] += (log.durationSeconds / 3600); // Convert to hours
+                    }
+                }
+            });
+
+            // Filter out empty datasets
+            const activeDatasets = datasets.filter(ds => ds.data.some(val => val > 0));
+
+            const ctx = document.getElementById('barChart').getContext('2d');
+
+            if (barChartInstance) {
+                barChartInstance.destroy();
+            }
+
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: activeDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Hours'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    family: "'Montserrat', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        // Convert decimal hours back to readable format for tooltip
+                                        const totalSeconds = Math.floor(context.parsed.y * 3600);
+                                        label += formatTimeShort(totalSeconds);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function formatTimeShort(totalSeconds) {
+            if (totalSeconds < 60) return `${totalSeconds}s`;
+
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+            if (hours === 0) {
+                return `${minutes}m`;
+            } else if (minutes === 0) {
+                return `${hours}h`;
+            } else {
+                return `${hours}h ${minutes}m`;
+            }
+        }
+    </script>
+</body>
+</html>
