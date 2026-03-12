@@ -1,4 +1,0 @@
-127.0.0.1 - - [28/Feb/2026 18:42:34] "GET /you.html HTTP/1.1" 200 -
-127.0.0.1 - - [28/Feb/2026 18:42:35] "GET /private.html HTTP/1.1" 200 -
-127.0.0.1 - - [28/Feb/2026 18:42:36] "GET /coupons.html HTTP/1.1" 200 -
-127.0.0.1 - - [28/Feb/2026 18:42:36] "GET /roulette.html HTTP/1.1" 200 -
