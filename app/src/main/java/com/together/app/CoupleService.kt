@@ -27,8 +27,16 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Bundle
+import android.os.Looper
+import android.annotation.SuppressLint
 
 class CoupleService : Service() {
+
+    private var lastLocationUpdateTime: Long = 0
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
     private var isRunning = false
@@ -75,7 +83,11 @@ class CoupleService : Service() {
             .setOngoing(true)
             .build()
 
-        startForeground(1, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(1, notification)
+        }
     }
 
     private fun startPolling() {
@@ -311,8 +323,25 @@ class CoupleService : Service() {
                     }
                 }
 
-                // Check 100km distance change notification
+                // Check for force location update flag
                 val myStateObj = globalState.optJSONObject(localUserName)
+
+                var shouldUpdateLocation = false
+                if (myStateObj != null && myStateObj.optBoolean("forceLocationUpdate", false)) {
+                    shouldUpdateLocation = true
+                }
+
+                // Also update location if 30 minutes have passed
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastLocationUpdateTime >= 30 * 60 * 1000) {
+                    shouldUpdateLocation = true
+                }
+
+                if (shouldUpdateLocation) {
+                    fetchAndPushLocation(localUserName, authToken, myStateObj ?: JSONObject())
+                }
+
+                // Check 100km distance change notification
                 if (myStateObj != null && partnerStateObj != null) {
                     val myLoc = myStateObj.optJSONObject("location")
                     val partnerLoc = partnerStateObj.optJSONObject("location")
@@ -357,6 +386,148 @@ class CoupleService : Service() {
         }
     }
 
+
+    @SuppressLint("MissingPermission")
+    private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        // We only proceed if location permissions are granted
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        try {
+            // Get last known location first to be quick
+            val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+
+            val updateLocationOnServer = { loc: Location ->
+                val newLocation = JSONObject().apply {
+                    put("lat", loc.latitude)
+                    put("lng", loc.longitude)
+                    put("timestamp", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.format(Date()))
+                }
+
+                // Keep history up to 10 items
+                val locationHistory = myStateObj.optJSONArray("locationHistory") ?: JSONArray()
+                locationHistory.put(newLocation)
+                if (locationHistory.length() > 10) {
+                    val trimmedHistory = JSONArray()
+                    for (i in locationHistory.length() - 10 until locationHistory.length()) {
+                        trimmedHistory.put(locationHistory.getJSONObject(i))
+                    }
+                    myStateObj.put("locationHistory", trimmedHistory)
+                } else {
+                    myStateObj.put("locationHistory", locationHistory)
+                }
+
+                myStateObj.put("location", newLocation)
+                // Always clear force flag after updating
+                myStateObj.remove("forceLocationUpdate")
+
+                val updates = JSONObject()
+                updates.put(userName, myStateObj)
+
+                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val reqBody = updates.toString().toRequestBody(mediaType)
+
+                val postReq = Request.Builder()
+                    .url(apiUrl)
+                    .addHeader("Authorization", "Bearer $authToken")
+                    .post(reqBody)
+                    .build()
+
+                client.newCall(postReq).execute()
+                lastLocationUpdateTime = System.currentTimeMillis()
+            }
+
+            // Try network provider first as it's faster inside buildings
+            val provider = if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                LocationManager.NETWORK_PROVIDER
+            } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                LocationManager.GPS_PROVIDER
+            } else {
+                null
+            }
+
+            if (provider != null) {
+                // Request a fresh update if possible, otherwise use last known
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) {
+                        thread {
+                            try {
+                                updateLocationOnServer(location)
+                            } catch (e: Exception) {
+                                Log.e("CoupleService", "Failed to update location on server", e)
+                            }
+                        }
+                        locationManager.removeUpdates(this)
+                    }
+                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
+                }
+
+                val handler = android.os.Handler(Looper.getMainLooper())
+                handler.post {
+                    locationManager.requestSingleUpdate(provider, listener, null)
+                }
+
+                // Only wait up to 10 seconds for a fresh location
+                handler.postDelayed({
+                    locationManager.removeUpdates(listener)
+                    // If we removed updates and haven't updated location yet, use last known or clear flag
+                    if (System.currentTimeMillis() - lastLocationUpdateTime > 15000) {
+                        if (lastKnown != null) {
+                            thread {
+                                try {
+                                    updateLocationOnServer(lastKnown)
+                                } catch (e: Exception) {
+                                    Log.e("CoupleService", "Fallback location update failed", e)
+                                }
+                            }
+                        } else {
+                            // Clear the force update flag so it stops trying
+                            myStateObj.remove("forceLocationUpdate")
+                            val updates = JSONObject()
+                            updates.put(userName, myStateObj)
+                            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                            val reqBody = updates.toString().toRequestBody(mediaType)
+                            val postReq = Request.Builder()
+                                .url(apiUrl)
+                                .addHeader("Authorization", "Bearer $authToken")
+                                .post(reqBody)
+                                .build()
+                            client.newCall(postReq).execute()
+                        }
+                    }
+                }, 10000)
+            } else if (lastKnown != null) {
+                // If no provider but we have last known, use it
+                updateLocationOnServer(lastKnown)
+            } else {
+                // If we absolutely cannot get location, we should at least clear the force update flag so it stops trying
+                myStateObj.remove("forceLocationUpdate")
+                val updates = JSONObject()
+                updates.put(userName, myStateObj)
+
+                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val reqBody = updates.toString().toRequestBody(mediaType)
+
+                val postReq = Request.Builder()
+                    .url(apiUrl)
+                    .addHeader("Authorization", "Bearer $authToken")
+                    .post(reqBody)
+                    .build()
+
+                client.newCall(postReq).execute()
+            }
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Error pushing location", e)
+        }
+    }
 
     private fun updateStreakAndWidget(globalState: JSONObject, localUserName: String, partnerName: String) {
         try {
