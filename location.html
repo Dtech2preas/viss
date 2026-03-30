@@ -710,7 +710,7 @@
             
             <div style="display: flex; gap: 15px; margin-top: 20px;">
                 <button class="btn" onclick="updateLocation()">Update My Location</button>
-                <button class="btn btn-secondary" onclick="updatePartnerLocation()">Update Partner's Location</button>
+                <button class="btn btn-secondary" onclick="updatePartnerLocation(true)">Update Partner's Location</button>
             </div>
         </div>
 
@@ -1071,7 +1071,7 @@
             return R * c;
         }
 
-        async function updatePartnerLocation() {
+        async function updatePartnerLocation(isManualClick = false) {
             try {
                 const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 if(!response.ok) throw new Error("Failed to load shared state");
@@ -1079,6 +1079,25 @@
 
                 const partnerState = globalState[localUser.partner.name] || {};
                 const myState = globalState[localUser.name] || {};
+
+                if (isManualClick === true) {
+                    try {
+                        // Request partner's device to force update its location
+                        await window.authenticatedFetch(`${API_URL}/api/couple`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                [localUser.partner.name]: {
+                                    ...partnerState,
+                                    forceLocationUpdate: true
+                                }
+                            })
+                        });
+                        showNotification('Requested partner device to update location...');
+                    } catch (e) {
+                        console.error('Error sending force update flag:', e);
+                    }
+                }
 
                 if (partnerState.location) {
                     updatePartnerLocationDisplay(partnerState.location);
@@ -1157,6 +1176,24 @@
                         updated = true;
                     }
 
+                    // Track far apart logic for stats page to count "times together" correctly
+                    if (distanceKm > 150) {
+                        if (myState.wasFarApart !== true) {
+                            updates.wasFarApart = true;
+                            updated = true;
+                        }
+                    } else if (distanceKm < 0.1) {
+                        if (myState.wasFarApart === true || myState.wasFarApart === undefined) {
+                            // Let the next page load handle the time checking, but we can set the flag
+                            // as a signal we've met.
+                            // We won't increment timesTogether here directly unless we want to duplicate stats logic.
+                            // Best just keep wasFarApart logic updated so stats doesn't miss it.
+                            // Actually, wait, if we are at 0.1km, stats page might want to know if we arrived.
+                            // Wait, if we set wasFarApart to false HERE, then stats.html might miss it.
+                            // So we don't set it to false here. We let stats.html set it to false when it increments.
+                        }
+                    }
+
                     if (updated) {
                         try {
                             // First fetch latest global state to avoid overwriting recent changes
@@ -1226,6 +1263,13 @@
                 updates.furthestDistance = distance;
                 document.getElementById('furthestDistance').textContent = distance.toFixed(2) + ' km';
                 updated = true;
+            }
+
+            if (distance > 150) {
+                if (myState.wasFarApart !== true) {
+                    updates.wasFarApart = true;
+                    updated = true;
+                }
             }
 
             if (updated) {

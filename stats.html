@@ -466,13 +466,24 @@
                         statsUpdated = true;
                     }
 
-                    // Simple metric for "times together" if close enough (e.g. < 0.1km)
-                    if (currentDist < 0.1) {
-                        if (!myState.lastTimeTogether || (Date.now() - new Date(myState.lastTimeTogether).getTime() > 1000 * 60 * 60 * 12)) {
-                            // Increment times together if haven't been recorded as together in the last 12 hours
-                            timesTogether++;
-                            myState.lastTimeTogether = new Date().toISOString();
+                    // Track if users are far apart (> 150km)
+                    if (currentDist > 150) {
+                        if (myState.wasFarApart !== true) {
+                            myState.wasFarApart = true;
                             statsUpdated = true;
+                        }
+                    }
+
+                    // Strict metric for "times together": Must have been > 150km apart, then come < 0.1km apart
+                    if (currentDist < 0.1) {
+                        // Default to allowing the first meet if wasFarApart is completely undefined (new feature migration)
+                        if (myState.wasFarApart === true || myState.wasFarApart === undefined) {
+                            if (!myState.lastTimeTogether || (Date.now() - new Date(myState.lastTimeTogether).getTime() > 1000 * 60 * 60 * 12)) {
+                                timesTogether++;
+                                myState.lastTimeTogether = new Date().toISOString();
+                                myState.wasFarApart = false;
+                                statsUpdated = true;
+                            }
                         }
                     }
                 }
