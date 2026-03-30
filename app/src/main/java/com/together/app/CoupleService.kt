@@ -228,7 +228,7 @@ class CoupleService : Service() {
                 val bucketList = globalState.optJSONArray("bucketList")
                 if (bucketList != null) {
                     if (lastBucketCount != -1 && bucketList.length() > lastBucketCount) {
-                        sendNotification("$partnerName added a new item to the bucket list! ✨")
+                        sendNotification("$partnerName added a new item to the bucket list! ✨", "bucket.html")
                     }
                     with(sharedPref.edit()) {
                         putInt("lastBucketCount_$partnerName", bucketList.length())
@@ -250,7 +250,7 @@ class CoupleService : Service() {
                         }
 
                         if (lastRouletteProposalsCount != -1 && partnerProposalsCount > lastRouletteProposalsCount) {
-                            sendNotification("$partnerName added a suggestion to roulette")
+                            sendNotification("$partnerName added a suggestion to roulette", "roulette.html")
                         }
                         with(sharedPref.edit()) {
                             putInt("lastRouletteProposalsCount_$partnerName", partnerProposalsCount)
@@ -278,7 +278,7 @@ class CoupleService : Service() {
 
                                 if (currentUserPoints > lastUserPoints) {
                                     val difference = currentUserPoints - lastUserPoints
-                                    sendNotification("$partnerName had awarded you $difference points")
+                                    sendNotification("$partnerName had awarded you $difference points", "index.html")
                                 }
                             }
                         }
@@ -291,9 +291,9 @@ class CoupleService : Service() {
                             val lastPartnerInv = lastInventory.optJSONArray(partnerName)
                             if (currentPartnerInv != null && lastPartnerInv != null) {
                                 if (currentPartnerInv.length() < lastPartnerInv.length()) {
-                                    sendNotification("$partnerName redeemed a coupon!")
+                                    sendNotification("$partnerName redeemed a coupon!", "coupons.html")
                                 } else if (currentPartnerInv.length() > lastPartnerInv.length()) {
-                                    sendNotification("$partnerName got a new coupon!")
+                                    sendNotification("$partnerName got a new coupon!", "coupons.html")
                                 }
                             }
                         }
@@ -318,6 +318,27 @@ class CoupleService : Service() {
 
                         with(sharedPref.edit()) {
                             putString("lastPartnerState_$partnerName", partnerStateStr)
+                            apply()
+                        }
+                    }
+                }
+
+                // Handle Incoming Calls
+                val callStateObj = globalState.optJSONObject("callState")
+                if (callStateObj != null) {
+                    val status = callStateObj.optString("status", "")
+                    val target = callStateObj.optString("target", "")
+                    val caller = callStateObj.optString("caller", "")
+                    val type = callStateObj.optString("type", "voice")
+
+                    val lastCallTimestamp = sharedPref.getLong("lastCallTimestamp", 0L)
+                    val currentCallTimestamp = callStateObj.optLong("timestamp", 0L)
+
+                    // If a new incoming call is directed at this user
+                    if (status == "calling" && target == localUserName && currentCallTimestamp > lastCallTimestamp) {
+                        sendNotification("Incoming $type call from $caller \uD83D\uDCDE", "call.html?incoming=true")
+                        with(sharedPref.edit()) {
+                            putLong("lastCallTimestamp", currentCallTimestamp)
                             apply()
                         }
                     }
@@ -372,7 +393,7 @@ class CoupleService : Service() {
                                 if (Math.abs(distanceDiff) >= 100) {
                                     val direction = if (distanceDiff > 0) "moved away" else "moved closer"
                                     val absDiff = Math.abs(distanceDiff).toInt()
-                                    sendNotification("$partnerName has $direction by ~${absDiff}km")
+                                    sendNotification("$partnerName has $direction by ~${absDiff}km", "location.html")
 
                                     sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
                                 }
@@ -713,7 +734,7 @@ class CoupleService : Service() {
 
                 if (isNew && type.isNotEmpty()) {
                     val formattedType = formatActivityType(type)
-                    sendNotification("$partnerName is $formattedType")
+                    sendNotification("$partnerName is $formattedType", "location.html")
                 }
             }
         }
@@ -722,7 +743,7 @@ class CoupleService : Service() {
             val currentMood = currentState.optString("mood", "")
             val lastMood = lastState.optString("mood", "")
             if (currentMood != lastMood && currentMood.isNotEmpty()) {
-                sendNotification("$partnerName is feeling $currentMood")
+                sendNotification("$partnerName is feeling $currentMood", "mood.html")
             }
         }
 
@@ -732,7 +753,7 @@ class CoupleService : Service() {
             val lastLogsCount = lastLogs?.length() ?: 0
 
             if (currentLogs.length() > lastLogsCount) {
-                sendNotification("$partnerName finished studying! 📚")
+                sendNotification("$partnerName finished studying! 📚", "study.html")
             }
         }
 
@@ -747,7 +768,7 @@ class CoupleService : Service() {
             }
 
             if (currentTotalScore > lastTotalScore) {
-                sendNotification("$partnerName is playing games and scored points!")
+                sendNotification("$partnerName is playing games and scored points!", "games.html")
             }
         }
 
@@ -757,7 +778,7 @@ class CoupleService : Service() {
             val lastMessagesCount = lastMessages?.length() ?: 0
 
             if (currentMessages.length() > lastMessagesCount) {
-                sendNotification("$partnerName send you a message")
+                sendNotification("$partnerName send you a message", "messages.html")
             }
         }
     }
@@ -783,7 +804,7 @@ class CoupleService : Service() {
         return map[type] ?: type
     }
 
-    private fun sendNotification(content: String) {
+    private fun sendNotification(content: String, openPage: String? = null) {
         val channelId = "TogetherUpdates"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -800,8 +821,12 @@ class CoupleService : Service() {
 
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            if (openPage != null) {
+                putExtra("openPage", openPage)
+            }
         }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(applicationContext, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntentId = System.currentTimeMillis().toInt()
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(applicationContext, pendingIntentId, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
         val builder = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
