@@ -287,6 +287,20 @@
         </header>
 
         <!-- Personal Gist Section -->
+        <!-- Communication Tools -->
+        <div class="card">
+            <h2 class="card-title">Call Partner</h2>
+            <div style="display: flex; gap: 15px; margin-top: 15px;">
+                <button class="btn" style="flex: 1; background: #4cd964;" onclick="startCall('voice')">
+                    📞 Voice Call
+                </button>
+                <button class="btn" style="flex: 1; background: #5ac8fa;" onclick="startCall('video')">
+                    📹 Video Call
+                </button>
+            </div>
+        </div>
+
+        <!-- Personal Gist Section -->
         <div class="card" id="personalGistCard">
             <h2 class="card-title">Personal Gist Settings</h2>
             <div id="userSelectionContainer">
@@ -351,6 +365,10 @@
 
         function goBack() {
             window.location.href = 'you.html';
+        }
+
+        function startCall(mode) {
+            window.location.href = `call.html?mode=${mode}`;
         }
 
         async function sendDailyMessage() {

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.util.Log
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
+import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -65,6 +66,21 @@ class MainActivity : AppCompatActivity() {
             ) {
                 // Grant geolocation permissions to the WebView
                 callback.invoke(origin, true, false)
+            }
+
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val requestedResources = request.resources
+                val grantedResources = mutableListOf<String>()
+                for (resource in requestedResources) {
+                    if (resource == PermissionRequest.RESOURCE_VIDEO_CAPTURE || resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
+                        grantedResources.add(resource)
+                    }
+                }
+                if (grantedResources.isNotEmpty()) {
+                    request.grant(grantedResources.toTypedArray())
+                } else {
+                    request.deny()
+                }
             }
         }
 
@@ -172,14 +188,31 @@ class MainActivity : AppCompatActivity() {
             apply()
         }
 
-        // Load the initial HTML file
-        webView.loadUrl("https://together.preasx24.co.za/you.html")
+        // Check if intent specifies a page to open, otherwise load you.html
+        val openPage = intent.getStringExtra("openPage")
+        if (openPage != null) {
+            webView.loadUrl("https://together.preasx24.co.za/$openPage")
+        } else {
+            webView.loadUrl("https://together.preasx24.co.za/you.html")
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent) // update the original intent
+
+        val openPage = intent?.getStringExtra("openPage")
+        if (openPage != null && webView.visibility == View.VISIBLE) {
+            webView.loadUrl("https://together.preasx24.co.za/$openPage")
+        }
     }
 
     private fun askForPermissions() {
         val permissionsToRequest = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
