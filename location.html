@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Together - Location Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         :root {
             --primary-color: #ff7eb9;
@@ -179,8 +181,32 @@
             padding: 25px;
             border-radius: 15px;
             text-align: center;
-            width: 45%;
+            flex: 1;
             box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .weather-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .weather-icon {
+            font-size: 2.5rem;
+        }
+
+        .weather-temp {
+            font-size: 1.8rem;
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        .weather-desc {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
         }
         
         .distance-value {
@@ -281,6 +307,128 @@
         .user-card h3 {
             margin-bottom: 10px;
             color: var(--secondary-color);
+        }
+
+        /* Map Styles */
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 15px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+            z-index: 1; /* Keep map below modals/alerts */
+        }
+
+        .map-section {
+            padding: 20px;
+        }
+
+        .direction-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+        }
+
+        .compass-arrow {
+            width: 40px;
+            height: 40px;
+            transition: transform 0.5s ease;
+            color: var(--accent-color);
+        }
+
+        /* Toggle Styles */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(166, 94, 166, 0.1);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background: var(--gradient);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            font-weight: 500;
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+        }
+
+        .trip-stats {
+            display: none;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: center;
+            border: 2px solid var(--primary-color);
+        }
+
+        .trip-stats.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .trip-stat-value {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            font-weight: bold;
+            margin: 5px 0;
         }
         
         .status-bar {
@@ -494,12 +642,59 @@
                     <h3>Furthest Distance</h3>
                     <div class="distance-value" id="furthestDistance">-- km</div>
                 </div>
+                <div class="distance-box">
+                    <h3>Partner's Weather</h3>
+                    <div class="weather-info">
+                        <div class="weather-icon" id="weatherIcon">☁️</div>
+                        <div class="weather-temp" id="weatherTemp">--°C</div>
+                    </div>
+                    <div class="weather-desc" id="weatherDesc">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map and Trip Toggle Section -->
+        <div class="section map-section">
+            <h2>Live Map</h2>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Trip to Meet Partner</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="tripToggle" onchange="handleTripToggle()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div id="tripStats" class="trip-stats">
+                <h3>Trip Status (Updating every 15s)</h3>
+                <div style="display: flex; justify-content: space-around; margin-top: 10px; flex-wrap: wrap;">
+                    <div>
+                        <div style="font-size: 0.9rem; color: #666;">Driving Distance</div>
+                        <div class="trip-stat-value" id="tripDistance">-- km</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; color: #666;">Est. Time Left</div>
+                        <div class="trip-stat-value" id="tripTime">-- mins</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="map"></div>
+
+            <div class="direction-indicator">
+                <svg class="compass-arrow" id="directionArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
+                </svg>
+                <div style="text-align: left;">
+                    <div style="font-weight: bold; color: var(--secondary-color);" id="directionText">Finding direction...</div>
+                    <div style="font-size: 0.8rem; color: #666;">Direction to partner</div>
+                </div>
             </div>
         </div>
 
         <!-- Location Details Section -->
         <div class="section">
-            <h2>Your Locations</h2>
+            <h2>Location Details</h2>
             <div class="location-container">
                 <div class="location-box">
                     <div class="location-title">Your Location</div>
@@ -536,11 +731,21 @@
         <span id="notificationText"></span>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
         let localUser = null;
         let globalState = {};
         let autoUpdateInterval = null;
+        let myLocationInterval = null; // Interval for tracking my location
+
+        let map = null;
+        let userMarker = null;
+        let partnerMarker = null;
+        let tripPolyline = null;
+
+        let isTripMode = false;
 
         // Create floating hearts
         function createHearts() {
@@ -577,9 +782,154 @@
 
             document.getElementById('personalGistSection').style.display = 'none';
 
+            initMap();
             loadLocationData();
 
-            autoUpdateInterval = setInterval(updatePartnerLocation, 120000);
+            // Setup intervals based on trip mode
+            setupIntervals();
+        }
+
+        function setupIntervals() {
+            if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+            if (myLocationInterval) clearInterval(myLocationInterval);
+
+            if (isTripMode) {
+                // Trip mode: fetch partner and update my location every 15 seconds
+                autoUpdateInterval = setInterval(updatePartnerLocation, 15000);
+                myLocationInterval = setInterval(updateLocation, 15000);
+            } else {
+                // Normal mode: fetch partner and update my location every 30 minutes
+                autoUpdateInterval = setInterval(updatePartnerLocation, 30 * 60 * 1000);
+                myLocationInterval = setInterval(updateLocation, 30 * 60 * 1000);
+            }
+        }
+
+        function handleTripToggle() {
+            isTripMode = document.getElementById('tripToggle').checked;
+            const tripStats = document.getElementById('tripStats');
+
+            if (isTripMode) {
+                tripStats.classList.add('active');
+                showNotification('Trip mode activated. Tracking every 15s.');
+            } else {
+                tripStats.classList.remove('active');
+                showNotification('Trip mode deactivated. Tracking every 30m.');
+
+                // Clear trip stats
+                document.getElementById('tripDistance').textContent = '-- km';
+                document.getElementById('tripTime').textContent = '-- mins';
+
+                if (tripPolyline && map) {
+                    map.removeLayer(tripPolyline);
+                    tripPolyline = null;
+                }
+            }
+
+            setupIntervals();
+            // Trigger immediate update
+            updateLocation();
+        }
+
+        function initMap() {
+            // Default center to somewhere until location loads
+            map = L.map('map').setView([0, 0], 2);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Create custom icons with fallback colors
+            const userIconHtml = `<div style="background-color: var(--primary-color); width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-family: sans-serif;">Me</div>`;
+            const partnerIconHtml = `<div style="background-color: var(--secondary-color); width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-family: sans-serif;">P</div>`;
+
+            const userIcon = L.divIcon({
+                html: userIconHtml,
+                className: '',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            const partnerIcon = L.divIcon({
+                html: partnerIconHtml,
+                className: '',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            // We'll add markers later when data is loaded
+            window.userMapIcon = userIcon;
+            window.partnerMapIcon = partnerIcon;
+        }
+
+        function updateMapMarkers(myLoc, partnerLoc) {
+            if (!map) return;
+
+            let bounds = [];
+
+            if (myLoc && myLoc.lat && myLoc.lng) {
+                if (userMarker) {
+                    userMarker.setLatLng([myLoc.lat, myLoc.lng]);
+                } else {
+                    userMarker = L.marker([myLoc.lat, myLoc.lng], {icon: window.userMapIcon}).addTo(map)
+                        .bindPopup('You are here');
+                }
+                bounds.push([myLoc.lat, myLoc.lng]);
+            }
+
+            if (partnerLoc && partnerLoc.lat && partnerLoc.lng) {
+                if (partnerMarker) {
+                    partnerMarker.setLatLng([partnerLoc.lat, partnerLoc.lng]);
+                } else {
+                    partnerMarker = L.marker([partnerLoc.lat, partnerLoc.lng], {icon: window.partnerMapIcon}).addTo(map)
+                        .bindPopup(localUser.partner.name + ' is here');
+                }
+                bounds.push([partnerLoc.lat, partnerLoc.lng]);
+            }
+
+            if (bounds.length > 0) {
+                if (bounds.length === 1) {
+                    map.setView(bounds[0], 13);
+                } else {
+                    map.fitBounds(bounds, {padding: [50, 50]});
+                    updateDirectionIndicator(myLoc, partnerLoc);
+                }
+            }
+        }
+
+        function updateDirectionIndicator(myLoc, partnerLoc) {
+            if (!myLoc || !partnerLoc) return;
+
+            // Calculate bearing from myLoc to partnerLoc
+            const lat1 = myLoc.lat * Math.PI / 180;
+            const lon1 = myLoc.lng * Math.PI / 180;
+            const lat2 = partnerLoc.lat * Math.PI / 180;
+            const lon2 = partnerLoc.lng * Math.PI / 180;
+
+            const dLon = lon2 - lon1;
+
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+
+            let brng = Math.atan2(y, x);
+            brng = brng * 180 / Math.PI;
+            brng = (brng + 360) % 360; // Normalize to 0-360
+
+            // Determine cardinal direction text
+            const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+            const val = Math.floor((brng / 22.5) + 0.5);
+            const dirText = dirs[(val % 16)];
+
+            // Rotate arrow SVG
+            const arrow = document.getElementById('directionArrow');
+            if (arrow) {
+                arrow.style.transform = `rotate(${brng}deg)`;
+            }
+
+            const text = document.getElementById('directionText');
+            if (text) {
+                text.textContent = `Pointing ${dirText} towards ${localUser.partner.name}`;
+            }
         }
 
         function goBack() {
@@ -615,6 +965,8 @@
                 if (myState.location && partnerState.location) {
                     calculateDistance(myState.location, partnerState.location);
                 }
+
+                updateMapMarkers(myState.location, partnerState.location);
 
                 updateLocationHistory(myState.locationHistory);
 
@@ -686,6 +1038,8 @@
                             calculateDistance(newLocation, partnerState.location);
                         }
 
+                        updateMapMarkers(newLocation, partnerState.location);
+
                         updateLocationHistory(globalState[localUser.name].locationHistory);
                     },
                     error => {
@@ -732,6 +1086,8 @@
                     if (myState.location) {
                         calculateDistance(myState.location, partnerState.location);
                     }
+
+                    updateMapMarkers(myState.location, partnerState.location);
                     showNotification('Partner location updated');
                 } else {
                     showNotification('No location data found for partner');
@@ -745,6 +1101,98 @@
         async function calculateDistance(myLocation, partnerLocation) {
             if (!myLocation || !partnerLocation) return;
 
+            // Fetch driving distance from OSRM
+            try {
+                // OSRM requires format: lon,lat;lon,lat
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${myLocation.lng},${myLocation.lat};${partnerLocation.lng},${partnerLocation.lat}?overview=full&geometries=geojson`;
+
+                const response = await fetch(osrmUrl);
+                const data = await response.json();
+
+                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    const distanceKm = route.distance / 1000;
+                    const durationMins = Math.round(route.duration / 60);
+
+                    document.getElementById('currentDistance').textContent = distanceKm.toFixed(2) + ' km';
+
+                    if (isTripMode) {
+                        document.getElementById('tripDistance').textContent = distanceKm.toFixed(2) + ' km';
+                        document.getElementById('tripTime').textContent = durationMins + ' mins';
+
+                        // Draw route polyline
+                        if (map) {
+                            if (tripPolyline) {
+                                map.removeLayer(tripPolyline);
+                            }
+
+                            // GeoJSON coordinates are [lon, lat], Leaflet wants [lat, lon]
+                            const latLngs = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+                            tripPolyline = L.polyline(latLngs, {
+                                color: 'var(--primary-color)',
+                                weight: 5,
+                                opacity: 0.7,
+                                dashArray: '10, 10'
+                            }).addTo(map);
+
+                            map.fitBounds(tripPolyline.getBounds(), {padding: [50, 50]});
+                        }
+                    }
+
+                    // Save closest/furthest
+                    const myState = globalState[localUser.name] || {};
+                    let updated = false;
+                    let updates = {};
+
+                    if (!myState.closestDistance || distanceKm < myState.closestDistance) {
+                        updates.closestDistance = distanceKm;
+                        document.getElementById('closestDistance').textContent = distanceKm.toFixed(2) + ' km';
+                        updated = true;
+                    }
+
+                    if (!myState.furthestDistance || distanceKm > myState.furthestDistance) {
+                        updates.furthestDistance = distanceKm;
+                        document.getElementById('furthestDistance').textContent = distanceKm.toFixed(2) + ' km';
+                        updated = true;
+                    }
+
+                    if (updated) {
+                        try {
+                            // First fetch latest global state to avoid overwriting recent changes
+                            const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
+                            let latestState = {};
+                            if (res.ok) {
+                                latestState = await res.json();
+                            }
+
+                            const currentMyState = latestState[localUser.name] || {};
+
+                            await window.authenticatedFetch(`${API_URL}/api/couple`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    [localUser.name]: {
+                                        ...currentMyState,
+                                        ...updates
+                                    }
+                                })
+                            });
+                        } catch (error) {
+                            console.error('Error saving distance data', error);
+                        }
+                    }
+                } else {
+                    // Fallback to straight line if OSRM fails (e.g. crossing oceans)
+                    calculateStraightLineDistance(myLocation, partnerLocation);
+                }
+            } catch (error) {
+                console.error("OSRM Error:", error);
+                calculateStraightLineDistance(myLocation, partnerLocation);
+            }
+        }
+
+        async function calculateStraightLineDistance(myLocation, partnerLocation) {
             const R = 6371; 
             const dLat = deg2rad(partnerLocation.lat - myLocation.lat);
             const dLon = deg2rad(partnerLocation.lng - myLocation.lng);
@@ -757,7 +1205,12 @@
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
             const distance = R * c;
 
-            document.getElementById('currentDistance').textContent = distance.toFixed(2) + ' km';
+            document.getElementById('currentDistance').textContent = distance.toFixed(2) + ' km (Straight)';
+
+            if (isTripMode) {
+                document.getElementById('tripDistance').textContent = distance.toFixed(2) + ' km (Straight)';
+                document.getElementById('tripTime').textContent = '-- mins';
+            }
 
             const myState = globalState[localUser.name] || {};
             let updated = false;
@@ -777,11 +1230,23 @@
 
             if (updated) {
                 try {
+                    // Fetch latest
+                    const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
+                    let latestState = {};
+                    if (res.ok) {
+                        latestState = await res.json();
+                    }
+
+                    const currentMyState = latestState[localUser.name] || {};
+
                     await window.authenticatedFetch(`${API_URL}/api/couple`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            [localUser.name]: updates
+                            [localUser.name]: {
+                                ...currentMyState,
+                                ...updates
+                            }
                         })
                     });
                 } catch (error) {
@@ -842,6 +1307,43 @@
                     .catch(error => {
                         document.getElementById('partnerAddress').textContent = "Address not available";
                     });
+
+                updatePartnerWeather(location.lat, location.lng);
+            }
+        }
+
+        async function updatePartnerWeather(lat, lng) {
+            try {
+                // Using Open-Meteo free API
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&timezone=auto`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data && data.current) {
+                    const temp = data.current.temperature_2m;
+                    const code = data.current.weather_code;
+
+                    document.getElementById('weatherTemp').textContent = `${Math.round(temp)}°C`;
+
+                    // Simple weather code mapping (WMO weather interpretation codes)
+                    let icon = '☁️';
+                    let desc = 'Cloudy';
+
+                    if (code === 0) { icon = '☀️'; desc = 'Clear sky'; }
+                    else if (code === 1 || code === 2 || code === 3) { icon = '⛅'; desc = 'Partly cloudy'; }
+                    else if (code === 45 || code === 48) { icon = '🌫️'; desc = 'Foggy'; }
+                    else if (code >= 51 && code <= 55) { icon = '🌧️'; desc = 'Drizzle'; }
+                    else if (code >= 61 && code <= 65) { icon = '🌧️'; desc = 'Rain'; }
+                    else if (code >= 71 && code <= 77) { icon = '❄️'; desc = 'Snow'; }
+                    else if (code >= 80 && code <= 82) { icon = '🌦️'; desc = 'Rain showers'; }
+                    else if (code >= 95 && code <= 99) { icon = '⛈️'; desc = 'Thunderstorm'; }
+
+                    document.getElementById('weatherIcon').textContent = icon;
+                    document.getElementById('weatherDesc').textContent = desc;
+                }
+            } catch (error) {
+                console.error("Weather error:", error);
+                document.getElementById('weatherDesc').textContent = "Unavailable";
             }
         }
 
@@ -881,6 +1383,7 @@
 
         window.addEventListener('beforeunload', () => {
             if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+            if (myLocationInterval) clearInterval(myLocationInterval);
         });
     </script>
 </body>

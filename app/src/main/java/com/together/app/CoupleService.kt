@@ -310,6 +310,47 @@ class CoupleService : Service() {
                         }
                     }
                 }
+
+                // Check 100km distance change notification
+                val myStateObj = globalState.optJSONObject(localUserName)
+                if (myStateObj != null && partnerStateObj != null) {
+                    val myLoc = myStateObj.optJSONObject("location")
+                    val partnerLoc = partnerStateObj.optJSONObject("location")
+
+                    if (myLoc != null && partnerLoc != null) {
+                        val lat1 = myLoc.optDouble("lat", Double.NaN)
+                        val lng1 = myLoc.optDouble("lng", Double.NaN)
+                        val lat2 = partnerLoc.optDouble("lat", Double.NaN)
+                        val lng2 = partnerLoc.optDouble("lng", Double.NaN)
+
+                        if (!lat1.isNaN() && !lng1.isNaN() && !lat2.isNaN() && !lng2.isNaN()) {
+                            val R = 6371.0
+                            val dLat = Math.toRadians(lat2 - lat1)
+                            val dLon = Math.toRadians(lng2 - lng1)
+                            val a = sin(dLat / 2) * sin(dLat / 2) +
+                                    cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                                    sin(dLon / 2) * sin(dLon / 2)
+                            val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+                            val distance = R * c
+
+                            val lastNotifiedDistance = sharedPref.getFloat("lastNotifiedDistance", -1f)
+
+                            if (lastNotifiedDistance == -1f) {
+                                // First time, just save
+                                sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
+                            } else {
+                                val distanceDiff = distance - lastNotifiedDistance
+                                if (Math.abs(distanceDiff) >= 100) {
+                                    val direction = if (distanceDiff > 0) "moved away" else "moved closer"
+                                    val absDiff = Math.abs(distanceDiff).toInt()
+                                    sendNotification("$partnerName has $direction by ~${absDiff}km")
+
+                                    sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e("CoupleService", "Error polling for updates", e)
