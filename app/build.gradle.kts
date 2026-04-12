@@ -53,4 +53,7 @@ dependencies {
 
     // Biometric
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+    // Play Services Location
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 }
