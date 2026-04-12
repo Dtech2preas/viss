@@ -28,11 +28,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.annotation.SuppressLint
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 
 class CoupleService : Service() {
 
@@ -410,143 +411,120 @@ class CoupleService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-
         // We only proceed if location permissions are granted
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             return
         }
 
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
         try {
-            // Get last known location first to be quick
-            val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
             val updateLocationOnServer = { loc: Location ->
-                val newLocation = JSONObject().apply {
-                    put("lat", loc.latitude)
-                    put("lng", loc.longitude)
-                    put("timestamp", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                        timeZone = java.util.TimeZone.getTimeZone("UTC")
-                    }.format(Date()))
-                }
-
-                // Keep history up to 10 items
-                val locationHistory = myStateObj.optJSONArray("locationHistory") ?: JSONArray()
-                locationHistory.put(newLocation)
-                if (locationHistory.length() > 10) {
-                    val trimmedHistory = JSONArray()
-                    for (i in locationHistory.length() - 10 until locationHistory.length()) {
-                        trimmedHistory.put(locationHistory.getJSONObject(i))
-                    }
-                    myStateObj.put("locationHistory", trimmedHistory)
-                } else {
-                    myStateObj.put("locationHistory", locationHistory)
-                }
-
-                myStateObj.put("location", newLocation)
-                // Always clear force flag after updating
-                myStateObj.remove("forceLocationUpdate")
-
-                val updates = JSONObject()
-                updates.put(userName, myStateObj)
-
-                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val reqBody = updates.toString().toRequestBody(mediaType)
-
-                val postReq = Request.Builder()
-                    .url(apiUrl)
-                    .addHeader("Authorization", "Bearer $authToken")
-                    .post(reqBody)
-                    .build()
-
-                client.newCall(postReq).execute()
-                lastLocationUpdateTime = System.currentTimeMillis()
-            }
-
-            // Try network provider first as it's faster inside buildings
-            val provider = if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                LocationManager.NETWORK_PROVIDER
-            } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                LocationManager.GPS_PROVIDER
-            } else {
-                null
-            }
-
-            if (provider != null) {
-                // Request a fresh update if possible, otherwise use last known
-                val listener = object : LocationListener {
-                    override fun onLocationChanged(location: Location) {
-                        thread {
-                            try {
-                                updateLocationOnServer(location)
-                            } catch (e: Exception) {
-                                Log.e("CoupleService", "Failed to update location on server", e)
-                            }
+                thread {
+                    try {
+                        val newLocation = JSONObject().apply {
+                            put("lat", loc.latitude)
+                            put("lng", loc.longitude)
+                            put("timestamp", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }.format(Date()))
                         }
-                        locationManager.removeUpdates(this)
-                    }
-                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-                    override fun onProviderEnabled(provider: String) {}
-                    override fun onProviderDisabled(provider: String) {}
-                }
 
-                val handler = android.os.Handler(Looper.getMainLooper())
-                handler.post {
-                    locationManager.requestSingleUpdate(provider, listener, null)
-                }
-
-                // Only wait up to 10 seconds for a fresh location
-                handler.postDelayed({
-                    locationManager.removeUpdates(listener)
-                    // If we removed updates and haven't updated location yet, use last known or clear flag
-                    if (System.currentTimeMillis() - lastLocationUpdateTime > 15000) {
-                        if (lastKnown != null) {
-                            thread {
-                                try {
-                                    updateLocationOnServer(lastKnown)
-                                } catch (e: Exception) {
-                                    Log.e("CoupleService", "Fallback location update failed", e)
-                                }
+                        // Keep history up to 10 items
+                        val locationHistory = myStateObj.optJSONArray("locationHistory") ?: JSONArray()
+                        locationHistory.put(newLocation)
+                        if (locationHistory.length() > 10) {
+                            val trimmedHistory = JSONArray()
+                            for (i in locationHistory.length() - 10 until locationHistory.length()) {
+                                trimmedHistory.put(locationHistory.getJSONObject(i))
                             }
+                            myStateObj.put("locationHistory", trimmedHistory)
                         } else {
-                            // Clear the force update flag so it stops trying
-                            myStateObj.remove("forceLocationUpdate")
-                            val updates = JSONObject()
-                            updates.put(userName, myStateObj)
-                            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                            val reqBody = updates.toString().toRequestBody(mediaType)
-                            val postReq = Request.Builder()
-                                .url(apiUrl)
-                                .addHeader("Authorization", "Bearer $authToken")
-                                .post(reqBody)
-                                .build()
-                            client.newCall(postReq).execute()
+                            myStateObj.put("locationHistory", locationHistory)
+                        }
+
+                        myStateObj.put("location", newLocation)
+                        // Always clear force flag after updating
+                        myStateObj.remove("forceLocationUpdate")
+
+                        val updates = JSONObject()
+                        updates.put(userName, myStateObj)
+
+                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                        val reqBody = updates.toString().toRequestBody(mediaType)
+
+                        val postReq = Request.Builder()
+                            .url(apiUrl)
+                            .addHeader("Authorization", "Bearer $authToken")
+                            .post(reqBody)
+                            .build()
+
+                        client.newCall(postReq).execute()
+                        lastLocationUpdateTime = System.currentTimeMillis()
+                    } catch (e: Exception) {
+                        Log.e("CoupleService", "Failed to update location on server", e)
+                    }
+                }
+            }
+
+            val cancellationTokenSource = CancellationTokenSource()
+
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.token)
+                .addOnSuccessListener { location: Location? ->
+                    if (location != null) {
+                        updateLocationOnServer(location)
+                    } else {
+                        // Fallback to last location
+                        fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
+                            if (lastLoc != null) {
+                                updateLocationOnServer(lastLoc)
+                            } else {
+                                clearForceFlag(userName, authToken, myStateObj)
+                            }
+                        }.addOnFailureListener {
+                            clearForceFlag(userName, authToken, myStateObj)
                         }
                     }
-                }, 10000)
-            } else if (lastKnown != null) {
-                // If no provider but we have last known, use it
-                updateLocationOnServer(lastKnown)
-            } else {
-                // If we absolutely cannot get location, we should at least clear the force update flag so it stops trying
-                myStateObj.remove("forceLocationUpdate")
-                val updates = JSONObject()
-                updates.put(userName, myStateObj)
+                }
+                .addOnFailureListener {
+                    // Fallback to last location
+                    fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
+                        if (lastLoc != null) {
+                            updateLocationOnServer(lastLoc)
+                        } else {
+                            clearForceFlag(userName, authToken, myStateObj)
+                        }
+                    }.addOnFailureListener {
+                        clearForceFlag(userName, authToken, myStateObj)
+                    }
+                }
 
-                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val reqBody = updates.toString().toRequestBody(mediaType)
-
-                val postReq = Request.Builder()
-                    .url(apiUrl)
-                    .addHeader("Authorization", "Bearer $authToken")
-                    .post(reqBody)
-                    .build()
-
-                client.newCall(postReq).execute()
-            }
         } catch (e: Exception) {
             Log.e("CoupleService", "Error pushing location", e)
+            clearForceFlag(userName, authToken, myStateObj)
+        }
+    }
+
+    private fun clearForceFlag(userName: String, authToken: String, myStateObj: JSONObject) {
+        thread {
+            try {
+                myStateObj.remove("forceLocationUpdate")
+                val updates = JSONObject()
+                updates.put(userName, myStateObj)
+
+                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val reqBody = updates.toString().toRequestBody(mediaType)
+
+                val postReq = Request.Builder()
+                    .url(apiUrl)
+                    .addHeader("Authorization", "Bearer $authToken")
+                    .post(reqBody)
+                    .build()
+
+                client.newCall(postReq).execute()
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Error clearing force flag", e)
+            }
         }
     }
 
