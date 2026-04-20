@@ -309,13 +309,6 @@
             color: var(--secondary-color);
         }
 
-        .timer-display {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 5px;
-            font-weight: 500;
-        }
-
         /* Map Styles */
         #map {
             height: 400px;
@@ -346,14 +339,6 @@
             height: 40px;
             transition: transform 0.5s ease;
             color: var(--accent-color);
-        }
-
-        .map-controls-row {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
         }
 
         /* Toggle Styles */
@@ -521,18 +506,6 @@
             opacity: 1;
         }
         
-        /* Confetti overlay for reunions */
-        #confettiCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 999;
-            display: none;
-        }
-
         .hearts-container {
             position: fixed;
             top: 0;
@@ -627,7 +600,6 @@
 <script src="custom-alerts.js"></script>
 </head>
 <body>
-    <canvas id="confettiCanvas"></canvas>
     <div class="hearts-container" id="hearts"></div>
     
     <button class="back-btn" onclick="goBack()">
@@ -685,11 +657,6 @@
         <div class="section map-section">
             <h2>Live Map</h2>
 
-            <div class="map-controls-row">
-                <button class="btn btn-secondary" style="width: auto;" onclick="centerMapOnBoth()">View Both</button>
-                <button class="btn" style="width: auto;" onclick="window.location.href='location_history.html'">Full History</button>
-            </div>
-
             <div class="toggle-container">
                 <span class="toggle-label">Trip to Meet Partner</span>
                 <label class="toggle-switch">
@@ -733,14 +700,11 @@
                     <div class="location-title">Your Location</div>
                     <div class="coordinates" id="userCoordinates">Not available</div>
                     <div class="address" id="userAddress">Waiting for location update...</div>
-                    <div class="timer-display" id="myLocationTimer">Updated: Unknown</div>
                 </div>
                 <div class="location-box">
                     <div class="location-title">Partner's Location</div>
                     <div class="coordinates" id="partnerCoordinates">Not available</div>
                     <div class="address" id="partnerAddress">Waiting for location update...</div>
-                    <div class="timer-display" id="partnerLocationTimer">Updated: Unknown</div>
-                    <button class="btn" style="margin-top: 15px; padding: 10px; font-size: 0.9rem;" onclick="openNavigation()">Take Me There</button>
                 </div>
             </div>
             
@@ -782,9 +746,6 @@
         let tripPolyline = null;
 
         let isTripMode = false;
-
-        let connectionLine = null;
-        let midpointMarker = null;
 
         // Create floating hearts
         function createHearts() {
@@ -873,10 +834,9 @@
             // Default center to somewhere until location loads
             map = L.map('map').setView([0, 0], 2);
 
-            // Use CartoDB Positron for cleaner look matching the new theme
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: '&copy; OpenStreetMap &copy; CARTO'
+                attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
             // Create custom icons with fallback colors
@@ -927,38 +887,6 @@
                 bounds.push([partnerLoc.lat, partnerLoc.lng]);
             }
 
-            if (bounds.length === 2) {
-                // Draw connection line
-                if (connectionLine) map.removeLayer(connectionLine);
-                connectionLine = L.polyline(bounds, {
-                    color: 'var(--primary-color)',
-                    weight: 3,
-                    dashArray: '5, 10',
-                    opacity: 0.6
-                }).addTo(map);
-
-                // Add midpoint heart marker
-                const midLat = (myLoc.lat + partnerLoc.lat) / 2;
-                const midLng = (myLoc.lng + partnerLoc.lng) / 2;
-
-                const heartIconHtml = `<div style="color: var(--accent-color); font-size: 24px; text-shadow: 0 2px 5px rgba(0,0,0,0.2); animation: pulse 2s infinite;">❤️</div>`;
-                const midIcon = L.divIcon({
-                    html: heartIconHtml,
-                    className: '',
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
-                });
-
-                if (midpointMarker) {
-                    midpointMarker.setLatLng([midLat, midLng]);
-                } else {
-                    midpointMarker = L.marker([midLat, midLng], {icon: midIcon}).addTo(map);
-                }
-            } else {
-                if (connectionLine) { map.removeLayer(connectionLine); connectionLine = null; }
-                if (midpointMarker) { map.removeLayer(midpointMarker); midpointMarker = null; }
-            }
-
             if (bounds.length > 0) {
                 if (bounds.length === 1) {
                     map.setView(bounds[0], 13);
@@ -966,19 +894,6 @@
                     map.fitBounds(bounds, {padding: [50, 50]});
                     updateDirectionIndicator(myLoc, partnerLoc);
                 }
-            }
-        }
-
-        function centerMapOnBoth() {
-            if (!map) return;
-            const bounds = [];
-            if (userMarker) bounds.push(userMarker.getLatLng());
-            if (partnerMarker) bounds.push(partnerMarker.getLatLng());
-
-            if (bounds.length === 2) {
-                map.fitBounds(bounds, {padding: [50, 50]});
-            } else if (bounds.length === 1) {
-                map.setView(bounds[0], 13);
             }
         }
 
@@ -1267,9 +1182,15 @@
                             updates.wasFarApart = true;
                             updated = true;
                         }
-                    } else if (distanceKm < 0.05) {
+                    } else if (distanceKm < 0.1) {
                         if (myState.wasFarApart === true || myState.wasFarApart === undefined) {
-                             triggerReunionCelebration();
+                            // Let the next page load handle the time checking, but we can set the flag
+                            // as a signal we've met.
+                            // We won't increment timesTogether here directly unless we want to duplicate stats logic.
+                            // Best just keep wasFarApart logic updated so stats doesn't miss it.
+                            // Actually, wait, if we are at 0.1km, stats page might want to know if we arrived.
+                            // Wait, if we set wasFarApart to false HERE, then stats.html might miss it.
+                            // So we don't set it to false here. We let stats.html set it to false when it increments.
                         }
                     }
 
@@ -1349,13 +1270,6 @@
                     updates.wasFarApart = true;
                     updated = true;
                 }
-            } else if (distance < 0.05) {
-                if (myState.wasFarApart === true || myState.wasFarApart === undefined) {
-                     triggerReunionCelebration();
-                     updates.wasFarApart = false;
-                     updated = true;
-                     logMeetup();
-                }
             }
 
             if (updated) {
@@ -1408,30 +1322,11 @@
             }
         }
 
-        function getTimeAgo(timestamp) {
-            if (!timestamp) return "Unknown";
-            const now = new Date();
-            const date = new Date(timestamp);
-            const diffInSeconds = Math.floor((now - date) / 1000);
-
-            if (diffInSeconds < 60) return "Just now";
-            const diffInMinutes = Math.floor(diffInSeconds / 60);
-            if (diffInMinutes < 60) return `${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''} ago`;
-            const diffInHours = Math.floor(diffInMinutes / 60);
-            if (diffInHours < 24) return `${diffInHours} hr${diffInHours > 1 ? 's' : ''} ago`;
-            const diffInDays = Math.floor(diffInHours / 24);
-            return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-        }
-
         function updateUserLocationDisplay(location) {
             if (location) {
                 document.getElementById('userCoordinates').textContent = 
                     `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
                 
-                if (location.timestamp) {
-                    document.getElementById('myLocationTimer').textContent = `Updated: ${getTimeAgo(location.timestamp)}`;
-                }
-
                 // Get address from coordinates
                 getAddressFromCoords(location.lat, location.lng)
                     .then(address => {
@@ -1448,10 +1343,6 @@
                 document.getElementById('partnerCoordinates').textContent = 
                     `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
                 
-                if (location.timestamp) {
-                    document.getElementById('partnerLocationTimer').textContent = `Updated: ${getTimeAgo(location.timestamp)}`;
-                }
-
                 // Get address from coordinates
                 getAddressFromCoords(location.lat, location.lng)
                     .then(address => {
@@ -1502,12 +1393,11 @@
 
         async function getAddressFromCoords(lat, lng) {
             try {
-                // Use the proxied endpoint via worker to avoid client rate-limiting and get a cleaner address
-                const response = await window.authenticatedFetch(`${API_URL}/api/proxy/address?lat=${lat}&lon=${lng}`);
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
                 const data = await response.json();
                 
-                if (data && data.address) {
-                    return data.address;
+                if (data && data.display_name) {
+                    return data.display_name;
                 } else {
                     return "Address not available";
                 }
@@ -1517,18 +1407,6 @@
             }
         }
 
-
-        function openNavigation() {
-            const partnerState = globalState[localUser.partner.name] || {};
-            if (partnerState.location && partnerState.location.lat) {
-                // Open standard map intent which handles both iOS and Android gracefully
-                const lat = partnerState.location.lat;
-                const lng = partnerState.location.lng;
-                window.open(`https://maps.google.com/?q=${lat},${lng}`, '_blank');
-            } else {
-                showNotification("Partner location unknown.");
-            }
-        }
 
         function showNotification(message) {
             const notification = document.getElementById('notification');
@@ -1540,62 +1418,6 @@
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 3000);
-        }
-
-        async function logMeetup() {
-            try {
-                const newMeetup = { timestamp: new Date().toISOString() };
-                await window.authenticatedFetch('/api/couple', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ newMeetup })
-                });
-            } catch (e) {
-                console.error("Failed to log meetup", e);
-            }
-        }
-
-        function triggerReunionCelebration() {
-            showNotification("You have reunited! ❤️");
-            const canvas = document.getElementById('confettiCanvas');
-            if(!canvas) return;
-            canvas.style.display = 'block';
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            let particles = [];
-            for(let i=0; i<100; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height - canvas.height,
-                    size: Math.random() * 10 + 5,
-                    speed: Math.random() * 3 + 2,
-                    color: ['#ff7eb9', '#ff4d8d', '#d42d6e', '#7e57c2', '#fff'][Math.floor(Math.random()*5)]
-                });
-            }
-
-            let frame = 0;
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                let active = false;
-                for(let p of particles) {
-                    p.y += p.speed;
-                    p.x += Math.sin(frame/20) * 2;
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-                    ctx.fill();
-                    if(p.y < canvas.height) active = true;
-                }
-                frame++;
-                if(active && frame < 300) {
-                    requestAnimationFrame(animate);
-                } else {
-                    canvas.style.display = 'none';
-                }
-            }
-            animate();
         }
 
         window.onload = function() {
