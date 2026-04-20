@@ -89,47 +89,6 @@ export default {
       }
     }
 
-    // Proxy for address (Nominatim)
-    if (request.method === 'GET' && url.pathname === '/api/proxy/address') {
-      try {
-        const lat = url.searchParams.get('lat');
-        const lon = url.searchParams.get('lon');
-        if (!lat || !lon) {
-          return new Response(JSON.stringify({ error: 'lat and lon required' }), { status: 400, headers: corsHeaders });
-        }
-
-        const fetchUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
-        const proxyReq = new Request(fetchUrl, {
-          headers: {
-            'User-Agent': 'TogetherApp/1.0 (Contact: local@example.com)'
-          }
-        });
-        const res = await fetch(proxyReq);
-        const data = await res.json();
-
-        let shortAddress = "Unknown location";
-        if (data && data.address) {
-          const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
-          const neighborhood = data.address.neighbourhood || data.address.suburb || data.address.residential || "";
-          if (city && neighborhood) {
-             shortAddress = `${neighborhood}, ${city}`;
-          } else if (city) {
-             shortAddress = city;
-          } else if (neighborhood) {
-             shortAddress = neighborhood;
-          } else if (data.display_name) {
-             shortAddress = data.display_name.split(',').slice(0,2).join(',');
-          }
-        }
-
-        return new Response(JSON.stringify({ address: shortAddress }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } catch(e) {
-        return new Response(JSON.stringify({ error: 'failed to proxy' }), { status: 500, headers: corsHeaders });
-      }
-    }
-
     // Auth Middleware: Check for valid token on /api/couple
     if (url.pathname.startsWith('/api/couple')) {
       const authHeader = request.headers.get('Authorization');
@@ -154,40 +113,6 @@ export default {
 
         // Deep merge the new data with existing
         const mergedData = mergeDeep({}, existingData, body);
-
-        // Handle meetup log merging
-        if (body.newMeetup) {
-            const oldMeetups = existingData.meetupLog || [];
-            mergedData.meetupLog = [...oldMeetups, body.newMeetup];
-            delete mergedData.newMeetup;
-        }
-
-        // Handle extended location history merging
-        for (const user of Object.keys(body)) {
-          if (body[user] && body[user].locationHistory) {
-             const newHistory = body[user].locationHistory || [];
-             const oldHistory = (existingData[user] && existingData[user].locationHistory) ? existingData[user].locationHistory : [];
-
-             // Keep up to 1000 items (should cover ~20 days if updating every 30m, but more if active)
-             // We use a map by timestamp to ensure no duplicates.
-             let historyMap = new Map();
-             for (let item of oldHistory) {
-                if(item.timestamp) historyMap.set(item.timestamp, item);
-             }
-             for (let item of newHistory) {
-                if(item.timestamp) historyMap.set(item.timestamp, item);
-             }
-
-             let combined = Array.from(historyMap.values());
-             combined.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-             if (combined.length > 1000) {
-                 combined = combined.slice(combined.length - 1000);
-             }
-
-             mergedData[user].locationHistory = combined;
-          }
-        }
 
         await env.US_KV.put(COUPLE_KEY, JSON.stringify(mergedData));
         return new Response(JSON.stringify({ success: true }), {
