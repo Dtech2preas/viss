@@ -430,12 +430,12 @@ class CoupleService : Service() {
                             }.format(Date()))
                         }
 
-                        // Keep history up to 10 items
+                        // Keep history up to 2880 items (approx 1 month at 1 update per 15 mins)
                         val locationHistory = myStateObj.optJSONArray("locationHistory") ?: JSONArray()
                         locationHistory.put(newLocation)
-                        if (locationHistory.length() > 10) {
+                        if (locationHistory.length() > 2880) {
                             val trimmedHistory = JSONArray()
-                            for (i in locationHistory.length() - 10 until locationHistory.length()) {
+                            for (i in locationHistory.length() - 2880 until locationHistory.length()) {
                                 trimmedHistory.put(locationHistory.getJSONObject(i))
                             }
                             myStateObj.put("locationHistory", trimmedHistory)

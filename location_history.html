@@ -97,10 +97,10 @@
         </header>
 
         <div class="controls">
-            <button class="btn active" onclick="setTimeframe('24h')">Last 24 Hours</button>
-            <button class="btn" onclick="setTimeframe('1w')">Past Week</button>
-            <button class="btn" onclick="setTimeframe('1m')">Past Month</button>
-            <button class="btn" onclick="setTimeframe('all')">All Time</button>
+            <button class="btn active" id="btn-24h" onclick="setTimeframe('24h', this)">Last 24 Hours</button>
+            <button class="btn" id="btn-1w" onclick="setTimeframe('1w', this)">Past Week</button>
+            <button class="btn" id="btn-1m" onclick="setTimeframe('1m', this)">Past Month</button>
+            <button class="btn" id="btn-all" onclick="setTimeframe('all', this)">All Time</button>
         </div>
 
         <div class="legend">
@@ -177,15 +177,19 @@
                     allData.partner = state[localUser.partner.name].locationHistory;
                 }
 
-                setTimeframe('24h');
+                setTimeframe('24h', document.getElementById('btn-24h'));
             } catch(e) {
                 console.error(e);
             }
         }
 
-        function setTimeframe(tf) {
+        function setTimeframe(tf, targetElement = null) {
             document.querySelectorAll('.controls .btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            if (targetElement) {
+                targetElement.classList.add('active');
+            } else if (event && event.target) {
+                event.target.classList.add('active');
+            }
 
             const now = new Date();
             let cutoff = new Date(0); // all time

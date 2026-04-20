@@ -259,6 +259,14 @@
             min-height: 24px;
         }
         
+        .last-updated {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+
         .location-history {
             max-height: 300px;
             overflow-y: auto;
@@ -667,9 +675,14 @@
 
             <div id="tripStats" class="trip-stats">
                 <h3>Trip Status (Updating every 15s)</h3>
+                <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px; margin-bottom: 10px;">
+                    <button class="btn" id="modeDrivingBtn" style="padding: 5px 15px; font-size: 0.8rem;" onclick="setTravelMode('driving')">🚗 Driving</button>
+                    <button class="btn btn-secondary" id="modeWalkingBtn" style="padding: 5px 15px; font-size: 0.8rem;" onclick="setTravelMode('foot')">🚶 Walking</button>
+                    <button class="btn btn-secondary" id="modeCyclingBtn" style="padding: 5px 15px; font-size: 0.8rem;" onclick="setTravelMode('bike')">🚲 Cycling</button>
+                </div>
                 <div style="display: flex; justify-content: space-around; margin-top: 10px; flex-wrap: wrap;">
                     <div>
-                        <div style="font-size: 0.9rem; color: #666;">Driving Distance</div>
+                        <div style="font-size: 0.9rem; color: #666;" id="tripDistanceLabel">Driving Distance</div>
                         <div class="trip-stat-value" id="tripDistance">-- km</div>
                     </div>
                     <div>
@@ -700,11 +713,16 @@
                     <div class="location-title">Your Location</div>
                     <div class="coordinates" id="userCoordinates">Not available</div>
                     <div class="address" id="userAddress">Waiting for location update...</div>
+                    <div class="last-updated" id="userLastUpdated">Updated: Never</div>
                 </div>
                 <div class="location-box">
                     <div class="location-title">Partner's Location</div>
                     <div class="coordinates" id="partnerCoordinates">Not available</div>
                     <div class="address" id="partnerAddress">Waiting for location update...</div>
+                    <div class="last-updated" id="partnerLastUpdated">Updated: Never</div>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <button class="btn btn-secondary" id="takeMeThereBtn" style="padding: 10px 20px; font-size: 0.9rem;" disabled onclick="openMaps()">Take Me There 📍</button>
+                    </div>
                 </div>
             </div>
             
@@ -716,7 +734,10 @@
 
         <!-- Location History Section -->
         <div class="section">
-            <h2>Location History</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin-bottom: 0;">Location History</h2>
+                <button class="btn" style="width: auto; padding: 10px 20px; font-size: 0.9rem;" onclick="window.location.href='location_history.html'">View Map</button>
+            </div>
             <div class="location-history" id="locationHistory">
                 <div class="location-item">No location history yet</div>
             </div>
@@ -739,6 +760,10 @@
         let globalState = {};
         let autoUpdateInterval = null;
         let myLocationInterval = null; // Interval for tracking my location
+        let timerInterval = null;
+
+        let userLastLocationTime = null;
+        let partnerLastLocationTime = null;
 
         let map = null;
         let userMarker = null;
@@ -746,6 +771,62 @@
         let tripPolyline = null;
 
         let isTripMode = false;
+        let currentTravelMode = 'driving';
+
+        let hasCelebratedReunited = false;
+
+        // Massive reunited celebration
+        function triggerReunitedCelebration() {
+            if (hasCelebratedReunited) return;
+            hasCelebratedReunited = true;
+
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.backgroundColor = 'rgba(255, 245, 249, 0.9)';
+            overlay.style.zIndex = '9999';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.transition = 'opacity 1s ease-out';
+
+            const text = document.createElement('h1');
+            text.textContent = 'Reunited! ❤️';
+            text.style.fontFamily = "'Dancing Script', cursive";
+            text.style.fontSize = '5rem';
+            text.style.color = 'var(--accent-color)';
+            text.style.animation = 'pulse 1s infinite';
+
+            overlay.appendChild(text);
+            document.body.appendChild(overlay);
+
+            // Add massive confetti/hearts
+            const colors = ['#ff7eb9', '#ff4d8d', '#d42d6e', '#7e57c2', '#FFD700'];
+            for (let i = 0; i < 100; i++) {
+                const heart = document.createElement('div');
+                heart.classList.add('heart');
+                const size = Math.random() * 30 + 10;
+                heart.style.width = `${size}px`;
+                heart.style.height = `${size}px`;
+                heart.style.left = `${Math.random() * 100}vw`;
+                heart.style.top = `-50px`;
+                heart.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
+                heart.style.background = colors[Math.floor(Math.random() * colors.length)];
+                heart.style.opacity = '1';
+                overlay.appendChild(heart);
+            }
+
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(overlay);
+                }, 1000);
+            }, 5000);
+        }
 
         // Create floating hearts
         function createHearts() {
@@ -787,6 +868,36 @@
 
             // Setup intervals based on trip mode
             setupIntervals();
+            startTimerUpdate();
+        }
+
+        function startTimerUpdate() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimersDisplay, 1000);
+        }
+
+        function updateTimersDisplay() {
+            const now = new Date();
+
+            if (userLastLocationTime) {
+                const diffMs = now - userLastLocationTime;
+                document.getElementById('userLastUpdated').textContent = `Updated: ${formatTimeDiff(diffMs)}`;
+            }
+            if (partnerLastLocationTime) {
+                const diffMs = now - partnerLastLocationTime;
+                document.getElementById('partnerLastUpdated').textContent = `Updated: ${formatTimeDiff(diffMs)}`;
+            }
+        }
+
+        function formatTimeDiff(ms) {
+            const secs = Math.floor(ms / 1000);
+            if (secs < 60) return "Just now";
+            const mins = Math.floor(secs / 60);
+            if (mins < 60) return `${mins} min${mins !== 1 ? 's' : ''} ago`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours} hr${hours !== 1 ? 's' : ''} ago`;
+            const days = Math.floor(hours / 24);
+            return `${days} day${days !== 1 ? 's' : ''} ago`;
         }
 
         function setupIntervals() {
@@ -1002,8 +1113,8 @@
                         if (!globalState[localUser.name].locationHistory) globalState[localUser.name].locationHistory = [];
 
                         globalState[localUser.name].locationHistory.push(newLocation);
-                        if (globalState[localUser.name].locationHistory.length > 10) {
-                            globalState[localUser.name].locationHistory = globalState[localUser.name].locationHistory.slice(-10);
+                        if (globalState[localUser.name].locationHistory.length > 2880) {
+                            globalState[localUser.name].locationHistory = globalState[localUser.name].locationHistory.slice(-2880);
                         }
 
                         updateUserLocationDisplay(newLocation);
@@ -1117,13 +1228,31 @@
             }
         }
 
+        function setTravelMode(mode) {
+            currentTravelMode = mode;
+
+            // Update button styles
+            document.getElementById('modeDrivingBtn').className = mode === 'driving' ? 'btn' : 'btn btn-secondary';
+            document.getElementById('modeWalkingBtn').className = mode === 'foot' ? 'btn' : 'btn btn-secondary';
+            document.getElementById('modeCyclingBtn').className = mode === 'bike' ? 'btn' : 'btn btn-secondary';
+
+            // Update label
+            const labelMap = { 'driving': 'Driving', 'foot': 'Walking', 'bike': 'Cycling' };
+            document.getElementById('tripDistanceLabel').textContent = labelMap[mode] + ' Distance';
+
+            // Re-calculate if locations are available
+            if (globalState[localUser.name]?.location && globalState[localUser.partner.name]?.location) {
+                calculateDistance(globalState[localUser.name].location, globalState[localUser.partner.name].location);
+            }
+        }
+
         async function calculateDistance(myLocation, partnerLocation) {
             if (!myLocation || !partnerLocation) return;
 
-            // Fetch driving distance from OSRM
+            // Fetch distance from OSRM
             try {
                 // OSRM requires format: lon,lat;lon,lat
-                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${myLocation.lng},${myLocation.lat};${partnerLocation.lng},${partnerLocation.lat}?overview=full&geometries=geojson`;
+                const osrmUrl = `https://router.project-osrm.org/route/v1/${currentTravelMode}/${myLocation.lng},${myLocation.lat};${partnerLocation.lng},${partnerLocation.lat}?overview=full&geometries=geojson`;
 
                 const response = await fetch(osrmUrl);
                 const data = await response.json();
@@ -1192,6 +1321,10 @@
                             // Wait, if we set wasFarApart to false HERE, then stats.html might miss it.
                             // So we don't set it to false here. We let stats.html set it to false when it increments.
                         }
+                    }
+
+                    if (distanceKm <= 0.05) {
+                        triggerReunitedCelebration();
                     }
 
                     if (updated) {
@@ -1272,6 +1405,10 @@
                 }
             }
 
+            if (distance <= 0.05) {
+                triggerReunitedCelebration();
+            }
+
             if (updated) {
                 try {
                     // Fetch latest
@@ -1324,6 +1461,10 @@
 
         function updateUserLocationDisplay(location) {
             if (location) {
+                if (location.timestamp) {
+                    userLastLocationTime = new Date(location.timestamp);
+                    updateTimersDisplay();
+                }
                 document.getElementById('userCoordinates').textContent = 
                     `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
                 
@@ -1340,9 +1481,19 @@
 
         function updatePartnerLocationDisplay(location) {
             if (location) {
+                if (location.timestamp) {
+                    partnerLastLocationTime = new Date(location.timestamp);
+                    updateTimersDisplay();
+                }
                 document.getElementById('partnerCoordinates').textContent = 
                     `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
                 
+                // Enable "Take Me There" button
+                const takeMeThereBtn = document.getElementById('takeMeThereBtn');
+                takeMeThereBtn.disabled = false;
+                takeMeThereBtn.dataset.lat = location.lat;
+                takeMeThereBtn.dataset.lng = location.lng;
+
                 // Get address from coordinates
                 getAddressFromCoords(location.lat, location.lng)
                     .then(address => {
@@ -1353,6 +1504,15 @@
                     });
 
                 updatePartnerWeather(location.lat, location.lng);
+            }
+        }
+
+        function openMaps() {
+            const btn = document.getElementById('takeMeThereBtn');
+            const lat = btn.dataset.lat;
+            const lng = btn.dataset.lng;
+            if (lat && lng) {
+                window.location.href = `https://maps.google.com/?daddr=${lat},${lng}`;
             }
         }
 
@@ -1428,6 +1588,7 @@
         window.addEventListener('beforeunload', () => {
             if (autoUpdateInterval) clearInterval(autoUpdateInterval);
             if (myLocationInterval) clearInterval(myLocationInterval);
+            if (timerInterval) clearInterval(timerInterval);
         });
     </script>
 </body>
