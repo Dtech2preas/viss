@@ -1,0 +1,232 @@
+# Together Forever - Comprehensive Technical Report
+
+## Table of Contents
+1. [OVERVIEW](#1-overview)
+2. [ARCHITECTURE](#2-architecture)
+3. [CORE LOGIC](#3-core-logic)
+4. [FUNCTIONAL FLOW](#4-functional-flow)
+5. [UI / UX DESIGN](#5-ui--ux-design)
+6. [DATA HANDLING](#6-data-handling)
+7. [DEPENDENCIES](#7-dependencies)
+8. [INTEGRATIONS](#8-integrations)
+9. [PERFORMANCE & OPTIMIZATION](#9-performance--optimization)
+10. [SECURITY](#10-security)
+11. [BUILD & DEPLOYMENT](#11-build--deployment)
+12. [FULL FILE-BY-FILE BREAKDOWN](#12-full-file-by-file-breakdown)
+
+---
+
+## 1. OVERVIEW
+**What the application is:**
+"Together Forever" is a full-stack web and mobile application designed specifically for a couple, Jonas and Owami, to share daily updates, play games, log memories, track their location, and monitor each other's moods and study habits.
+
+**Its main purpose:**
+The application serves as a private, personalized social and lifestyle dashboard for two people in a relationship, fostering connection through real-time shared data and interactive features.
+
+**Key features:**
+- **Authentication Gateway**: A strict 4-question, custom knowledge-based authentication system.
+- **Shared Dashboard**: View partner's current activity, mood, and study progress.
+- **Location Tracking**: Real-time distance and location history tracking using GPS and mapping libraries.
+- **Games & Interactions**: Several mini-games (Tic-Tac-Toe, Rock Paper Scissors, Roulette) and love notes.
+- **Android Integration**: A native Android wrapper that provides biometric authentication, background location tracking, background data syncing, native push notifications, and a home screen widget.
+
+---
+
+## 2. ARCHITECTURE
+**Project structure:**
+The application follows a loosely coupled, hybrid architecture consisting of three main components:
+1. **Frontend (Client-Side Web)**: Pure HTML, CSS, and vanilla JavaScript files residing at the root of the project. These form a Single Page Application (SPA)-like experience with distinct pages.
+2. **Backend (Serverless API)**: A single Cloudflare Worker script (`worker.js`) that handles API requests, authentication, and interacts with Cloudflare KV storage.
+3. **Mobile App (Android Wrapper)**: An Android application (`app/` folder) written in Kotlin. It uses a `WebView` to serve the web frontend while augmenting it with native Android capabilities (Services, Widgets, Biometrics).
+
+**How components are organized:**
+- **Root Directory**: Contains all HTML/JS/CSS logic for the UI.
+- **`app/`**: Contains the Android Studio project, structured with standard Gradle build files and a standard `src/main/` directory structure containing Kotlin source code, XML layouts, and manifest files.
+- **`chapters/`**: Text resources likely used for app content (like a story or memories feature).
+- **Python Scripts**: Automation scripts (`verify_dashboard.py`, etc.) utilizing Playwright for frontend verification.
+
+**Design patterns used:**
+- **Hybrid App Pattern**: Web frontend wrapped in a native container (WebView) with JavaScript Bridges (`@JavascriptInterface`) to communicate between the web layer and Android native layer.
+- **Service Worker / Background Service Pattern**: Continuous background polling (via Android's `ForegroundService`) to fetch data updates and trigger OS-level notifications without the app being open.
+- **State Management (Shared Global State)**: The backend relies on a massive single JSON object deep-merged dynamically for state management between the two users.
+
+---
+
+## 3. CORE LOGIC
+**Main functionality step-by-step:**
+1. **Initial Access**: The user hits `index.html`, where they must answer four specific questions about their relationship.
+2. **Token Generation**: Upon answering correctly, the Cloudflare Worker issues a static auth token (`auth_token_jonas_owami_secure_2024`) which the client stores in `localStorage`.
+3. **Profile Selection**: On `you.html`, the user selects if they are "Jonas" or "Owami", which is saved locally and synced to the backend to define their root object in the shared state.
+4. **Continuous Sync**: As users interact with the app (e.g., clicking a mood on `mood.html` or studying on `study.html`), `window.authenticatedFetch` sends deep-merge POST requests to `/api/couple` on the Worker.
+5. **Background Android Polling**: Concurrently, if the user is on Android, `CoupleService.kt` runs continuously in the background, polling the `/api/couple` endpoint every few minutes.
+6. **Native Alerts**: When the background service detects changes in the JSON state (e.g., a new study log, a new message), it triggers an Android Push Notification.
+
+**How data is processed:**
+The Cloudflare Worker receives a POST payload and uses a recursive `mergeDeep` function to merge the incoming JSON with the existing JSON stored in Cloudflare KV under the hardcoded key `couple_jonas_owami`.
+
+**Key algorithms or workflows:**
+- **Distance Calculation**: The Android app calculates the Haversine distance between the local user's coordinates and the partner's coordinates fetched from the JSON state to update the home screen widget.
+- **Auth Checking**: `auth-check.js` runs on every page load, checking for the presence of the `together_auth_token` in `localStorage`. If missing, it forcefully redirects to `index.html`.
+- **LocalStorage Interception**: The Android `MainActivity` injects JavaScript into the WebView to override `localStorage.setItem`. This allows the native Android code to "listen" to when the JS sets `togetherProfile` and instantly pass that data through the `AndroidBridge` to native `SharedPreferences`.
+
+---
+
+## 4. FUNCTIONAL FLOW
+**App Start (Android):**
+1. User opens the Android App.
+2. App requests necessary permissions (Location, Notifications, Camera).
+3. Biometric Prompt appears. User authenticates via fingerprint/face.
+4. WebView becomes visible and loads `https://together.preasx24.co.za/you.html` (or a specific page if launched from a notification intent).
+
+**App Start (Web Browser):**
+1. User navigates to the URL.
+2. `auth-check.js` verifies the token.
+3. User completes `index.html` questions if unauthenticated.
+4. User selects their profile on `you.html`.
+5. User navigates through the dashboard to various feature pages.
+
+**Background processes:**
+The Android `CoupleService` is a persistent Foreground Service. It runs an infinite loop using Coroutines (`delay(30_000)` or similar). It uses `OkHttpClient` to hit the `/api/couple` endpoint using the auth token. It compares the newly fetched JSON state with the previously cached state to determine if notifications should be fired, and it updates the `TogetherWidgetProvider` with the latest stats (mood, points, activity, distance).
+
+---
+
+## 5. UI / UX DESIGN
+**Layout structure:**
+- **Web**: Mobile-first, responsive design using CSS Flexbox/Grid. Relies heavily on soft, romantic gradients (e.g., `#ff7eb9` to `#7e57c2`), rounded corners, and floating animations (like falling hearts in `you.html`).
+- **Android**: Almost entirely a `WebView` encompassing the screen. The native UI components are limited to the Biometric prompt, standard Android notifications, and the Home Screen Widget (built with RemoteViews and XML layouts).
+
+**How the interface is built:**
+The web UI uses raw HTML/CSS. Modals and alerts are custom-built in `custom-alerts.js` to override native browser dialogs for a cohesive look.
+
+**Navigation system:**
+Navigation is primarily URL-based standard anchor links or JavaScript `window.location.href` redirects within the SPA. There is no complex JS router (like React Router); each feature is its own discrete `.html` file.
+
+---
+
+## 6. DATA HANDLING
+**Data storage:**
+- **Backend**: Cloudflare Workers KV (Key-Value storage) holds the global state in a single JSON blob under `couple_jonas_owami`.
+- **Web Client**: `localStorage` is used to persist session data (`together_auth_token`, `togetherProfile`).
+- **Android Client**: `SharedPreferences` caches the profile info, widget display data, and tokens for the background services.
+
+**Data fetching & processing:**
+The frontend uses the native `fetch` API wrapped in a custom `authenticatedFetch` utility (defined in `auth-check.js`) to automatically append the `Authorization` header. The backend parses incoming JSON, deep-merges it with KV data, and writes it back. The Android native service uses `OkHttpClient` for its background fetching.
+
+---
+
+## 7. DEPENDENCIES
+**Libraries and frameworks used:**
+*Web Frontend:*
+- **Chart.js**: (CDN) Used for rendering data visualizations and charts (e.g., in `study-dashboard.html`, `life-dashboard.html`).
+- **Leaflet**: (CDN) Used for rendering maps in location tracking features.
+- **Leaflet AntPath**: (CDN) Used for visualizing animated paths on maps.
+
+*Android Backend (Kotlin):*
+- **AndroidX Core/AppCompat/Material**: UI and backwards compatibility.
+- **WorkManager**: Background task scheduling.
+- **OkHttp (4.12.0)**: Robust native HTTP client for API requests.
+- **Gson (2.10.1)**: JSON serialization and deserialization.
+- **Play Services Location (21.2.0)**: Access to the FusedLocationProviderClient for accurate GPS tracking.
+- **AndroidX Biometric**: Native fingerprint/face unlock API.
+
+*Testing:*
+- **Playwright (Python)**: Used for automated browser testing and screenshot generation.
+
+---
+
+## 8. INTEGRATIONS
+**External APIs or services used:**
+- **Cloudflare Workers & KV**: Serverless execution and edge database.
+- **Open-Meteo**: Used for retrieving weather data for users.
+- **OSRM (Open Source Routing Machine)**: Used for calculating driving routes, distances, and ETAs for location features.
+
+**Authentication & Security integrations:**
+- Custom challenge-response authentication.
+- Android Biometric prompt integration.
+
+---
+
+## 9. PERFORMANCE & OPTIMIZATION
+*Current state:*
+- **Efficiency**: The app is relatively lightweight as it serves static HTML files and a small Worker script.
+- **Android**: The `CoupleService` runs as a Foreground Service, which keeps the app alive in the background. It polls the server frequently (e.g., every 30 mins, or 15s during "meet mode"), which could drain the battery, though `FusedLocationProviderClient` is optimized for battery efficiency compared to legacy location managers.
+- **Data Model**: The deep-merge strategy on a single monolithic JSON object works for two users but could become slow as the JSON grows indefinitely (e.g., unbounded arrays for `studyLogs`, `messages`).
+
+---
+
+## 10. SECURITY
+*Current state:*
+- **User Data**: Handled via HTTPS, stored in Cloudflare KV.
+- **Authentication**: The token is hardcoded in the Worker (`auth_token_jonas_owami_secure_2024`). The security relies entirely on obscurity and the 4 personal questions on the login page.
+- **CORS**: The Cloudflare Worker strictly limits CORS access to `https://together.preasx24.co.za`, preventing other domains from interacting with the API.
+- **Local Storage**: Tokens are stored in plain text in the browser's `localStorage` and Android's `SharedPreferences`. Android secures entry to the app via Biometrics, adding a layer of physical device security.
+- **Vulnerabilities**: The hardcoded token means if the JS is inspected, the token can be extracted. Additionally, the backend merges any JSON sent to `/api/couple` without schema validation, meaning a user could theoretically overwrite or corrupt the entire state with malformed JSON.
+
+---
+
+## 11. BUILD & DEPLOYMENT
+**Compilation and build:**
+- **Web/Worker**: The frontend files are static and likely deployed to a static host (like GitHub Pages or Cloudflare Pages). The Worker is deployed via `wrangler` to Cloudflare.
+- **Android**: The Android wrapper is built using Gradle (`build.gradle.kts`). Debug APKs are generated automatically via a GitHub Actions CI workflow located at `.github/workflows/android.yml`.
+
+**Requirements to run:**
+- Android: Android Studio with SDK 34, minimum SDK 26 (Android 8.0). `JavaVersion.VERSION_1_8` is configured.
+- Web: Any modern browser with JavaScript enabled.
+- Python Scripts: Python 3.x, `playwright` package installed.
+
+
+---
+
+## 12. FULL FILE-BY-FILE BREAKDOWN
+
+### Root Web Frontend Files (HTML & JavaScript)
+- **`index.html`**: The main entry point and authentication gateway. Contains a form with 4 personal questions. Submitting correct answers retrieves the token from the backend.
+- **`you.html`**: The main dashboard menu. Users select their profile (Jonas or Owami) which registers their identity locally and initializes their object in the backend. It serves as the hub to navigate to all other features.
+- **`auth-check.js`**: A critical security script included in the `<head>` of almost every HTML file. It immediately checks `localStorage` for the auth token. If absent, it redirects the user to `index.html`. It also provides the `window.authenticatedFetch` wrapper.
+- **`custom-alerts.js`**: Provides custom modal dialogues (`customAlert`, `customConfirm`, `appPrompt`) designed to replace ugly native browser popups with UI elements that match the app's romantic aesthetic.
+- **`worker.js`**: The entire server backend logic. Runs on Cloudflare Workers. It handles CORS preflight, validates auth answers, issues the hardcoded token, and handles GET/POST requests to `/api/couple` by reading and deep-merging a single JSON object in Cloudflare KV.
+- **`activities.html`**: Allows users to select their current activity (e.g., studying, eating, sleeping) to share with their partner.
+- **`bucket.html`**: A shared bucket list interface where users can add, check off, or delete shared life goals.
+- **`call.html`**: UI intended for a WebRTC or video/audio call feature.
+- **`cam.html`**: Likely an interface to access the device camera to take photos or record videos for the partner.
+- **`coupons.html`**: A gamified rewards system where users can spend accumulated points to redeem custom "coupons" from their partner (e.g., "Free Massage").
+- **`game.html`, `games.html`, `gameplay.html`**: A suite of files forming a hub for couple mini-games, handling game selection and score tracking.
+- **`life-dashboard.html`, `life-stats.html`**: Dashboards using Chart.js to visualize relationship statistics or lifestyle metrics.
+- **`location.html`, `location_history.html`**: Utilizes Leaflet and OSRM to show live tracking, distance calculations, path histories, and ETAs between the couple.
+- **`mem.html`, `mood.html`**: Interfaces for logging special memories and current emotional states. `mood.html` pushes updates that trigger native Android notifications.
+- **`messages.html`**: A restricted messaging interface ("Love Notes") intended for sending a limited number of special daily messages.
+- **`private.html`**: A protected section intended for sensitive content, historically gated by a passcode ("hoohaa").
+- **`rock.html`, `roulette.html`, `tic.html`**: Standalone HTML files for specific mini-games (Rock Paper Scissors, a custom Roulette wheel, Tic-Tac-Toe).
+- **`stats.html`**: Displays statistical overlays and metric summaries.
+- **`study.html`, `study-dashboard.html`**: A pomodoro-style study timer that logs study sessions to the backend, enabling the partner to see when they are focused.
+
+### Android Application Files (`app/`)
+- **`app/build.gradle.kts`**: The main build configuration script for the Android module. Defines SDK versions (min 26, target 34), enables view binding, and lists all dependencies (OkHttp, Gson, WorkManager, Biometrics, Play Services Location).
+- **`app/src/main/AndroidManifest.xml`**: The Android manifest file. Declares the required permissions (Location, Camera, Notifications, Foreground Services), registers the `MainActivity`, `CoupleService`, and the widget receiver.
+- **`app/src/main/java/com/together/app/MainActivity.kt`**: The core native Activity. Handles biometric authentication on app start, configures the `WebView` to load the live web URL, manages permissions, and injects JavaScript to bridge `localStorage` changes (specifically `togetherProfile`) to native `SharedPreferences`.
+- **`app/src/main/java/com/together/app/CoupleService.kt`**: The backbone of background operations. Runs as a persistent foreground service, polls the Cloudflare API via `OkHttp`, calculates distances using GPS coordinates, triggers native Android push notifications for state changes (mood, study, activity), and updates the home screen widget.
+- **`app/src/main/java/com/together/app/TogetherWidgetProvider.kt`**: The broadcast receiver for the Android home screen widget. It reads data from `SharedPreferences` (populated by `CoupleService`) and updates the `RemoteViews` UI to display partner stats on the phone's home screen.
+- **`app/src/main/res/layout/widget_together.xml`**: The XML layout defining the visual structure of the home screen widget.
+- **`app/src/main/res/xml/together_widget_info.xml`**: Metadata defining the widget's properties (dimensions, update frequency).
+- **`app/src/main/res/values/*` (`strings.xml`, `colors.xml`, `themes.xml`)**: Standard Android resource files defining text, color palettes, and UI themes for native elements.
+- **`app/src/main/res/drawable/*`**: XML drawables defining backgrounds and button styles for the widget.
+- **`app/src/main/res/mipmap-*`**: Application launcher icons in various resolutions.
+
+### Build & Root Configuration Files
+- **`build.gradle.kts` (Root)**: Top-level Gradle configuration for the entire repository.
+- **`settings.gradle.kts`**: Defines the project structure and includes the `:app` module.
+- **`gradle.properties`**: Global settings for the Gradle build system (e.g., JVM args).
+- **`gradlew`, `gradlew.bat`**: The Gradle Wrapper execution scripts for Linux/Mac and Windows, allowing builds without pre-installed Gradle.
+- **`gradle/wrapper/gradle-wrapper.*`**: Properties and JAR file for the Gradle Wrapper.
+- **`.gitignore`**: Defines files and folders that Git should not track.
+- **`CNAME`**: Contains the custom domain name for the frontend deployment (`together.preasx24.co.za`).
+
+### Media & Text Assets
+- **`logo.png`**: The application's primary logo.
+- **`chapters/` (`chapter1.txt` to `chapter8.txt`, `k`)**: Text files containing written content, presumably forming a story, journal, or episodic memories integrated into the app.
+- **Verification Images (`verification_*.png`, `debug_dashboard.png`, etc.)**: Screenshots generated by Python automation scripts during testing to visually verify frontend UI states.
+
+### Python Verification Scripts
+- **`verify_dashboard.py`**: A Playwright script that intercepts network requests, mocks API responses, and generates screenshots of `study-dashboard.html` to verify chart rendering across different timeframes.
+- **`verify_life_dashboard.py`**: A similar Playwright script for testing and visually verifying `life-dashboard.html`.
+- **`verify_location.py`**: A Playwright script designed to test the UI and logic of `location.html`.
