@@ -135,6 +135,22 @@ class MainActivity : AppCompatActivity() {
 
         // Authenticate before loading URL
         authenticateUser()
+
+        // Ensure background service is running
+        checkAndStartService()
+    }
+
+    private fun checkAndStartService() {
+        val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val profileJson = sharedPref.getString("togetherProfile", null)
+        if (!profileJson.isNullOrEmpty()) {
+            val serviceIntent = Intent(this, CoupleService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        }
     }
 
     private fun authenticateUser() {

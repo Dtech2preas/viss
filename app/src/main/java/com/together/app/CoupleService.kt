@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -38,6 +39,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 class CoupleService : Service() {
 
     private var lastLocationUpdateTime: Long = 0
+    private var wakeLock: PowerManager.WakeLock? = null
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
     private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
@@ -51,10 +53,17 @@ class CoupleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!isRunning) {
             isRunning = true
+            acquireWakeLock()
             startForegroundService()
             startPolling()
         }
         return START_STICKY
+    }
+
+    private fun acquireWakeLock() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Together::CoupleServiceWakeLock")
+        wakeLock?.acquire()
     }
 
     private fun startForegroundService() {
@@ -95,9 +104,17 @@ class CoupleService : Service() {
     private fun startPolling() {
         thread {
             while (isRunning) {
-                pollForUpdates()
+                try {
+                    pollForUpdates()
+                } catch (e: Exception) {
+                    Log.e("CoupleService", "Critical error in polling loop", e)
+                }
                 // Check every 15 seconds
-                Thread.sleep(15000)
+                try {
+                    Thread.sleep(15000)
+                } catch (e: InterruptedException) {
+                    break
+                }
             }
         }
     }
@@ -215,13 +232,20 @@ class CoupleService : Service() {
                 .addHeader("Authorization", "Bearer $authToken")
                 .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return
+            var globalState: JSONObject? = null
+            try {
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    if (!responseBody.isNullOrEmpty()) {
+                        globalState = JSONObject(responseBody)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Failed to fetch global state from Cloudflare", e)
+            }
 
-            val responseBody = response.body?.string()
-            if (!responseBody.isNullOrEmpty()) {
-                val globalState = JSONObject(responseBody)
-
+            if (globalState != null) {
                 // Track streak and update widget
                 updateStreakAndWidget(globalState, localUserName, partnerName)
 
@@ -346,52 +370,53 @@ class CoupleService : Service() {
                     }
                 }
 
-                val myStateObj = globalState.optJSONObject(localUserName)
+            val myStateObj = globalState.optJSONObject(localUserName)
 
-                var shouldUpdateLocation = false
-                var isTripMode = false
+            var shouldUpdateLocation = false
+            var isTripMode = false
 
-                // Check for force location update flag and isTripMode in Firebase
-                try {
-                    val locRef = Request.Builder()
-                        .url("$firebaseUrl/locations/$localUserName.json")
-                        .build()
-                    val locRes = client.newCall(locRef).execute()
-                    if (locRes.isSuccessful) {
-                        val locBody = locRes.body?.string()
-                        if (locBody != null && locBody != "null") {
-                            val locJson = JSONObject(locBody)
-                            isTripMode = locJson.optBoolean("isTripMode", false)
-                        }
+            // Check for force location update flag and isTripMode in Firebase
+            // This is now independent of Cloudflare success
+            try {
+                val locRef = Request.Builder()
+                    .url("$firebaseUrl/locations/$localUserName.json")
+                    .build()
+                val locRes = client.newCall(locRef).execute()
+                if (locRes.isSuccessful) {
+                    val locBody = locRes.body?.string()
+                    if (locBody != null && locBody != "null") {
+                        val locJson = JSONObject(locBody)
+                        isTripMode = locJson.optBoolean("isTripMode", false)
                     }
+                }
 
-                    val forceReq = Request.Builder()
-                        .url("$firebaseUrl/forceUpdate/$localUserName.json")
-                        .build()
-                    val forceRes = client.newCall(forceReq).execute()
-                    if (forceRes.isSuccessful) {
-                        val forceBody = forceRes.body?.string()
-                        if (forceBody == "true") {
-                            shouldUpdateLocation = true
-                        }
+                val forceReq = Request.Builder()
+                    .url("$firebaseUrl/forceUpdate/$localUserName.json")
+                    .build()
+                val forceRes = client.newCall(forceReq).execute()
+                if (forceRes.isSuccessful) {
+                    val forceBody = forceRes.body?.string()
+                    if (forceBody == "true") {
+                        shouldUpdateLocation = true
                     }
-                } catch (e: Exception) {
-                    Log.e("CoupleService", "Failed to check forceUpdate/tripMode", e)
                 }
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Failed to check forceUpdate/tripMode", e)
+            }
 
-                // Update location based on interval (15 mins normal, 15 secs trip mode)
-                val currentTime = System.currentTimeMillis()
-                val interval = if (isTripMode) 15 * 1000 else 15 * 60 * 1000
-                if (currentTime - lastLocationUpdateTime >= interval) {
-                    shouldUpdateLocation = true
-                }
+            // Update location based on interval (15 mins normal, 15 secs trip mode)
+            val currentTime = System.currentTimeMillis()
+            val interval = if (isTripMode) 15 * 1000 else 15 * 60 * 1000
+            if (currentTime - lastLocationUpdateTime >= interval) {
+                shouldUpdateLocation = true
+            }
 
-                if (shouldUpdateLocation) {
-                    fetchAndPushLocation(localUserName, authToken, myStateObj ?: JSONObject())
-                }
+            if (shouldUpdateLocation) {
+                fetchAndPushLocation(localUserName)
+            }
 
-                // Check 100km distance change notification
-                if (myStateObj != null && partnerStateObj != null) {
+            // Check 100km distance change notification
+            if (myStateObj != null && partnerStateObj != null) {
                     var myLoc: JSONObject? = null
                     var partnerLoc: JSONObject? = null
 
@@ -455,13 +480,13 @@ class CoupleService : Service() {
 
 
     @SuppressLint("MissingPermission")
-    private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
-        // Always update the time so we don't spam requests every 15 seconds if it fails
+    private fun fetchAndPushLocation(userName: String) {
+        // Prevent concurrent or too-frequent updates
         lastLocationUpdateTime = System.currentTimeMillis()
 
         // We only proceed if location permissions are granted
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            clearForceFlag(userName, authToken, myStateObj)
+            clearForceFlag(userName)
             return
         }
 
@@ -514,14 +539,6 @@ class CoupleService : Service() {
                                                     sin(dLon / 2) * sin(dLon / 2)
                                             val c = 2 * atan2(sqrt(a), sqrt(1 - a))
                                             val distance = R * c
-
-                                            // Clear force flag in Firebase for this user now that we have data
-                                            val forceReqBodyClear = "false".toRequestBody(mediaType)
-                                            val forcePostReqClear = Request.Builder()
-                                                .url("$firebaseUrl/forceUpdate/$userName.json")
-                                                .put(forceReqBodyClear)
-                                                .build()
-                                            client.newCall(forcePostReqClear).execute()
 
                                             val currentClosest = currentLocData.optDouble("closestDistance", Double.MAX_VALUE)
                                             if (distance < currentClosest) {
@@ -591,10 +608,10 @@ class CoupleService : Service() {
                             if (lastLoc != null) {
                                 updateLocationOnServer(lastLoc)
                             } else {
-                                clearForceFlag(userName, authToken, myStateObj)
+                                clearForceFlag(userName)
                             }
                         }.addOnFailureListener {
-                            clearForceFlag(userName, authToken, myStateObj)
+                            clearForceFlag(userName)
                         }
                     }
                 }
@@ -604,20 +621,20 @@ class CoupleService : Service() {
                         if (lastLoc != null) {
                             updateLocationOnServer(lastLoc)
                         } else {
-                            clearForceFlag(userName, authToken, myStateObj)
+                            clearForceFlag(userName)
                         }
                     }.addOnFailureListener {
-                        clearForceFlag(userName, authToken, myStateObj)
+                        clearForceFlag(userName)
                     }
                 }
 
         } catch (e: Exception) {
             Log.e("CoupleService", "Error pushing location", e)
-            clearForceFlag(userName, authToken, myStateObj)
+            clearForceFlag(userName)
         }
     }
 
-    private fun clearForceFlag(userName: String, authToken: String, myStateObj: JSONObject) {
+    private fun clearForceFlag(userName: String) {
         thread {
             try {
                 val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
@@ -949,5 +966,8 @@ class CoupleService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
     }
 }
