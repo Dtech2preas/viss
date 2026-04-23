@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <script src="auth-check.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -756,6 +759,22 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc",
+            authDomain: "dtech-75e26.firebaseapp.com",
+            projectId: "dtech-75e26",
+            storageBucket: "dtech-75e26.firebasestorage.app",
+            messagingSenderId: "101292842193",
+            appId: "1:101292842193:web:d12190895fa7a6b330b9f0",
+            measurementId: "G-Z79PVN3V7H"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let localUser = null;
         let globalState = {};
         let autoUpdateInterval = null;
@@ -774,6 +793,22 @@
         let currentTravelMode = 'driving';
 
         let hasCelebratedReunited = false;
+
+        function getCurrentUser() {
+            return localUser ? localUser.name.toLowerCase() : null;
+        }
+
+        function getPartnerName() {
+            return localUser ? localUser.partner.name.toLowerCase() : null;
+        }
+
+        function getCutoffTime(period) {
+            const now = Date.now();
+            if (period === '24h') return now - (24 * 60 * 60 * 1000);
+            if (period === 'week') return now - (7 * 24 * 60 * 60 * 1000);
+            if (period === 'month') return now - (30 * 24 * 60 * 60 * 1000);
+            return 0;
+        }
 
         // Massive reunited celebration
         function triggerReunitedCelebration() {
@@ -866,6 +901,45 @@
             initMap();
             loadLocationData();
 
+            // Subscribe to partner's location via Firebase
+            const partnerName = getPartnerName();
+            const myUserName = getCurrentUser();
+            if (partnerName) {
+                const partnerLocationRef = db.ref(`locations/${partnerName}`);
+                partnerLocationRef.on('value', (snapshot) => {
+                    const location = snapshot.val();
+                    if (location && location.lat && location.lng) {
+                        if (!globalState[partnerName]) globalState[partnerName] = {};
+                        globalState[partnerName].location = location; // For compatibility with existing distance logic if any
+
+                        updatePartnerLocationDisplay(location);
+
+                        // We also need my location to update distance and map
+                        db.ref(`locations/${myUserName}`).once('value', (mySnapshot) => {
+                            const myLoc = mySnapshot.val();
+                            if (myLoc) {
+                                if (!globalState[myUserName]) globalState[myUserName] = {};
+                                globalState[myUserName].location = myLoc;
+                            }
+                            updateMapMarkers(myLoc, location);
+                            if (myLoc) {
+                                calculateDistance(myLoc, location);
+                            }
+                        });
+                    }
+                });
+
+                // Listen for force update flag
+                const forceUpdateRef = db.ref(`forceUpdate/${myUserName}`);
+                forceUpdateRef.on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        // Clear the flag and trigger location fetch
+                        forceUpdateRef.set(false);
+                        updateLocation();
+                    }
+                });
+            }
+
             // Setup intervals based on trip mode
             setupIntervals();
             startTimerUpdate();
@@ -905,13 +979,12 @@
             if (myLocationInterval) clearInterval(myLocationInterval);
 
             if (isTripMode) {
-                // Trip mode: fetch partner and update my location every 15 seconds
-                autoUpdateInterval = setInterval(updatePartnerLocation, 15000);
+                // Trip mode: update my location every 15 seconds
+                // Partner updates are handled by Firebase .on('value') listener
                 myLocationInterval = setInterval(updateLocation, 15000);
             } else {
-                // Normal mode: fetch partner and update my location every 30 minutes
-                autoUpdateInterval = setInterval(updatePartnerLocation, 30 * 60 * 1000);
-                myLocationInterval = setInterval(updateLocation, 30 * 60 * 1000);
+                // Normal mode: update my location every 15 minutes
+                myLocationInterval = setInterval(updateLocation, 15 * 60 * 1000);
             }
         }
 
@@ -1047,39 +1120,84 @@
             window.location.href = 'you.html';
         }
 
+        async function loadPathHistory(period) {
+            // period = '24h', 'week', 'month'
+            const cutoffTime = getCutoffTime(period);
+            const partnerName = getPartnerName();
+            const historyRef = db.ref(`history/${partnerName}`);
+            const snapshot = await historyRef.once('value');
+            const history = snapshot.val() || {};
+
+            const filtered = Object.values(history).filter(entry => entry.timestamp > cutoffTime);
+            plotPathOnMap(filtered);
+        }
+
+        let historyPolyline = null;
+        function plotPathOnMap(points) {
+            if (!map) return;
+
+            if (historyPolyline) {
+                map.removeLayer(historyPolyline);
+            }
+
+            if (points.length < 2) return;
+
+            const latLngs = points.sort((a, b) => a.timestamp - b.timestamp).map(p => [p.lat, p.lng]);
+
+            historyPolyline = L.polyline(latLngs, {
+                color: 'var(--secondary-color)',
+                weight: 3,
+                opacity: 0.5,
+                dashArray: '5, 10'
+            }).addTo(map);
+
+            if (latLngs.length > 0) {
+                map.fitBounds(historyPolyline.getBounds(), {padding: [50, 50]});
+            }
+        }
+
         async function loadLocationData() {
             try {
-                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                if(!response.ok) throw new Error("Failed to load shared state");
-                globalState = await response.json();
+                const myUserName = getCurrentUser();
+                const partnerName = getPartnerName();
 
-                const myState = globalState[localUser.name] || {};
-                const partnerState = globalState[localUser.partner.name] || {};
+                // Load from Firebase
+                const myLocationSnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                const myState = myLocationSnapshot.val() || {};
 
-                if (myState) {
-                    if (myState.closestDistance) {
-                        document.getElementById('closestDistance').textContent = myState.closestDistance.toFixed(2) + ' km';
-                    }
-                    if (myState.furthestDistance) {
-                        document.getElementById('furthestDistance').textContent = myState.furthestDistance.toFixed(2) + ' km';
-                    }
+                const partnerLocationSnapshot = await db.ref(`locations/${partnerName}`).once('value');
+                const partnerState = partnerLocationSnapshot.val() || {};
+
+                // Update globalState for existing logic
+                globalState[myUserName] = { ...myState, location: myState };
+                globalState[partnerName] = { ...partnerState, location: partnerState };
+
+                if (myState.closestDistance) {
+                    document.getElementById('closestDistance').textContent = myState.closestDistance.toFixed(2) + ' km';
+                }
+                if (myState.furthestDistance) {
+                    document.getElementById('furthestDistance').textContent = myState.furthestDistance.toFixed(2) + ' km';
                 }
 
-                if (partnerState.location) {
-                    updatePartnerLocationDisplay(partnerState.location);
+                if (partnerState.lat && partnerState.lng) {
+                    updatePartnerLocationDisplay(partnerState);
                 }
 
-                if (myState.location) {
-                    updateUserLocationDisplay(myState.location);
+                if (myState.lat && myState.lng) {
+                    updateUserLocationDisplay(myState);
                 }
 
-                if (myState.location && partnerState.location) {
-                    calculateDistance(myState.location, partnerState.location);
+                if (myState.lat && partnerState.lat) {
+                    calculateDistance(myState, partnerState);
                 }
 
-                updateMapMarkers(myState.location, partnerState.location);
+                updateMapMarkers(myState, partnerState);
 
-                updateLocationHistory(myState.locationHistory);
+                // Load history
+                const historySnapshot = await db.ref(`history/${myUserName}`).limitToLast(5).once('value');
+                const historyData = historySnapshot.val() || {};
+                const historyArray = Object.values(historyData).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                updateLocationHistory(historyArray);
 
             } catch (error) {
                 console.error('Error loading location data:', error);
@@ -1100,58 +1218,66 @@
                         const newLocation = {
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
-                            timestamp: new Date().toISOString()
+                            timestamp: Date.now(),
+                            isTripMode: isTripMode
                         };
 
-                        // Fetch latest global state
-                        const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                        if (res.ok) {
-                           globalState = await res.json();
-                        }
+                        const userName = getCurrentUser();
 
-                        if (!globalState[localUser.name]) globalState[localUser.name] = {};
-                        if (!globalState[localUser.name].locationHistory) globalState[localUser.name].locationHistory = [];
+                        // Update current location in Firebase
+                        // We preserve closest/furthest distances by reading them first or using a multi-path update
+                        const myLocRef = db.ref(`locations/${userName}`);
+                        const snapshot = await myLocRef.once('value');
+                        const currentData = snapshot.val() || {};
 
-                        globalState[localUser.name].locationHistory.push(newLocation);
-                        if (globalState[localUser.name].locationHistory.length > 2880) {
-                            globalState[localUser.name].locationHistory = globalState[localUser.name].locationHistory.slice(-2880);
-                        }
+                        const updates = {
+                            ...newLocation,
+                            closestDistance: currentData.closestDistance || null,
+                            furthestDistance: currentData.furthestDistance || null,
+                            wasFarApart: currentData.wasFarApart || false,
+                            timesTogether: currentData.timesTogether || 0,
+                            lastTimeTogether: currentData.lastTimeTogether || null
+                        };
 
-                        updateUserLocationDisplay(newLocation);
+                        await myLocRef.set(updates);
+
+                        // Update globalState
+                        if (!globalState[userName]) globalState[userName] = {};
+                        globalState[userName] = { ...updates, location: updates };
+
+                        // Add to history
+                        db.ref(`history/${userName}`).push(newLocation);
+
+                        updateUserLocationDisplay({
+                            ...newLocation,
+                            timestamp: new Date(newLocation.timestamp).toISOString()
+                        });
                         
                         try {
                             const address = await getAddressFromCoords(newLocation.lat, newLocation.lng);
                             document.getElementById('userAddress').textContent = address;
-                            
-                            const response = await window.authenticatedFetch(`${API_URL}/api/couple`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    [localUser.name]: {
-                                        location: newLocation,
-                                        locationHistory: globalState[localUser.name].locationHistory
-                                    }
-                                })
-                            });
-
-                            if (response.ok) {
-                                showNotification('Location updated successfully');
-                            } else {
-                                showNotification('Failed to share location');
-                            }
+                            showNotification('Location updated successfully');
                         } catch (error) {
-                            console.error('Error updating location:', error);
-                            showNotification('Error updating location: ' + error.message);
+                            console.error('Error updating address:', error);
                         }
 
-                        const partnerState = globalState[localUser.partner.name] || {};
-                        if (partnerState.location) {
-                            calculateDistance(newLocation, partnerState.location);
+                        // Get partner location for distance calculation
+                        const partnerName = getPartnerName();
+                        const partnerSnapshot = await db.ref(`locations/${partnerName}`).once('value');
+                        const partnerState = partnerSnapshot.val();
+
+                        if (partnerState && partnerState.lat) {
+                            calculateDistance(newLocation, partnerState);
+                            updateMapMarkers(newLocation, partnerState);
+                        } else {
+                            updateMapMarkers(newLocation, null);
                         }
 
-                        updateMapMarkers(newLocation, partnerState.location);
-
-                        updateLocationHistory(globalState[localUser.name].locationHistory);
+                        // Update history display (fetch last 5)
+                        const historySnapshot = await db.ref(`history/${userName}`).limitToLast(5).once('value');
+                        const historyData = historySnapshot.val() || {};
+                        const historyArray = Object.values(historyData).sort((a, b) => b.timestamp - a.timestamp);
+                        updateLocationHistory(historyArray);
                     },
                     error => {
                         let errorMessage = "Error getting location";
@@ -1184,40 +1310,26 @@
 
         async function updatePartnerLocation(isManualClick = false) {
             try {
-                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                if(!response.ok) throw new Error("Failed to load shared state");
-                globalState = await response.json();
-
-                const partnerState = globalState[localUser.partner.name] || {};
-                const myState = globalState[localUser.name] || {};
-
+                const partnerName = getPartnerName();
                 if (isManualClick === true) {
-                    try {
-                        // Request partner's device to force update its location
-                        await window.authenticatedFetch(`${API_URL}/api/couple`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                [localUser.partner.name]: {
-                                    ...partnerState,
-                                    forceLocationUpdate: true
-                                }
-                            })
-                        });
-                        showNotification('Requested partner device to update location...');
-                    } catch (e) {
-                        console.error('Error sending force update flag:', e);
-                    }
+                    db.ref(`forceUpdate/${partnerName}`).set(true);
+                    showNotification('Requested partner device to update location...');
                 }
 
-                if (partnerState.location) {
-                    updatePartnerLocationDisplay(partnerState.location);
-                    
-                    if (myState.location) {
-                        calculateDistance(myState.location, partnerState.location);
-                    }
+                const partnerSnapshot = await db.ref(`locations/${partnerName}`).once('value');
+                const partnerState = partnerSnapshot.val();
 
-                    updateMapMarkers(myState.location, partnerState.location);
+                if (partnerState && partnerState.lat) {
+                    updatePartnerLocationDisplay(partnerState);
+                    
+                    const myUserName = getCurrentUser();
+                    const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                    const myState = mySnapshot.val();
+
+                    if (myState && myState.lat) {
+                        calculateDistance(myState, partnerState);
+                        updateMapMarkers(myState, partnerState);
+                    }
                     showNotification('Partner location updated');
                 } else {
                     showNotification('No location data found for partner');
@@ -1329,25 +1441,8 @@
 
                     if (updated) {
                         try {
-                            // First fetch latest global state to avoid overwriting recent changes
-                            const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                            let latestState = {};
-                            if (res.ok) {
-                                latestState = await res.json();
-                            }
-
-                            const currentMyState = latestState[localUser.name] || {};
-
-                            await window.authenticatedFetch(`${API_URL}/api/couple`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    [localUser.name]: {
-                                        ...currentMyState,
-                                        ...updates
-                                    }
-                                })
-                            });
+                            const userName = getCurrentUser();
+                            await db.ref(`locations/${userName}`).update(updates);
                         } catch (error) {
                             console.error('Error saving distance data', error);
                         }
@@ -1411,25 +1506,8 @@
 
             if (updated) {
                 try {
-                    // Fetch latest
-                    const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                    let latestState = {};
-                    if (res.ok) {
-                        latestState = await res.json();
-                    }
-
-                    const currentMyState = latestState[localUser.name] || {};
-
-                    await window.authenticatedFetch(`${API_URL}/api/couple`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            [localUser.name]: {
-                                ...currentMyState,
-                                ...updates
-                            }
-                        })
-                    });
+                    const userName = getCurrentUser();
+                    await db.ref(`locations/${userName}`).update(updates);
                 } catch (error) {
                     console.error('Error saving distance data', error);
                 }

@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <script src="auth-check.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -364,6 +367,21 @@
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
 
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc",
+            authDomain: "dtech-75e26.firebaseapp.com",
+            projectId: "dtech-75e26",
+            storageBucket: "dtech-75e26.firebasestorage.app",
+            messagingSenderId: "101292842193",
+            appId: "1:101292842193:web:d12190895fa7a6b330b9f0",
+            measurementId: "G-Z79PVN3V7H"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let localUser = null;
         let currentPeriod = 'day';
         let partnerActivities = [];
@@ -438,12 +456,15 @@
 
         async function loadRelationshipStats() {
             try {
-                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                if (!response.ok) throw new Error("Failed to load shared state");
-                let globalState = await response.json();
+                const myUserName = localUser.name.toLowerCase();
+                const partnerName = localUser.partner.name.toLowerCase();
 
-                let myState = globalState[localUser.name] || {};
-                let partnerState = globalState[localUser.partner.name] || {};
+                // Load from Firebase
+                const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                const myState = mySnapshot.val() || {};
+
+                const partnerSnapshot = await db.ref(`locations/${partnerName}`).once('value');
+                const partnerState = partnerSnapshot.val() || {};
 
                 let closest = myState.closestDistance || Infinity;
                 let furthest = myState.furthestDistance || 0;
@@ -451,10 +472,10 @@
                 let statsUpdated = false;
 
                 // If we have both current locations, calculate current distance
-                if (myState.location && partnerState.location) {
+                if (myState.lat && partnerState.lat) {
                     const currentDist = calculateDistance(
-                        myState.location.lat, myState.location.lng,
-                        partnerState.location.lat, partnerState.location.lng
+                        myState.lat, myState.lng,
+                        partnerState.lat, partnerState.lng
                     );
 
                     if (currentDist < closest || closest === Infinity) {
@@ -478,9 +499,9 @@
                     if (currentDist < 0.1) {
                         // Default to allowing the first meet if wasFarApart is completely undefined (new feature migration)
                         if (myState.wasFarApart === true || myState.wasFarApart === undefined) {
-                            if (!myState.lastTimeTogether || (Date.now() - new Date(myState.lastTimeTogether).getTime() > 1000 * 60 * 60 * 12)) {
+                            if (!myState.lastTimeTogether || (Date.now() - myState.lastTimeTogether > 1000 * 60 * 60 * 12)) {
                                 timesTogether++;
-                                myState.lastTimeTogether = new Date().toISOString();
+                                myState.lastTimeTogether = Date.now();
                                 myState.wasFarApart = false;
                                 statsUpdated = true;
                             }
@@ -492,19 +513,17 @@
                 if (closest === Infinity) closest = null;
 
                 if (statsUpdated) {
-                    // Save back to local & server
-                    myState.closestDistance = closest;
-                    myState.furthestDistance = furthest;
-                    myState.timesTogether = timesTogether;
+                    // Save back to Firebase
+                    const updates = {
+                        closestDistance: closest,
+                        furthestDistance: furthest,
+                        timesTogether: timesTogether,
+                        wasFarApart: myState.wasFarApart,
+                        lastTimeTogether: myState.lastTimeTogether
+                    };
 
                     try {
-                        await window.authenticatedFetch(`${API_URL}/api/couple`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                [localUser.name]: myState
-                            })
-                        });
+                        await db.ref(`locations/${myUserName}`).update(updates);
                     } catch (e) { console.error("Could not update stats on server", e); }
                 }
 

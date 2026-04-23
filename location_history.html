@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <script src="auth-check.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <link rel="icon" type="image/png" href="logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -135,11 +138,43 @@
 
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc",
+            authDomain: "dtech-75e26.firebaseapp.com",
+            projectId: "dtech-75e26",
+            storageBucket: "dtech-75e26.firebasestorage.app",
+            messagingSenderId: "101292842193",
+            appId: "1:101292842193:web:d12190895fa7a6b330b9f0",
+            measurementId: "G-Z79PVN3V7H"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let localUser = null;
         let map = null;
         let myLayerGroup = L.layerGroup();
         let partnerLayerGroup = L.layerGroup();
         let allData = { mine: [], partner: [] };
+
+        function getPartnerFromLocalStorage() {
+            return localUser ? localUser.partner.name.toLowerCase() : null;
+        }
+
+        function getCurrentUser() {
+            return localUser ? localUser.name.toLowerCase() : null;
+        }
+
+        function getCutoffTime(period) {
+            const now = Date.now();
+            if (period === '24h') return now - (24 * 60 * 60 * 1000);
+            if (period === '1w') return now - (7 * 24 * 60 * 60 * 1000);
+            if (period === '1m') return now - (30 * 24 * 60 * 60 * 1000);
+            return 0; // all time
+        }
 
         function initApp() {
             const savedProfile = localStorage.getItem('togetherProfile');
@@ -166,16 +201,17 @@
 
         async function loadData() {
             try {
-                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                if(!response.ok) throw new Error("Failed to load");
-                const state = await response.json();
+                const myUserName = getCurrentUser();
+                const partnerName = getPartnerFromLocalStorage();
 
-                if (state[localUser.name] && state[localUser.name].locationHistory) {
-                    allData.mine = state[localUser.name].locationHistory;
-                }
-                if (state[localUser.partner.name] && state[localUser.partner.name].locationHistory) {
-                    allData.partner = state[localUser.partner.name].locationHistory;
-                }
+                // Fetch from Firebase
+                const myHistorySnapshot = await db.ref(`history/${myUserName}`).once('value');
+                const myHistory = myHistorySnapshot.val() || {};
+                allData.mine = Object.values(myHistory);
+
+                const partnerHistorySnapshot = await db.ref(`history/${partnerName}`).once('value');
+                const partnerHistory = partnerHistorySnapshot.val() || {};
+                allData.partner = Object.values(partnerHistory);
 
                 setTimeframe('24h', document.getElementById('btn-24h'));
             } catch(e) {
@@ -187,19 +223,12 @@
             document.querySelectorAll('.controls .btn').forEach(b => b.classList.remove('active'));
             if (targetElement) {
                 targetElement.classList.add('active');
-            } else if (event && event.target) {
-                event.target.classList.add('active');
             }
 
-            const now = new Date();
-            let cutoff = new Date(0); // all time
+            const cutoff = getCutoffTime(tf);
 
-            if (tf === '24h') cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            if (tf === '1w') cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            if (tf === '1m') cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-            const myFiltered = allData.mine.filter(p => new Date(p.timestamp) >= cutoff);
-            const partnerFiltered = allData.partner.filter(p => new Date(p.timestamp) >= cutoff);
+            const myFiltered = allData.mine.filter(p => p.timestamp >= cutoff);
+            const partnerFiltered = allData.partner.filter(p => p.timestamp >= cutoff);
 
             document.getElementById('myPoints').textContent = myFiltered.length;
             document.getElementById('partnerPoints').textContent = partnerFiltered.length;
