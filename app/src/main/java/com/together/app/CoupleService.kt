@@ -411,8 +411,12 @@ class CoupleService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
+        // Always update the time so we don't spam requests every 15 seconds if it fails
+        lastLocationUpdateTime = System.currentTimeMillis()
+
         // We only proceed if location permissions are granted
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            clearForceFlag(userName, authToken, myStateObj)
             return
         }
 
@@ -508,20 +512,23 @@ class CoupleService : Service() {
     private fun clearForceFlag(userName: String, authToken: String, myStateObj: JSONObject) {
         thread {
             try {
-                myStateObj.remove("forceLocationUpdate")
-                val updates = JSONObject()
-                updates.put(userName, myStateObj)
+                // Only post an update if the flag is actually there to remove, preventing spam
+                if (myStateObj.has("forceLocationUpdate")) {
+                    myStateObj.remove("forceLocationUpdate")
+                    val updates = JSONObject()
+                    updates.put(userName, myStateObj)
 
-                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val reqBody = updates.toString().toRequestBody(mediaType)
+                    val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                    val reqBody = updates.toString().toRequestBody(mediaType)
 
-                val postReq = Request.Builder()
-                    .url(apiUrl)
-                    .addHeader("Authorization", "Bearer $authToken")
-                    .post(reqBody)
-                    .build()
+                    val postReq = Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("Authorization", "Bearer $authToken")
+                        .post(reqBody)
+                        .build()
 
-                client.newCall(postReq).execute()
+                    client.newCall(postReq).execute()
+                }
             } catch (e: Exception) {
                 Log.e("CoupleService", "Error clearing force flag", e)
             }
