@@ -8,6 +8,11 @@
     <title>Together - Location History</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary-color: #ff7eb9;
@@ -135,6 +140,21 @@
 
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc",
+            authDomain: "dtech-75e26.firebaseapp.com",
+            databaseURL: "https://dtech-75e26-default-rtdb.firebaseio.com",
+            projectId: "dtech-75e26",
+            storageBucket: "dtech-75e26.firebasestorage.app",
+            messagingSenderId: "101292842193",
+            appId: "1:101292842193:web:d12190895fa7a6b330b9f0",
+            measurementId: "G-Z79PVN3V7H"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         let localUser = null;
         let map = null;
         let myLayerGroup = L.layerGroup();
@@ -166,18 +186,31 @@
 
         async function loadData() {
             try {
-                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                if(!response.ok) throw new Error("Failed to load");
-                const state = await response.json();
+                // Fetch histories directly from Firebase
+                const myHistoryRef = database.ref('history/' + localUser.name);
+                const partnerHistoryRef = database.ref('history/' + localUser.partner.name);
 
-                if (state[localUser.name] && state[localUser.name].locationHistory) {
-                    allData.mine = state[localUser.name].locationHistory;
-                }
-                if (state[localUser.partner.name] && state[localUser.partner.name].locationHistory) {
-                    allData.partner = state[localUser.partner.name].locationHistory;
-                }
+                myHistoryRef.once('value', (snapshot) => {
+                    if (snapshot.val()) {
+                        allData.mine = snapshot.val();
+                    }
+                    updateTimeframeIfReady();
+                });
 
-                setTimeframe('24h', document.getElementById('btn-24h'));
+                partnerHistoryRef.once('value', (snapshot) => {
+                    if (snapshot.val()) {
+                        allData.partner = snapshot.val();
+                    }
+                    updateTimeframeIfReady();
+                });
+
+                let loadedCount = 0;
+                function updateTimeframeIfReady() {
+                    loadedCount++;
+                    if (loadedCount === 2) {
+                        setTimeframe('24h', document.getElementById('btn-24h'));
+                    }
+                }
             } catch(e) {
                 console.error(e);
             }

@@ -9,6 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
     <style>
         :root {
             --primary-color: #ff7eb9;
@@ -756,6 +760,21 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc",
+            authDomain: "dtech-75e26.firebaseapp.com",
+            databaseURL: "https://dtech-75e26-default-rtdb.firebaseio.com",
+            projectId: "dtech-75e26",
+            storageBucket: "dtech-75e26.firebasestorage.app",
+            messagingSenderId: "101292842193",
+            appId: "1:101292842193:web:d12190895fa7a6b330b9f0",
+            measurementId: "G-Z79PVN3V7H"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         let localUser = null;
         let globalState = {};
         let autoUpdateInterval = null;
@@ -905,12 +924,11 @@
             if (myLocationInterval) clearInterval(myLocationInterval);
 
             if (isTripMode) {
-                // Trip mode: fetch partner and update my location every 15 seconds
-                autoUpdateInterval = setInterval(updatePartnerLocation, 15000);
+                // Trip mode: update my location every 15 seconds
+                // (Partner updates are now real-time via Firebase)
                 myLocationInterval = setInterval(updateLocation, 15000);
             } else {
-                // Normal mode: fetch partner and update my location every 30 minutes
-                autoUpdateInterval = setInterval(updatePartnerLocation, 30 * 60 * 1000);
+                // Normal mode: update my location every 30 minutes
                 myLocationInterval = setInterval(updateLocation, 30 * 60 * 1000);
             }
         }
@@ -1047,6 +1065,62 @@
             window.location.href = 'you.html';
         }
 
+        function setupFirebaseListeners() {
+            if (!localUser || !localUser.partner) return;
+
+            const myRef = database.ref('locations/' + localUser.name);
+            const partnerRef = database.ref('locations/' + localUser.partner.name);
+
+            // Listen for partner's location changes
+            partnerRef.on('value', (snapshot) => {
+                const partnerLoc = snapshot.val();
+                if (partnerLoc) {
+                    if (!globalState[localUser.partner.name]) globalState[localUser.partner.name] = {};
+                    globalState[localUser.partner.name].location = partnerLoc;
+
+                    updatePartnerLocationDisplay(partnerLoc);
+
+                    const myLoc = globalState[localUser.name]?.location;
+                    if (myLoc) {
+                        calculateDistance(myLoc, partnerLoc);
+                        updateMapMarkers(myLoc, partnerLoc);
+                    } else {
+                        updateMapMarkers(null, partnerLoc);
+                    }
+                }
+            });
+
+            // Listen for my own location changes (in case Android app updates it)
+            myRef.on('value', (snapshot) => {
+                const myLoc = snapshot.val();
+                if (myLoc) {
+                    if (!globalState[localUser.name]) globalState[localUser.name] = {};
+                    globalState[localUser.name].location = myLoc;
+
+                    updateUserLocationDisplay(myLoc);
+
+                    const partnerLoc = globalState[localUser.partner.name]?.location;
+                    if (partnerLoc) {
+                        calculateDistance(myLoc, partnerLoc);
+                        updateMapMarkers(myLoc, partnerLoc);
+                    } else {
+                        updateMapMarkers(myLoc, null);
+                    }
+                }
+            });
+
+            // Listen for history updates
+            const myHistoryRef = database.ref('history/' + localUser.name);
+            myHistoryRef.on('value', (snapshot) => {
+                const history = snapshot.val();
+                if (history) {
+                    if (!globalState[localUser.name]) globalState[localUser.name] = {};
+                    globalState[localUser.name].locationHistory = history;
+                    updateLocationHistory(history);
+                }
+            });
+        }
+
         async function loadLocationData() {
             try {
                 const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
@@ -1065,21 +1139,15 @@
                     }
                 }
 
-                if (partnerState.location) {
-                    updatePartnerLocationDisplay(partnerState.location);
-                }
-
+                // Load own location from KV if exists (initial)
                 if (myState.location) {
                     updateUserLocationDisplay(myState.location);
                 }
 
-                if (myState.location && partnerState.location) {
-                    calculateDistance(myState.location, partnerState.location);
-                }
-
-                updateMapMarkers(myState.location, partnerState.location);
-
                 updateLocationHistory(myState.locationHistory);
+
+                // Initialize Firebase Realtime Listeners
+                setupFirebaseListeners();
 
             } catch (error) {
                 console.error('Error loading location data:', error);
@@ -1102,12 +1170,6 @@
                             lng: position.coords.longitude,
                             timestamp: new Date().toISOString()
                         };
-
-                        // Fetch latest global state
-                        const res = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                        if (res.ok) {
-                           globalState = await res.json();
-                        }
 
                         if (!globalState[localUser.name]) globalState[localUser.name] = {};
                         if (!globalState[localUser.name].locationHistory) globalState[localUser.name].locationHistory = [];
@@ -1183,48 +1245,21 @@
         }
 
         async function updatePartnerLocation(isManualClick = false) {
-            try {
-                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
-                if(!response.ok) throw new Error("Failed to load shared state");
-                globalState = await response.json();
-
-                const partnerState = globalState[localUser.partner.name] || {};
-                const myState = globalState[localUser.name] || {};
-
-                if (isManualClick === true) {
-                    try {
-                        // Request partner's device to force update its location
-                        await window.authenticatedFetch(`${API_URL}/api/couple`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                [localUser.partner.name]: {
-                                    ...partnerState,
-                                    forceLocationUpdate: true
-                                }
-                            })
-                        });
-                        showNotification('Requested partner device to update location...');
-                    } catch (e) {
-                        console.error('Error sending force update flag:', e);
-                    }
-                }
-
-                if (partnerState.location) {
-                    updatePartnerLocationDisplay(partnerState.location);
+            if (isManualClick === true) {
+                try {
+                    // Send force update flag to Firebase so Android service picks it up
+                    const partnerForceRef = database.ref('forceUpdate/' + localUser.partner.name);
+                    await partnerForceRef.set(true);
+                    showNotification('Requested partner device to update location...');
                     
-                    if (myState.location) {
-                        calculateDistance(myState.location, partnerState.location);
-                    }
-
-                    updateMapMarkers(myState.location, partnerState.location);
-                    showNotification('Partner location updated');
-                } else {
-                    showNotification('No location data found for partner');
+                    // We don't need to manually fetch, the Firebase listener in setupFirebaseListeners will catch the new location
+                } catch (e) {
+                    console.error('Error sending force update flag to Firebase:', e);
+                    showNotification('Failed to request update');
                 }
-            } catch (error) {
-                console.error('Error fetching partner location:', error);
-                showNotification('Error fetching partner location');
+            } else {
+                // Not manual click, partner updates are handled by Firebase real-time listeners.
+                // This function is kept for the button click binding.
             }
         }
 
