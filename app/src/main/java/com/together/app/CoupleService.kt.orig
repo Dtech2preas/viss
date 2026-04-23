@@ -40,7 +40,6 @@ class CoupleService : Service() {
     private var lastLocationUpdateTime: Long = 0
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
-    private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
     private var isRunning = false
     private val client = OkHttpClient()
 
@@ -346,29 +345,17 @@ class CoupleService : Service() {
                     }
                 }
 
+                // Check for force location update flag
                 val myStateObj = globalState.optJSONObject(localUserName)
 
                 var shouldUpdateLocation = false
-
-                // Check for force location update flag in Firebase
-                try {
-                    val forceReq = Request.Builder()
-                        .url("$firebaseUrl/forceUpdate/$localUserName.json")
-                        .build()
-                    val forceRes = client.newCall(forceReq).execute()
-                    if (forceRes.isSuccessful) {
-                        val forceBody = forceRes.body?.string()
-                        if (forceBody == "true") {
-                            shouldUpdateLocation = true
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("CoupleService", "Failed to check forceUpdate", e)
+                if (myStateObj != null && myStateObj.optBoolean("forceLocationUpdate", false)) {
+                    shouldUpdateLocation = true
                 }
 
-                // Also update location if 15 minutes have passed (normal tracking interval)
+                // Also update location if 30 minutes have passed
                 val currentTime = System.currentTimeMillis()
-                if (currentTime - lastLocationUpdateTime >= 15 * 60 * 1000) {
+                if (currentTime - lastLocationUpdateTime >= 30 * 60 * 1000) {
                     shouldUpdateLocation = true
                 }
 
@@ -378,26 +365,8 @@ class CoupleService : Service() {
 
                 // Check 100km distance change notification
                 if (myStateObj != null && partnerStateObj != null) {
-                    var myLoc: JSONObject? = null
-                    var partnerLoc: JSONObject? = null
-
-                    try {
-                        val locReq = Request.Builder().url("$firebaseUrl/locations/$localUserName.json").build()
-                        val locRes = client.newCall(locReq).execute()
-                        if (locRes.isSuccessful) {
-                            val body = locRes.body?.string()
-                            if (body != null && body != "null") myLoc = JSONObject(body)
-                        }
-                    } catch (e: Exception) {}
-
-                    try {
-                        val locReq = Request.Builder().url("$firebaseUrl/locations/$partnerName.json").build()
-                        val locRes = client.newCall(locReq).execute()
-                        if (locRes.isSuccessful) {
-                            val body = locRes.body?.string()
-                            if (body != null && body != "null") partnerLoc = JSONObject(body)
-                        }
-                    } catch (e: Exception) {}
+                    val myLoc = myStateObj.optJSONObject("location")
+                    val partnerLoc = partnerStateObj.optJSONObject("location")
 
                     if (myLoc != null && partnerLoc != null) {
                         val lat1 = myLoc.optDouble("lat", Double.NaN)
@@ -479,38 +448,25 @@ class CoupleService : Service() {
                         }
 
                         myStateObj.put("location", newLocation)
-
-                        // Push to Firebase instead
-                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-
-                        // Push location
-                        val locReqBody = newLocation.toString().toRequestBody(mediaType)
-                        val locPostReq = Request.Builder()
-                            .url("$firebaseUrl/locations/$userName.json")
-                            .put(locReqBody)
-                            .build()
-                        client.newCall(locPostReq).execute()
-
-                        // Push history
-                        val histObj = myStateObj.optJSONArray("locationHistory") ?: JSONArray()
-                        val histReqBody = histObj.toString().toRequestBody(mediaType)
-                        val histPostReq = Request.Builder()
-                            .url("$firebaseUrl/history/$userName.json")
-                            .put(histReqBody)
-                            .build()
-                        client.newCall(histPostReq).execute()
-
                         // Always clear force flag after updating
-                        val forceReqBody = "false".toRequestBody(mediaType)
-                        val forcePostReq = Request.Builder()
-                            .url("$firebaseUrl/forceUpdate/$userName.json")
-                            .put(forceReqBody)
-                            .build()
-                        client.newCall(forcePostReq).execute()
+                        myStateObj.remove("forceLocationUpdate")
 
+                        val updates = JSONObject()
+                        updates.put(userName, myStateObj)
+
+                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                        val reqBody = updates.toString().toRequestBody(mediaType)
+
+                        val postReq = Request.Builder()
+                            .url(apiUrl)
+                            .addHeader("Authorization", "Bearer $authToken")
+                            .post(reqBody)
+                            .build()
+
+                        client.newCall(postReq).execute()
                         lastLocationUpdateTime = System.currentTimeMillis()
                     } catch (e: Exception) {
-                        Log.e("CoupleService", "Failed to update location on Firebase", e)
+                        Log.e("CoupleService", "Failed to update location on server", e)
                     }
                 }
             }
@@ -556,13 +512,23 @@ class CoupleService : Service() {
     private fun clearForceFlag(userName: String, authToken: String, myStateObj: JSONObject) {
         thread {
             try {
-                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val forceReqBody = "false".toRequestBody(mediaType)
-                val forcePostReq = Request.Builder()
-                    .url("$firebaseUrl/forceUpdate/$userName.json")
-                    .put(forceReqBody)
-                    .build()
-                client.newCall(forcePostReq).execute()
+                // Only post an update if the flag is actually there to remove, preventing spam
+                if (myStateObj.has("forceLocationUpdate")) {
+                    myStateObj.remove("forceLocationUpdate")
+                    val updates = JSONObject()
+                    updates.put(userName, myStateObj)
+
+                    val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                    val reqBody = updates.toString().toRequestBody(mediaType)
+
+                    val postReq = Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("Authorization", "Bearer $authToken")
+                        .post(reqBody)
+                        .build()
+
+                    client.newCall(postReq).execute()
+                }
             } catch (e: Exception) {
                 Log.e("CoupleService", "Error clearing force flag", e)
             }
@@ -672,26 +638,8 @@ class CoupleService : Service() {
             var distanceStr = "-- km"
             val myState = globalState.optJSONObject(localUserName)
             if (myState != null && partnerState != null) {
-                var myLoc: JSONObject? = null
-                var partnerLoc: JSONObject? = null
-
-                try {
-                    val locReq = Request.Builder().url("$firebaseUrl/locations/$localUserName.json").build()
-                    val locRes = client.newCall(locReq).execute()
-                    if (locRes.isSuccessful) {
-                        val body = locRes.body?.string()
-                        if (body != null && body != "null") myLoc = JSONObject(body)
-                    }
-                } catch (e: Exception) {}
-
-                try {
-                    val locReq = Request.Builder().url("$firebaseUrl/locations/$partnerName.json").build()
-                    val locRes = client.newCall(locReq).execute()
-                    if (locRes.isSuccessful) {
-                        val body = locRes.body?.string()
-                        if (body != null && body != "null") partnerLoc = JSONObject(body)
-                    }
-                } catch (e: Exception) {}
+                val myLoc = myState.optJSONObject("location")
+                val partnerLoc = partnerState.optJSONObject("location")
 
                 if (myLoc != null && partnerLoc != null) {
                     val lat1 = myLoc.optDouble("lat", Double.NaN)
