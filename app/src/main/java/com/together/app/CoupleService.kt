@@ -55,9 +55,11 @@ class CoupleService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForegroundService()
         if (!isRunning) {
+
             isRunning = true
-            startForegroundService()
+
             startPolling()
         }
 
