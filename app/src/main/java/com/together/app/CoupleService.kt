@@ -29,6 +29,8 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import android.location.Location
 import android.os.Bundle
+import android.os.PowerManager
+import android.app.AlarmManager
 import android.os.Looper
 import android.annotation.SuppressLint
 import com.google.android.gms.location.LocationServices
@@ -46,6 +48,7 @@ class CoupleService : Service() {
     private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
     private var isRunning = false
     private val client = OkHttpClient()
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -57,6 +60,27 @@ class CoupleService : Service() {
             startForegroundService()
             startPolling()
         }
+
+        if (intent?.action == "com.together.app.ACTION_POLL") {
+            thread {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                // If it already exists and is held, release it first to avoid overlap bugs
+                if (wakeLock?.isHeld == true) {
+                    wakeLock?.release()
+                }
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Together:PollWakeLock")
+                wakeLock?.acquire(30000L) // 30 seconds max timeout for safety
+                try {
+                    pollForUpdates()
+                } catch (e: Exception) {
+                    Log.e("CoupleService", "Error polling", e)
+                } finally {
+                    // Location fetch is async, so we DON'T release here.
+                    // The 30s timeout will naturally release the lock.
+                }
+            }
+        }
+
         return START_STICKY
     }
 
@@ -97,11 +121,7 @@ class CoupleService : Service() {
 
     private fun startPolling() {
         thread {
-            while (isRunning) {
-                pollForUpdates()
-                // Check every 15 seconds
-                Thread.sleep(15000)
-            }
+            pollForUpdates()
         }
     }
 
@@ -453,9 +473,64 @@ class CoupleService : Service() {
             }
         } catch (e: Exception) {
             Log.e("CoupleService", "Error polling for updates", e)
+        } finally {
+            scheduleNextPoll()
         }
     }
 
+
+
+    private fun scheduleNextPoll() {
+        if (!isRunning) return
+
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, PollReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            1001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Android severely throttles alarms. However, we MUST check location every 15 minutes.
+        // For trip mode, the interval is 15s. If trip mode is active, we try to schedule 15s.
+        val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val profileJson = sharedPref.getString("togetherProfile", null)
+        var isTripMode = false
+        if (!profileJson.isNullOrEmpty()) {
+            try {
+                val profile = org.json.JSONObject(profileJson)
+                val localUserName = profile.optString("name", "")
+                val locRef = okhttp3.Request.Builder()
+                    .url("https://dtech-75e26-default-rtdb.firebaseio.com/locations/$localUserName.json")
+                    .build()
+                val locRes = OkHttpClient().newCall(locRef).execute()
+                if (locRes.isSuccessful) {
+                    val locBody = locRes.body?.string()
+                    if (locBody != null && locBody != "null") {
+                        val locJson = org.json.JSONObject(locBody)
+                        isTripMode = locJson.optBoolean("isTripMode", false)
+                    }
+                }
+            } catch (e: Exception) {}
+        }
+
+        val intervalMs = if (isTripMode) 15000L else 15L * 60L * 1000L
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            var canUseExact = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                canUseExact = alarmManager.canScheduleExactAlarms()
+            }
+            if (canUseExact) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
+            }
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
+        }
+    }
 
     @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
@@ -962,5 +1037,12 @@ class CoupleService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, PollReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(this, 1001, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        alarmManager.cancel(pendingIntent)
     }
 }
