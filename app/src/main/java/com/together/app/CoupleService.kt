@@ -34,6 +34,9 @@ import android.annotation.SuppressLint
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationResult
 
 class CoupleService : Service() {
 
@@ -579,10 +582,14 @@ class CoupleService : Service() {
                 }
             }
 
-            val cancellationTokenSource = CancellationTokenSource()
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                .setMaxUpdates(1)
+                .build()
 
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.token)
-                .addOnSuccessListener { location: Location? ->
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult) {
+                    fusedLocationClient.removeLocationUpdates(this)
+                    val location = locationResult.lastLocation
                     if (location != null) {
                         updateLocationOnServer(location)
                     } else {
@@ -598,18 +605,24 @@ class CoupleService : Service() {
                         }
                     }
                 }
-                .addOnFailureListener {
-                    // Fallback to last location
-                    fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
-                        if (lastLoc != null) {
-                            updateLocationOnServer(lastLoc)
-                        } else {
-                            clearForceFlag(userName, authToken, myStateObj)
-                        }
-                    }.addOnFailureListener {
+            }
+
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.getMainLooper()
+            ).addOnFailureListener {
+                // Fallback to last location if request fails to start
+                fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
+                    if (lastLoc != null) {
+                        updateLocationOnServer(lastLoc)
+                    } else {
                         clearForceFlag(userName, authToken, myStateObj)
                     }
+                }.addOnFailureListener {
+                    clearForceFlag(userName, authToken, myStateObj)
                 }
+            }
 
         } catch (e: Exception) {
             Log.e("CoupleService", "Error pushing location", e)
