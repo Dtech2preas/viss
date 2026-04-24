@@ -32,13 +32,50 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
+    private val requestBackgroundLocationLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Log.d("MainActivity", "Background location granted")
+            } else {
+                Log.d("MainActivity", "Background location denied")
+            }
+            checkBatteryOptimization()
+        }
+
     // Register the permissions callback for multiple permissions
     private val requestMultiplePermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             permissions.entries.forEach {
                 Log.d("MainActivity", "Permission ${it.key} granted: ${it.value}")
             }
+
+            // After foreground location is requested, we can ask for background location
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Please select 'Allow all the time' for background updates.", Toast.LENGTH_LONG).show()
+                    requestBackgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    checkBatteryOptimization()
+                }
+            } else {
+                checkBatteryOptimization()
+            }
         }
+
+    private fun checkBatteryOptimization() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    intent.data = android.net.Uri.parse("package:$packageName")
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to request battery optimization ignore", e)
+                }
+            }
+        }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -219,19 +256,24 @@ class MainActivity : AppCompatActivity() {
             permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // It's generally better to request background location after foreground
-            // but for simplicity we can add it here. If Android rejects it, users will
-            // have to grant it manually.
-            permissionsToRequest.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
-
         val ungrantedPermissions = permissionsToRequest.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
 
         if (ungrantedPermissions.isNotEmpty()) {
             requestMultiplePermissionsLauncher.launch(ungrantedPermissions.toTypedArray())
+        } else {
+            // Foreground permissions are already granted, check background
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Please select 'Allow all the time' for reliable background tracking.", Toast.LENGTH_LONG).show()
+                    requestBackgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    checkBatteryOptimization()
+                }
+            } else {
+                checkBatteryOptimization()
+            }
         }
     }
 
