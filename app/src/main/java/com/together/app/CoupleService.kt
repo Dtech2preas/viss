@@ -54,15 +54,28 @@ class CoupleService : Service() {
     private val client = OkHttpClient.Builder()
         .readTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS) // SSE needs 0 timeout
         .build()
-    private var wakeLock: PowerManager.WakeLock? = null
+    private var permanentWakeLock: PowerManager.WakeLock? = null
     private var forceUpdateEventSource: EventSource? = null
+
+    // Continuous location listener to keep GPS radio warm
+    private var continuousLocationCallback: LocationCallback? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
 
+    @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForegroundService()
+
+        // Acquire permanent wake lock if we don't have it
+        if (permanentWakeLock == null || permanentWakeLock?.isHeld != true) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            permanentWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Together:PermanentWakeLock")
+            // No timeout, keeping it forever to guarantee background updates
+            permanentWakeLock?.acquire()
+        }
+
         if (!isRunning) {
 
             isRunning = true
@@ -72,20 +85,10 @@ class CoupleService : Service() {
 
         if (intent?.action == "com.together.app.ACTION_POLL") {
             thread {
-                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-                // If it already exists and is held, release it first to avoid overlap bugs
-                if (wakeLock?.isHeld == true) {
-                    wakeLock?.release()
-                }
-                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Together:PollWakeLock")
-                wakeLock?.acquire(30000L) // 30 seconds max timeout for safety
                 try {
                     pollForUpdates()
                 } catch (e: Exception) {
                     Log.e("CoupleService", "Error polling", e)
-                } finally {
-                    // Location fetch is async, so we DON'T release here.
-                    // The 30s timeout will naturally release the lock.
                 }
             }
         }
@@ -129,9 +132,43 @@ class CoupleService : Service() {
     }
 
     private fun startPolling() {
+        startContinuousLocationUpdates()
         thread {
             startForceUpdateListener()
             pollForUpdates()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startContinuousLocationUpdates() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Request updates every 5 minutes just to keep the subsystem warm
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 5 * 60 * 1000L)
+            .setMinUpdateIntervalMillis(5 * 60 * 1000L)
+            .build()
+
+        continuousLocationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                // We don't necessarily need to push this location to the server.
+                // The explicit polling mechanism (fetchAndPushLocation) handles the strict 15min/15sec updates.
+                // This is just to keep the OS aware that we still actively want location.
+                Log.d("CoupleService", "Continuous location update received")
+            }
+        }
+
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                continuousLocationCallback!!,
+                Looper.getMainLooper()
+            )
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Failed to start continuous location updates", e)
         }
     }
 
@@ -758,7 +795,7 @@ class CoupleService : Service() {
 
             // We request location updates, but also add getCurrentLocation with CancellationToken as a backup
             // since some devices restrict background callbacks.
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, CancellationTokenSource().token)
                 .addOnSuccessListener { loc ->
                     if (loc != null) {
                         updateLocationOnServer(loc)
@@ -1157,9 +1194,15 @@ class CoupleService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+
+        continuousLocationCallback?.let {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+            fusedLocationClient.removeLocationUpdates(it)
+        }
+
         forceUpdateEventSource?.cancel()
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release()
+        if (permanentWakeLock?.isHeld == true) {
+            permanentWakeLock?.release()
         }
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, PollReceiver::class.java)
