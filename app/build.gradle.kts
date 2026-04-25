@@ -57,4 +57,6 @@ dependencies {
 
     // Play Services Location
     implementation("com.google.android.gms:play-services-location:21.2.0")
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-database")
 }

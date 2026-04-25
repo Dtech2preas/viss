@@ -932,9 +932,9 @@
                 // Listen for force update flag
                 const forceUpdateRef = db.ref(`forceUpdate/${myUserName}`);
                 forceUpdateRef.on('value', (snapshot) => {
-                    if (snapshot.val() === true) {
+                    if (snapshot.val() === true || (snapshot.val() && snapshot.val().requestId !== -1)) {
                         // Clear the flag and trigger location fetch
-                        forceUpdateRef.set(false);
+                        forceUpdateRef.set({ requestId: -1, timestamp: Date.now() });
                         updateLocation();
                     }
                 });
@@ -1312,7 +1312,7 @@
             try {
                 const partnerName = getPartnerName();
                 if (isManualClick === true) {
-                    db.ref(`forceUpdate/${partnerName}`).set(true);
+                    db.ref(`forceUpdate/${partnerName}`).set({ requestId: Date.now(), timestamp: Date.now() });
                     showNotification('Requested partner device to update location...');
                 }
 
