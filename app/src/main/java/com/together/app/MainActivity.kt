@@ -2,12 +2,15 @@ package com.together.app
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.content.Intent
 import android.util.Log
+import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
@@ -15,7 +18,6 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -24,6 +26,7 @@ import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,6 +34,33 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+
+    private val partnerLocationReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "PARTNER_LOCATION_UPDATE") {
+                val lat = intent.getDoubleExtra("lat", Double.NaN)
+                val lng = intent.getDoubleExtra("lng", Double.NaN)
+                val timestamp = intent.getLongExtra("timestamp", 0L)
+
+                if (!lat.isNaN() && !lng.isNaN()) {
+                    val jsPayload = JSONObject()
+                    jsPayload.put("lat", lat)
+                    jsPayload.put("lng", lng)
+                    jsPayload.put("timestamp", timestamp)
+
+                    runOnUiThread {
+                        webView.evaluateJavascript(
+                            """
+                            if (typeof updatePartnerLocationDisplay === 'function') {
+                                updatePartnerLocationDisplay(${jsPayload.toString()});
+                            }
+                            """.trimIndent(), null
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     private val requestBackgroundLocationLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -77,13 +107,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
         webView.visibility = View.INVISIBLE // Hide initially
         setContentView(webView)
+
+        // Register Broadcast Receiver for Partner Location Updates
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(partnerLocationReceiver, IntentFilter("PARTNER_LOCATION_UPDATE"), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(partnerLocationReceiver, IntentFilter("PARTNER_LOCATION_UPDATE"))
+        }
 
         // Request necessary permissions
         askForPermissions()
@@ -172,6 +209,11 @@ class MainActivity : AppCompatActivity() {
 
         // Authenticate before loading URL
         authenticateUser()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(partnerLocationReceiver)
     }
 
     private fun authenticateUser() {
@@ -278,6 +320,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Handle back button for WebView navigation
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack()

@@ -37,19 +37,12 @@ import android.os.PowerManager
 import android.app.AlarmManager
 import android.os.Looper
 import android.annotation.SuppressLint
-import android.os.Handler
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 
 class CoupleService : Service() {
 
@@ -58,12 +51,11 @@ class CoupleService : Service() {
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
     private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
     private var isRunning = false
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .readTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS) // SSE needs 0 timeout
+        .build()
     private var permanentWakeLock: PowerManager.WakeLock? = null
-    private var forceUpdateListener: ValueEventListener? = null
-    private var firebaseDb: FirebaseDatabase? = null
-    private var forceUpdateRef: com.google.firebase.database.DatabaseReference? = null
-    private var heartbeatHandler: Handler? = null
+    private var forceUpdateEventSource: EventSource? = null
 
     // Continuous location listener to keep GPS radio warm
     private var continuousLocationCallback: LocationCallback? = null
@@ -85,8 +77,9 @@ class CoupleService : Service() {
         }
 
         if (!isRunning) {
+
             isRunning = true
-            initFirebase()
+
             startPolling()
         }
 
@@ -138,48 +131,10 @@ class CoupleService : Service() {
         }
     }
 
-    private fun initFirebase() {
-        if (FirebaseApp.getApps(applicationContext).isEmpty()) {
-            val options = FirebaseOptions.Builder()
-                .setApiKey("AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc")
-                .setApplicationId("1:101292842193:web:d12190895fa7a6b330b9f0")
-                .setDatabaseUrl("https://dtech-75e26-default-rtdb.firebaseio.com")
-                .setProjectId("dtech-75e26")
-                .build()
-            FirebaseApp.initializeApp(applicationContext, options)
-        }
-        firebaseDb = FirebaseDatabase.getInstance()
-    }
-
-    private fun startHeartbeat() {
-        if (heartbeatHandler == null) {
-            heartbeatHandler = Handler(Looper.getMainLooper())
-        }
-        heartbeatHandler?.postDelayed(object : Runnable {
-            override fun run() {
-                if (!isRunning) return
-                try {
-                    firebaseDb?.getReference(".info/connected")?.get()?.addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            Log.d("CoupleService", "Heartbeat: Firebase connection OK")
-                        } else {
-                            Log.e("CoupleService", "Heartbeat: Firebase connection check failed")
-                            startForceUpdateListener()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("CoupleService", "Heartbeat failed", e)
-                }
-                heartbeatHandler?.postDelayed(this, 60000)
-            }
-        }, 60000)
-    }
-
     private fun startPolling() {
         startContinuousLocationUpdates()
-        startForceUpdateListener()
-        startHeartbeat()
         thread {
+            startForceUpdateListener()
             pollForUpdates()
         }
     }
@@ -227,68 +182,73 @@ class CoupleService : Service() {
             val localUserName = profile.optString("name", "")
             if (localUserName.isEmpty()) return
 
-            // sseUrl no longer needed
+            val sseUrl = "$firebaseUrl/forceUpdate/$localUserName.json"
 
-            if (forceUpdateRef != null && forceUpdateListener != null) {
-                forceUpdateRef?.removeEventListener(forceUpdateListener!!)
-            }
+            // Cancel any existing connection
+            forceUpdateEventSource?.cancel()
 
-            forceUpdateRef = firebaseDb?.getReference("forceUpdate/$localUserName")
+            val request = Request.Builder()
+                .url(sseUrl)
+                .addHeader("Accept", "text/event-stream")
+                .build()
 
-            forceUpdateListener = object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    try {
-                        val forceReqId = snapshot.child("requestId").getValue(Long::class.java)
+            val listener = object : EventSourceListener() {
+                override fun onOpen(eventSource: EventSource, response: Response) {
+                    Log.d("CoupleService", "SSE Connected to Firebase")
+                }
 
-                        var shouldUpdate = false
-                        if (forceReqId != null && forceReqId != -1L) {
-                            val lastReqId = sharedPref.getLong("lastForceUpdateReqId", -1L)
-                            if (forceReqId != lastReqId) {
-                                sharedPref.edit().putLong("lastForceUpdateReqId", forceReqId).apply()
-                                shouldUpdate = true
-                            }
-                        } else {
-                            val legacyValue = snapshot.getValue(Boolean::class.java)
-                            if (legacyValue == true) {
-                                shouldUpdate = true
-                            }
-                        }
+                override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
+                    Log.d("CoupleService", "SSE Event: $data")
+                    // data from Firebase realtime db typically looks like: {"path":"/","data":true}
+                    if (data.contains("true")) {
+                        Log.d("CoupleService", "Force update triggered via SSE!")
+                        val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
-                        if (shouldUpdate) {
-                            Log.d("CoupleService", "Force update triggered via Firebase Listener!")
-                            val authToken = sharedPref.getString("together_auth_token", "") ?: ""
-
-                            thread {
-                                try {
-                                    val stateReq = Request.Builder()
-                                        .url(apiUrl)
-                                        .addHeader("Authorization", "Bearer $authToken")
-                                        .build()
-                                    val stateRes = client.newCall(stateReq).execute()
-                                    if (stateRes.isSuccessful) {
-                                        val bodyStr = stateRes.body?.string()
-                                        if (!bodyStr.isNullOrEmpty()) {
-                                            val globalState = JSONObject(bodyStr)
-                                            val myState = globalState.optJSONObject(localUserName) ?: JSONObject()
-                                            fetchAndPushLocation(localUserName, authToken, myState)
-                                        }
+                        // We fetch the current state to pass it down
+                        thread {
+                            try {
+                                val stateReq = Request.Builder()
+                                    .url(apiUrl)
+                                    .addHeader("Authorization", "Bearer $authToken")
+                                    .build()
+                                val stateRes = client.newCall(stateReq).execute()
+                                if (stateRes.isSuccessful) {
+                                    val bodyStr = stateRes.body?.string()
+                                    if (!bodyStr.isNullOrEmpty()) {
+                                        val globalState = JSONObject(bodyStr)
+                                        val myState = globalState.optJSONObject(localUserName) ?: JSONObject()
+                                        fetchAndPushLocation(localUserName, authToken, myState)
                                     }
-                                } catch (e: Exception) {
-                                    Log.e("CoupleService", "Failed fetching state for force update", e)
                                 }
+                            } catch (e: Exception) {
+                                Log.e("CoupleService", "Failed fetching state for force update", e)
                             }
                         }
-                    } catch (e: Exception) {
-                        Log.e("CoupleService", "Error in force update listener", e)
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("CoupleService", "Firebase listener cancelled", error.toException())
+                override fun onClosed(eventSource: EventSource) {
+                    Log.d("CoupleService", "SSE Closed")
+                    // Attempt reconnect after delay if still running
+                    if (isRunning) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            startForceUpdateListener()
+                        }, 5000)
+                    }
+                }
+
+                override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+                    Log.e("CoupleService", "SSE Failure", t)
+                    // Attempt reconnect after delay if still running
+                    if (isRunning) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            startForceUpdateListener()
+                        }, 5000)
+                    }
                 }
             }
 
-            forceUpdateRef?.addValueEventListener(forceUpdateListener!!)
+            forceUpdateEventSource = EventSources.createFactory(client).newEventSource(request, listener)
 
         } catch (e: Exception) {
             Log.e("CoupleService", "Error setting up SSE listener", e)
@@ -564,50 +524,12 @@ class CoupleService : Service() {
                     val forceRes = client.newCall(forceReq).execute()
                     if (forceRes.isSuccessful) {
                         val forceBody = forceRes.body?.string()
-                        if (forceBody != null && forceBody != "null") {
-                            val forceJson = JSONObject(forceBody)
-                            if (forceJson.has("requestId")) {
-                                val forceReqId = forceJson.optLong("requestId", -1L)
-                                val lastReqId = sharedPref.getLong("lastForceUpdateReqId", -1L)
-                                if (forceReqId != -1L && forceReqId != lastReqId) {
-                                    sharedPref.edit().putLong("lastForceUpdateReqId", forceReqId).apply()
-                                    shouldUpdateLocation = true
-                                }
-                            } else if (forceBody == "true") {
-                                shouldUpdateLocation = true
-                            }
+                        if (forceBody == "true") {
+                            shouldUpdateLocation = true
                         }
                     }
                 } catch (e: Exception) {
                     Log.e("CoupleService", "Failed to check forceUpdate/tripMode", e)
-                }
-
-                // Fetch Partner Location and broadcast to UI
-                try {
-                    val partnerLocReq = Request.Builder().url("$firebaseUrl/locations/$partnerName.json").build()
-                    val partnerLocRes = client.newCall(partnerLocReq).execute()
-                    if (partnerLocRes.isSuccessful) {
-                        val locBody = partnerLocRes.body?.string()
-                        if (locBody != null && locBody != "null") {
-                            val locJson = JSONObject(locBody)
-                            val lat = locJson.optDouble("lat", Double.NaN)
-                            val lng = locJson.optDouble("lng", Double.NaN)
-                            val lastUpdated = locJson.optLong("lastUpdated", 0L)
-
-                            val lastBroadcastedUpdate = sharedPref.getLong("lastBroadcastedPartnerLocation", 0L)
-                            if (lastUpdated > lastBroadcastedUpdate || lastBroadcastedUpdate == 0L) {
-                                val intent = Intent("PARTNER_LOCATION_UPDATE")
-                                intent.putExtra("lat", lat)
-                                intent.putExtra("lng", lng)
-                                intent.putExtra("timestamp", lastUpdated)
-                                sendBroadcast(intent)
-
-                                sharedPref.edit().putLong("lastBroadcastedPartnerLocation", lastUpdated).apply()
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("CoupleService", "Failed to broadcast partner location", e)
                 }
 
                 // Update location based on interval (15 mins normal, 15 secs trip mode)
@@ -748,9 +670,6 @@ class CoupleService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            return
-        }
         // Always update the time so we don't spam requests every 15 seconds if it fails
         lastLocationUpdateTime = System.currentTimeMillis()
 
@@ -860,8 +779,7 @@ class CoupleService : Service() {
                         client.newCall(histPostReq).execute()
 
                         // Always clear force flag after updating
-                        val ts = System.currentTimeMillis()
-                        val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                        val forceReqBody = "false".toRequestBody(mediaType)
                         val forcePostReq = Request.Builder()
                             .url("$firebaseUrl/forceUpdate/$userName.json")
                             .put(forceReqBody)
@@ -1282,11 +1200,7 @@ class CoupleService : Service() {
             fusedLocationClient.removeLocationUpdates(it)
         }
 
-        heartbeatHandler?.removeCallbacksAndMessages(null)
-        if (forceUpdateRef != null && forceUpdateListener != null) {
-            forceUpdateRef?.removeEventListener(forceUpdateListener!!)
-        }
-
+        forceUpdateEventSource?.cancel()
         if (permanentWakeLock?.isHeld == true) {
             permanentWakeLock?.release()
         }
