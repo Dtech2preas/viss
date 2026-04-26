@@ -212,9 +212,6 @@ class CoupleService : Service() {
         startForceUpdateListener()
         startHeartbeat()
         startStatePolling()
-        thread {
-            pollForLocationUpdates()
-        }
     }
 
     private fun startStatePolling() {
@@ -229,6 +226,11 @@ class CoupleService : Service() {
                         pollForStateUpdates()
                     } catch (e: Exception) {
                         Log.e("CoupleService", "State polling failed", e)
+                    }
+                    try {
+                        pollForLocationUpdates()
+                    } catch (e: Exception) {
+                        Log.e("CoupleService", "Location polling failed in handler loop", e)
                     }
                 }
                 statePollingHandler?.postDelayed(this, 15000)
@@ -620,7 +622,6 @@ class CoupleService : Service() {
 
     private fun pollForLocationUpdates() {
         broadcastDebugLog("CoupleService", "pollForLocationUpdates triggered")
-        scheduleNextPoll()
 
         val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
         val profileJson = sharedPref.getString("togetherProfile", null)
@@ -780,60 +781,6 @@ class CoupleService : Service() {
         }
     }
 
-private fun scheduleNextPoll() {
-        if (!isRunning) return
-
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, PollReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            1001,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // Android severely throttles alarms. However, we MUST check location every 15 minutes.
-        // For trip mode, the interval is 15s. If trip mode is active, we try to schedule 15s.
-        val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
-        val profileJson = sharedPref.getString("togetherProfile", null)
-        var isTripMode = false
-        if (!profileJson.isNullOrEmpty()) {
-            try {
-                val profile = org.json.JSONObject(profileJson)
-                val localUserName = profile.optString("name", "")
-                val locRef = okhttp3.Request.Builder()
-                    .url("https://dtech-75e26-default-rtdb.firebaseio.com/locations/$localUserName.json")
-                    .build()
-                val locRes = OkHttpClient().newCall(locRef).execute()
-                if (locRes.isSuccessful) {
-                    val locBody = locRes.body?.string()
-                    if (locBody != null && locBody != "null") {
-                        val locJson = org.json.JSONObject(locBody)
-                        isTripMode = locJson.optBoolean("isTripMode", false)
-                    }
-                }
-            } catch (e: Exception) {}
-        }
-
-        val intervalMs = if (isTripMode) 15000L else 15L * 60L * 1000L
-        broadcastDebugLog("CoupleService", "Scheduling next poll in ${intervalMs}ms. TripMode: $isTripMode")
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            var canUseExact = true
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                canUseExact = alarmManager.canScheduleExactAlarms()
-            }
-            if (canUseExact) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
-            } else {
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
-            }
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
-        }
-    }
-
-    @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
 
         broadcastDebugLog("CoupleService", "fetchAndPushLocation called for user: $userName")
