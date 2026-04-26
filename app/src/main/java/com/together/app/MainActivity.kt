@@ -62,6 +62,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    private val debugLogReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.together.app.DEBUG_LOG") {
+                val tag = intent.getStringExtra("tag") ?: "Unknown"
+                val message = intent.getStringExtra("message") ?: ""
+                val timestamp = intent.getLongExtra("timestamp", 0L)
+
+                val jsPayload = JSONObject()
+                jsPayload.put("tag", tag)
+                jsPayload.put("message", message)
+                jsPayload.put("timestamp", timestamp)
+
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        """
+                        if (typeof window.receiveAndroidLog === 'function') {
+                            window.receiveAndroidLog(${jsPayload.toString()});
+                        }
+                        """.trimIndent(), null
+                    )
+                }
+            }
+        }
+    }
+
     private val requestBackgroundLocationLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
@@ -118,8 +144,10 @@ class MainActivity : AppCompatActivity() {
         // Register Broadcast Receiver for Partner Location Updates
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(partnerLocationReceiver, IntentFilter("PARTNER_LOCATION_UPDATE"), Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(debugLogReceiver, IntentFilter("com.together.app.DEBUG_LOG"), Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(partnerLocationReceiver, IntentFilter("PARTNER_LOCATION_UPDATE"))
+            registerReceiver(debugLogReceiver, IntentFilter("com.together.app.DEBUG_LOG"))
         }
 
         // Request necessary permissions
@@ -214,6 +242,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(partnerLocationReceiver)
+        unregisterReceiver(debugLogReceiver)
     }
 
     private fun authenticateUser() {

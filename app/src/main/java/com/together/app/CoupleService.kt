@@ -53,6 +53,16 @@ import com.google.firebase.database.ValueEventListener
 
 class CoupleService : Service() {
 
+    private fun broadcastDebugLog(tag: String, message: String) {
+        Log.d(tag, message)
+        val intent = Intent("com.together.app.DEBUG_LOG")
+        intent.putExtra("tag", tag)
+        intent.putExtra("message", message)
+        intent.putExtra("timestamp", System.currentTimeMillis())
+        sendBroadcast(intent)
+    }
+
+
     private var lastLocationUpdateTime: Long = 0
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
@@ -95,7 +105,7 @@ class CoupleService : Service() {
                 try {
                     pollForUpdates()
                 } catch (e: Exception) {
-                    Log.e("CoupleService", "Error polling", e)
+                    broadcastDebugLog("CoupleService", "Error polling: ${e.message}"); Log.e("CoupleService", "Error polling", e)
                 }
             }
         }
@@ -386,6 +396,9 @@ class CoupleService : Service() {
     }
 
     private fun pollForUpdates() {
+        // Immediately schedule the next poll to ensure it happens even if this run crashes
+        scheduleNextPoll()
+
         val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
         val profileJson = sharedPref.getString("togetherProfile", null)
 
@@ -409,9 +422,11 @@ class CoupleService : Service() {
                 .build()
 
             val response = client.newCall(request).execute()
+            broadcastDebugLog("CoupleService", "pollForUpdates network response code: ${response.code}")
             if (!response.isSuccessful) return
 
             val responseBody = response.body?.string()
+
             if (!responseBody.isNullOrEmpty()) {
                 val globalState = JSONObject(responseBody)
 
@@ -686,9 +701,9 @@ class CoupleService : Service() {
                 }
             }
         } catch (e: Exception) {
-            Log.e("CoupleService", "Error polling for updates", e)
+            broadcastDebugLog("CoupleService", "Error polling for updates: ${e.message}"); Log.e("CoupleService", "Error polling for updates", e)
         } finally {
-            scheduleNextPoll()
+            // scheduleNextPoll() moved to the start of pollForUpdates to ensure reliability
         }
     }
 
@@ -1143,6 +1158,15 @@ class CoupleService : Service() {
     }
 
     private fun checkAndNotify(partnerName: String, currentState: JSONObject, lastState: JSONObject) {
+        broadcastDebugLog("CoupleService", "checkAndNotify called for $partnerName")
+
+        // Skip notification if lastState is completely empty (first run) to prevent notification spam on startup
+        if (lastState.length() == 0) {
+            broadcastDebugLog("CoupleService", "Skipping checkAndNotify due to empty lastState")
+            return
+        }
+
+
         val currentActivities = currentState.optJSONArray("activities")
         if (currentActivities != null && currentActivities.length() > 0) {
             val lastActivities = lastState.optJSONArray("activities")
@@ -1232,7 +1256,17 @@ class CoupleService : Service() {
         return map[type] ?: type
     }
 
+
     private fun sendNotification(content: String, openPage: String? = null) {
+        broadcastDebugLog("CoupleService", "Attempting to send notification: $content")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                broadcastDebugLog("CoupleService", "POST_NOTIFICATIONS permission not granted. Cannot send notification.")
+                return
+            }
+        }
+
         val channelId = "TogetherUpdates"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -1268,7 +1302,7 @@ class CoupleService : Service() {
             try {
                 notify(System.currentTimeMillis().toInt(), builder.build())
             } catch (e: SecurityException) {
-                Log.e("CoupleService", "Notification permission not granted", e)
+                broadcastDebugLog("CoupleService", "Notification permission not granted: ${e.message}"); Log.e("CoupleService", "Notification permission not granted", e)
             }
         }
     }
