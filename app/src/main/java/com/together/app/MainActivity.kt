@@ -214,6 +214,9 @@ class MainActivity : AppCompatActivity() {
                             if (key === 'togetherProfile' && window.AndroidBridge) {
                                 window.AndroidBridge.saveProfile(value);
                             }
+                            if (key === 'together_auth_token' && window.AndroidBridge) {
+                                window.AndroidBridge.saveAuthToken(value);
+                            }
                         };
 
                         // Check on load in case it's already set
@@ -221,14 +224,24 @@ class MainActivity : AppCompatActivity() {
                         if (profile && window.AndroidBridge) {
                             window.AndroidBridge.saveProfile(profile);
                         }
+                        var token = localStorage.getItem('together_auth_token');
+                        if (token && window.AndroidBridge) {
+                            window.AndroidBridge.saveAuthToken(token);
+                        }
 
                         // Polling fallback in case localStorage was written before injection
                         var lastProfile = profile;
+                        var lastToken = token;
                         setInterval(function() {
                             var currentProfile = localStorage.getItem('togetherProfile');
                             if (currentProfile && currentProfile !== lastProfile && window.AndroidBridge) {
                                 lastProfile = currentProfile;
                                 window.AndroidBridge.saveProfile(currentProfile);
+                            }
+                            var currentToken = localStorage.getItem('together_auth_token');
+                            if (currentToken && currentToken !== lastToken && window.AndroidBridge) {
+                                lastToken = currentToken;
+                                window.AndroidBridge.saveAuthToken(currentToken);
                             }
                         }, 2000);
                     })();
@@ -384,6 +397,16 @@ class MainActivity : AppCompatActivity() {
 
             // Start or restart WorkManager since we have a new profile
             startBackgroundWork(context)
+        }
+
+        @JavascriptInterface
+        fun saveAuthToken(token: String) {
+            Log.d("WebAppInterface", "Auth token saved")
+            val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+            with(sharedPref.edit()) {
+                putString("together_auth_token", token)
+                apply()
+            }
         }
 
         private fun startBackgroundWork(context: Context) {
