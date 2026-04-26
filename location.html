@@ -610,6 +610,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+<link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <div class="hearts-container" id="hearts"></div>
@@ -696,15 +697,36 @@
                 </div>
             </div>
 
-            <div id="map"></div>
+            <div style="position: relative; height: 100%; width: 100%; min-height: 400px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(166, 94, 166, 0.1);">
+                <div id="radarLoading" style="position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:1000; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <div class="radar" style="width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--primary-color); position: relative; overflow: hidden; margin-bottom: 15px;">
+                        <div style="position: absolute; top: 0; left: 50%; width: 50%; height: 50%; background: linear-gradient(90deg, rgba(255,126,185,0.5) 0%, transparent 100%); transform-origin: bottom left; animation: spin 2s linear infinite;"></div>
+                        <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(255,126,185,0.3);"></div>
+                        <div style="position: absolute; top: 0; left: 50%; width: 1px; height: 100%; background: rgba(255,126,185,0.3);"></div>
+                        <div style="position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: var(--accent-color); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px var(--accent-color);"></div>
+                    </div>
+                    <div style="color: var(--secondary-color); font-weight: 500;">Radar searching for love... 💖</div>
+                    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+                </div>
 
-            <div class="direction-indicator">
-                <svg class="compass-arrow" id="directionArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
-                </svg>
-                <div style="text-align: left;">
-                    <div style="font-weight: bold; color: var(--secondary-color);" id="directionText">Finding direction...</div>
-                    <div style="font-size: 0.8rem; color: #666;">Direction to partner</div>
+                <div id="map" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+
+                <!-- 3D dynamic compass arrow overlay -->
+                <div id="dynamicCompass" style="position: absolute; bottom: 30px; right: 30px; width: 70px; height: 70px; background: rgba(255,255,255,0.9); border-radius: 50%; box-shadow: 0 5px 25px rgba(0,0,0,0.3); z-index: 500; display: flex; align-items: center; justify-content: center; transform-style: preserve-3d; transition: transform 0.3s ease-out; border: 2px solid var(--primary-color);">
+                    <div style="position: absolute; top: 5px; font-size: 10px; font-weight: bold; color: #ff4d8d;">N</div>
+                    <svg id="dynamicArrowIcon" viewBox="0 0 24 24" fill="var(--primary-color)" style="width: 40px; height: 40px; transform: rotate(0deg); transition: transform 0.1s linear;">
+                        <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
+                    </svg>
+                </div>
+
+                <div class="direction-indicator">
+                    <svg class="compass-arrow" id="directionArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
+                    </svg>
+                    <div style="text-align: left;">
+                        <div style="font-weight: bold; color: var(--secondary-color);" id="directionText">Finding direction...</div>
+                        <div style="font-size: 0.8rem; color: #666;">Direction to partner</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1050,6 +1072,10 @@
         function updateMapMarkers(myLoc, partnerLoc) {
             if (!map) return;
 
+            // Hide radar loading since we have locations
+            const radar = document.getElementById('radarLoading');
+            if(radar) radar.style.display = 'none';
+
             let bounds = [];
 
             if (myLoc && myLoc.lat && myLoc.lng) {
@@ -1082,8 +1108,30 @@
             }
         }
 
+        let deviceHeading = 0;
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', function(event) {
+                if (event.webkitCompassHeading) {
+                    // Apple devices
+                    deviceHeading = event.webkitCompassHeading;
+                } else if (event.alpha) {
+                    deviceHeading = 360 - event.alpha;
+                }
+                // Call update direction if locations are loaded
+                const myState = globalState && localUser ? globalState[localUser.name] : null;
+                const partnerState = globalState && localUser && localUser.partner ? globalState[localUser.partner.name] : null;
+                if(myState && myState.location && partnerState && partnerState.location) {
+                    updateDirectionIndicator(myState.location, partnerState.location);
+                }
+            }, true);
+        }
+
         function updateDirectionIndicator(myLoc, partnerLoc) {
             if (!myLoc || !partnerLoc) return;
+
+            // Show dynamic compass
+            const compass = document.getElementById('dynamicCompass');
+            if(compass) compass.style.display = 'flex';
 
             // Calculate bearing from myLoc to partnerLoc
             const lat1 = myLoc.lat * Math.PI / 180;
@@ -1104,6 +1152,13 @@
             const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
             const val = Math.floor((brng / 22.5) + 0.5);
             const dirText = dirs[(val % 16)];
+
+            // Update the dynamic 3D compass icon
+            const dynArrow = document.getElementById('dynamicArrowIcon');
+            if(dynArrow) {
+                const relativeHeading = brng - deviceHeading;
+                dynArrow.style.transform = `rotate(${relativeHeading}deg)`;
+            }
 
             // Rotate arrow SVG
             const arrow = document.getElementById('directionArrow');

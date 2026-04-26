@@ -457,6 +457,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+<link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <div class="hearts-container" id="hearts"></div>
@@ -492,11 +493,17 @@
                 <div class="mood-box">
                     <h3>Your Mood</h3>
                     <div class="mood-value" id="currentMood">Not set yet</div>
+                    <div id="myMoodNote" style="font-size: 0.9rem; color: #666; margin-top: 5px; font-style: italic;"></div>
                 </div>
                 <div class="mood-box">
                     <h3>Partner's Mood</h3>
                     <div class="mood-value" id="partnerMood">Waiting to connect</div>
+                    <div id="partnerMoodNote" style="font-size: 0.9rem; color: #666; margin-top: 5px; font-style: italic;"></div>
+                    <button id="sendComfortBtn" class="btn btn-secondary" style="display: none; padding: 10px; margin-top: 15px; font-size: 0.9rem;" onclick="sendComfort()">Send Comfort Hug 🫂</button>
                 </div>
+            </div>
+            <div style="text-align: center; margin-top: 15px; padding: 10px; background: rgba(255,126,185,0.1); border-radius: 10px;">
+                <strong>Vibe Check:</strong> <span id="vibeCheckText">Waiting to calculate...</span>
             </div>
         </div>
 
@@ -580,6 +587,18 @@
             </div>
         </div>
 
+        <!-- Mood Note Modal Overlay -->
+        <div id="moodNoteOverlay" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+            <div style="background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center;">
+                <h3 style="margin-bottom: 15px; color: var(--secondary-color);">Why do you feel <span id="modalMoodName"></span>? (Optional)</h3>
+                <input type="text" id="moodNoteInput" placeholder="Add a tiny note..." style="width: 100%; padding: 10px; border: 2px solid #e6d4f7; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="skipMoodNote()" style="flex: 1; padding: 10px;">Skip</button>
+                    <button class="btn" onclick="submitMoodNote()" style="flex: 1; padding: 10px;">Save Mood</button>
+                </div>
+            </div>
+        </div>
+
         <div class="section">
             <button class="btn btn-secondary" onclick="updatePartnerMood()">
                 Check Partner's Mood
@@ -600,6 +619,8 @@
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
         let localUser = null;
         let moodSelectionTime = null;
+        let pendingMood = null;
+        let pendingElement = null;
 
         // Create floating hearts
         function createHearts() {
@@ -648,15 +669,39 @@
             window.location.href = 'you.html';
         }
 
-        async function setMood(mood, element) {
+        function setMood(mood, element) {
+            pendingMood = mood;
+            pendingElement = element;
+            document.getElementById('modalMoodName').textContent = mood;
+            document.getElementById('moodNoteInput').value = '';
+            document.getElementById('moodNoteOverlay').style.display = 'flex';
+        }
+
+        function skipMoodNote() {
+            finalizeMoodSet('');
+        }
+
+        function submitMoodNote() {
+            const note = document.getElementById('moodNoteInput').value.trim();
+            finalizeMoodSet(note);
+        }
+
+        async function finalizeMoodSet(note) {
+            document.getElementById('moodNoteOverlay').style.display = 'none';
+            if (!pendingMood) return;
+
+            const mood = pendingMood;
+            const element = pendingElement;
             moodSelectionTime = new Date();
             
             const moodItems = document.querySelectorAll('.mood-item');
             moodItems.forEach(item => item.classList.remove('selected'));
-            element.classList.add('selected');
+            if(element) element.classList.add('selected');
 
             localUser.mood = mood;
+            localUser.moodNote = note;
             document.getElementById('currentMood').textContent = mood;
+            document.getElementById('myMoodNote').textContent = note ? `"${note}"` : '';
 
             localStorage.setItem('togetherProfile', JSON.stringify(localUser));
 
@@ -666,7 +711,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         [localUser.name]: {
-                            mood: mood
+                            mood: mood,
+                            moodNote: note
                         }
                     })
                 });
@@ -675,12 +721,34 @@
                 
                 if (response.ok) {
                     showNotificationWithTime('You\'re feeling ' + mood + ' today! 💖', moodSelectionTime, updateTime);
+                    updatePartnerMood(); // recalculate vibe
                 } else {
                     showNotification('Failed to share your mood');
                 }
             } catch (error) {
                 console.error('Error setting mood:', error);
                 showNotification('Error sharing your mood: ' + error.message);
+            }
+            pendingMood = null;
+            pendingElement = null;
+        }
+
+        async function sendComfort() {
+            showNotification('Sending a comfort hug... 🫂💖');
+            try {
+                await window.authenticatedFetch(`${API_URL}/api/couple`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        [localUser.name]: {
+                            activity: "sending comfort 🫂",
+                            activityTimestamp: new Date().toISOString()
+                        }
+                    })
+                });
+                setTimeout(() => showNotification('Hug sent successfully!'), 1000);
+            } catch (err) {
+                console.error('Failed to send comfort', err);
             }
         }
 
@@ -696,20 +764,59 @@
                 if (myState.mood) {
                     document.getElementById('currentMood').textContent = myState.mood;
                 }
+                if (myState.moodNote) {
+                    document.getElementById('myMoodNote').textContent = `"${myState.moodNote}"`;
+                }
 
                 if (partnerState.mood) {
                     const partnerMood = partnerState.mood;
                     document.getElementById('partnerMood').textContent = partnerMood;
+
+                    if (partnerState.moodNote) {
+                        document.getElementById('partnerMoodNote').textContent = `"${partnerState.moodNote}"`;
+                    } else {
+                        document.getElementById('partnerMoodNote').textContent = '';
+                    }
+
+                    if (partnerMood === 'sad' || partnerMood === 'stressed' || partnerMood === 'hurt' || partnerMood === 'sick') {
+                        document.getElementById('sendComfortBtn').style.display = 'inline-block';
+                    } else {
+                        document.getElementById('sendComfortBtn').style.display = 'none';
+                    }
+
                     showNotification('Your partner is feeling ' + partnerMood + ' today! 💞');
                 } else {
                     showNotification('No mood data found for your partner');
                 }
+
+                // Calculate vibe check
+                calculateVibeCheck(myState.mood, partnerState.mood);
+
             } catch (error) {
                 console.error('Error fetching partner mood:', error);
                 showNotification('Error connecting to your partner\'s feelings');
             }
         }
 
+
+        function calculateVibeCheck(myMood, partnerMood) {
+            const vibeText = document.getElementById('vibeCheckText');
+            if (!myMood || !partnerMood) {
+                vibeText.textContent = "Waiting for both moods...";
+                return;
+            }
+            if (myMood === partnerMood) {
+                vibeText.textContent = `You are perfectly in sync! Both feeling ${myMood} ✨`;
+            } else if ((myMood === 'happy' || myMood === 'excited') && (partnerMood === 'sad' || partnerMood === 'stressed')) {
+                vibeText.textContent = "Time to share your positive energy! 🌟";
+            } else if ((myMood === 'sad' || myMood === 'stressed') && (partnerMood === 'happy' || partnerMood === 'excited')) {
+                vibeText.textContent = "Let their joy lift you up! 🎈";
+            } else if (myMood === 'romantic' || partnerMood === 'romantic') {
+                vibeText.textContent = "Love is in the air... 💘";
+            } else {
+                vibeText.textContent = "A dynamic duo with mixed feelings today! 🎭";
+            }
+        }
 
         function showNotification(message) {
             const notification = document.getElementById('notification');

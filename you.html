@@ -378,6 +378,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+<link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <div class="hearts-container" id="hearts"></div>
@@ -543,7 +544,19 @@
         function showFeaturesMenu(username) {
             document.getElementById('questions-section').style.display = 'none';
             document.getElementById('features-menu').style.display = 'block';
-            document.getElementById('welcome-name').textContent = username;
+
+            const hour = new Date().getHours();
+            let greetingTime = 'Good evening';
+            if (hour >= 5 && hour < 12) {
+                greetingTime = 'Good morning';
+            } else if (hour >= 12 && hour < 17) {
+                greetingTime = 'Good afternoon';
+            }
+
+            const petNames = ['baby', 'owami', 'my love', 'love', 'sweetie', 'babe', 'fun bun'];
+            const randomPetName = petNames[Math.floor(Math.random() * petNames.length)];
+
+            document.querySelector('.welcome-message h2').textContent = `${greetingTime}, ${randomPetName}!`;
         }
 
         function navigateTo(page) {
