@@ -1,0 +1,59 @@
+:root {
+    --primary-color: #ff7eb9;
+    --secondary-color: #7e57c2;
+    --accent-color: #ff4d8d;
+    --light-color: #fff5f9;
+    --dark-color: #3a2846;
+    --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    --card-shadow: 0 10px 30px rgba(166, 94, 166, 0.15);
+    --hover-shadow: 0 15px 35px rgba(166, 94, 166, 0.25);
+    --border-radius-lg: 20px;
+    --border-radius-md: 12px;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif !important;
+    background-color: var(--light-color) !important;
+    color: var(--dark-color) !important;
+}
+
+h1, h2, .dancing-script {
+    font-family: 'Dancing Script', cursive !important;
+}
+
+.btn, button {
+    font-family: 'Montserrat', sans-serif !important;
+    border-radius: 50px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 5px 15px rgba(126, 87, 194, 0.2) !important;
+}
+
+.btn:hover, button:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 10px 20px rgba(126, 87, 194, 0.3) !important;
+}
+
+.card, .section {
+    border-radius: var(--border-radius-lg) !important;
+    box-shadow: var(--card-shadow) !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid rgba(255, 126, 185, 0.1) !important;
+}
+
+.card:hover, .section:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: var(--hover-shadow) !important;
+}
+
+input, textarea, select {
+    font-family: 'Montserrat', sans-serif !important;
+    border-radius: var(--border-radius-md) !important;
+    border: 2px solid #e6d4f7 !important;
+    transition: all 0.3s ease !important;
+}
+
+input:focus, textarea:focus {
+    outline: none !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(255, 126, 185, 0.3) !important;
+}

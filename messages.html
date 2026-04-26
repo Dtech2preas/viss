@@ -275,6 +275,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+<link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <button class="back-btn" onclick="goBack()">
@@ -320,6 +321,17 @@
             <div>
                 <label for="dailyMessage">Your Message for Today</label>
                 <textarea id="dailyMessage" placeholder="Express your feelings..."></textarea>
+            </div>
+
+            <div class="input-group" style="margin-top: 10px;">
+                <label>Attach Photo (Optional)</label>
+                <input type="file" id="photoInput" accept="image/*" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.2);">
+                <img id="photoPreview" style="max-width: 100px; display: none; margin-top: 10px; border-radius: 8px;" />
+            </div>
+
+            <div class="input-group" style="margin-top: 10px;">
+                <label>Schedule for later (Optional)</label>
+                <input type="datetime-local" id="scheduleDate" style="width: 100%; padding: 10px; border-radius: 8px; border: none;">
             </div>
 
             <button class="btn" id="sendMessageBtn" onclick="sendDailyMessage()" style="margin-top: 15px;">Send Message</button>
@@ -372,12 +384,59 @@
             window.location.href = `call.html?mode=${mode}`;
         }
 
+        // Handle photo preview
+        let base64Photo = null;
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 500;
+                    const MAX_HEIGHT = 500;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    base64Photo = canvas.toDataURL('image/jpeg', 0.6); // Compress
+
+                    const preview = document.getElementById('photoPreview');
+                    preview.src = base64Photo;
+                    preview.style.display = 'block';
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+
         async function sendDailyMessage() {
             const messageText = document.getElementById('dailyMessage').value.trim();
 
-            if (!messageText) {
-                showNotification('Please enter a message');
+            if (!messageText && !base64Photo) {
+                showNotification('Please enter a message or attach a photo');
                 return;
+            }
+
+            const scheduleInput = document.getElementById('scheduleDate').value;
+            let unlockAt = null;
+            if (scheduleInput) {
+                unlockAt = new Date(scheduleInput).toISOString();
             }
 
             const sendBtn = document.getElementById('sendMessageBtn');
@@ -402,8 +461,16 @@
                 myState.messages.push({
                     text: messageText,
                     timestamp: new Date().toISOString(),
-                    sender: localUser.name
+                    sender: localUser.name,
+                    photo: base64Photo,
+                    unlockAt: unlockAt
                 });
+
+                // Clear inputs
+                document.getElementById('photoInput').value = '';
+                document.getElementById('photoPreview').style.display = 'none';
+                base64Photo = null;
+                document.getElementById('scheduleDate').value = '';
 
                 if (myState.messages.length > 50) {
                     myState.messages = myState.messages.slice(-50);
@@ -475,11 +542,38 @@
                 const recentMessages = allMessages.slice(-20);
                 messageHistory.innerHTML = '';
 
+                const now = new Date();
+
                 recentMessages.forEach(message => {
+                    // Check if scheduled
+                    if (message.unlockAt) {
+                        const unlockTime = new Date(message.unlockAt);
+                        if (now < unlockTime) {
+                            if (!message.isOwn) {
+                                // Hide completely if it's a future message from partner
+                                return;
+                            } else {
+                                // Show blurred/indicator if it's our own scheduled message
+                                const messageEl = document.createElement('div');
+                                messageEl.className = 'message';
+                                messageEl.style.opacity = '0.5';
+                                messageEl.innerHTML = `
+                                    <div><strong>You:</strong> [Scheduled for ${unlockTime.toLocaleString()}]</div>
+                                `;
+                                messageHistory.appendChild(messageEl);
+                                return;
+                            }
+                        }
+                    }
+
                     const messageEl = document.createElement('div');
                     messageEl.className = 'message';
+                    let photoHtml = '';
+                    if (message.photo) {
+                        photoHtml = `<br><img src="${message.photo}" style="max-width: 100%; border-radius: 8px; margin-top: 10px;" />`;
+                    }
                     messageEl.innerHTML = `
-                        <div><strong>${message.isOwn ? 'You' : localUser.partner.name}:</strong> ${message.text}</div>
+                        <div><strong>${message.isOwn ? 'You' : localUser.partner.name}:</strong> ${message.text} ${photoHtml}</div>
                         <div class="message-time">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${new Date(message.timestamp).toLocaleDateString()}</div>
                     `;
                     messageHistory.appendChild(messageEl);
