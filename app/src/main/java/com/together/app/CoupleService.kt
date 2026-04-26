@@ -540,17 +540,47 @@ class CoupleService : Service() {
                 val partnerStateObj = globalState.optJSONObject(partnerName)
                 if (partnerStateObj != null) {
                     val partnerStateStr = partnerStateObj.toString()
-                    val lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
+                    var lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
+
+                    // Fallback to server-acknowledged state if local state is empty to prevent skipped notifications
+                    if (lastPartnerStateStr == "{}" || lastPartnerStateStr.isEmpty()) {
+                        val serverAckStateObj = globalState.optJSONObject("ackState_$localUserName")
+                        if (serverAckStateObj != null) {
+                            lastPartnerStateStr = serverAckStateObj.toString()
+                            broadcastDebugLog("CoupleService", "Local state empty. Restored from server ackState.")
+                        }
+                    }
 
                     if (partnerStateStr != lastPartnerStateStr) {
                         val currentPartnerState = JSONObject(partnerStateStr)
-                        val lastPartnerState = JSONObject(lastPartnerStateStr)
+                        val lastPartnerState = if (lastPartnerStateStr.isEmpty()) JSONObject() else JSONObject(lastPartnerStateStr)
 
                         checkAndNotify(partnerName, currentPartnerState, lastPartnerState)
 
                         with(sharedPref.edit()) {
                             putString("lastPartnerState_$partnerName", partnerStateStr)
                             apply()
+                        }
+
+                        // Push the newly acknowledged partner state to the server to persist it
+                        thread {
+                            try {
+                                val ackUpdateObj = JSONObject().apply {
+                                    put("ackState_$localUserName", JSONObject(partnerStateStr))
+                                }
+                                val ackReqBody = okhttp3.RequestBody.create(
+                                    "application/json; charset=utf-8".toMediaTypeOrNull(),
+                                    ackUpdateObj.toString()
+                                )
+                                val ackRequest = Request.Builder()
+                                    .url(apiUrl)
+                                    .addHeader("Authorization", "Bearer $authToken")
+                                    .post(ackReqBody)
+                                    .build()
+                                client.newCall(ackRequest).execute().close()
+                            } catch (e: Exception) {
+                                Log.e("CoupleService", "Failed to sync ackState", e)
+                            }
                         }
                     } else {
                         broadcastDebugLog("CoupleService", "Partner state hasn't changed. Skipping notification check.")
@@ -1338,6 +1368,33 @@ class CoupleService : Service() {
             } catch (e: SecurityException) {
                 broadcastDebugLog("CoupleService", "Notification permission not granted: ${e.message}"); Log.e("CoupleService", "Notification permission not granted", e)
             }
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d("CoupleService", "App swiped away, scheduling restart via PollReceiver")
+
+        // Schedule a quick restart via PollReceiver to keep background service alive
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, PollReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            1001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
         }
     }
 
