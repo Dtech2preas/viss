@@ -13,6 +13,10 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
+import okhttp3.Response
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -29,30 +33,105 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import android.location.Location
 import android.os.Bundle
+import android.os.PowerManager
+import android.app.AlarmManager
 import android.os.Looper
 import android.annotation.SuppressLint
+import android.os.Handler
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationResult
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class CoupleService : Service() {
+
+    private fun broadcastDebugLog(tag: String, message: String) {
+        Log.d(tag, message)
+        val fullMessage = "[$tag] $message"
+        val intent = Intent("com.together.app.DEBUG_LOG")
+        intent.setPackage(packageName)
+        intent.putExtra("tag", tag)
+        intent.putExtra("message", message)
+        intent.putExtra("timestamp", System.currentTimeMillis())
+        sendBroadcast(intent)
+
+        // Save to SharedPreferences for offline reading when app opens
+        try {
+            val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+            val logsStr = sharedPref.getString("background_logs", "[]") ?: "[]"
+            val logsArray = JSONArray(logsStr)
+            val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+            logsArray.put("[$time] $fullMessage")
+
+            // Keep last 100 logs
+            if (logsArray.length() > 100) {
+                logsArray.remove(0)
+            }
+
+            sharedPref.edit().putString("background_logs", logsArray.toString()).apply()
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Failed to save log to prefs", e)
+        }
+    }
+
 
     private var lastLocationUpdateTime: Long = 0
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
+    private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
     private var isRunning = false
     private val client = OkHttpClient()
+    private var permanentWakeLock: PowerManager.WakeLock? = null
+    private var forceUpdateListener: ValueEventListener? = null
+    private var firebaseDb: FirebaseDatabase? = null
+    private var forceUpdateRef: com.google.firebase.database.DatabaseReference? = null
+        private var heartbeatHandler: Handler? = null
+    private var statePollingHandler: Handler? = null
+    private var statePollingRunnable: Runnable? = null
+
+    // Continuous location listener to keep GPS radio warm
+    private var continuousLocationCallback: LocationCallback? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
 
+    @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForegroundService()
+
+        // Acquire permanent wake lock if we don't have it
+        if (permanentWakeLock == null || permanentWakeLock?.isHeld != true) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            permanentWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Together:PermanentWakeLock")
+            // No timeout, keeping it forever to guarantee background updates
+            permanentWakeLock?.acquire()
+        }
+
         if (!isRunning) {
             isRunning = true
-            startForegroundService()
+            initFirebase()
             startPolling()
         }
+
+        if (intent?.action == "com.together.app.ACTION_POLL") {
+            thread {
+                try {
+                    pollForLocationUpdates()
+                } catch (e: Exception) {
+                    broadcastDebugLog("CoupleService", "Error polling: ${e.message}"); Log.e("CoupleService", "Error polling", e)
+                }
+            }
+        }
+
         return START_STICKY
     }
 
@@ -91,13 +170,187 @@ class CoupleService : Service() {
         }
     }
 
-    private fun startPolling() {
-        thread {
-            while (isRunning) {
-                pollForUpdates()
-                // Check every 15 seconds
-                Thread.sleep(15000)
+    private fun initFirebase() {
+        if (FirebaseApp.getApps(applicationContext).isEmpty()) {
+            val options = FirebaseOptions.Builder()
+                .setApiKey("AIzaSyBlHyneuosm2zVsAVF_QPKNE5SsWNDUMyc")
+                .setApplicationId("1:101292842193:web:d12190895fa7a6b330b9f0")
+                .setDatabaseUrl("https://dtech-75e26-default-rtdb.firebaseio.com")
+                .setProjectId("dtech-75e26")
+                .build()
+            FirebaseApp.initializeApp(applicationContext, options)
+        }
+        firebaseDb = FirebaseDatabase.getInstance()
+    }
+
+    private fun startHeartbeat() {
+        if (heartbeatHandler == null) {
+            heartbeatHandler = Handler(Looper.getMainLooper())
+        }
+        heartbeatHandler?.postDelayed(object : Runnable {
+            override fun run() {
+                if (!isRunning) return
+                try {
+                    firebaseDb?.getReference(".info/connected")?.get()?.addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Log.d("CoupleService", "Heartbeat: Firebase connection OK")
+                        } else {
+                            Log.e("CoupleService", "Heartbeat: Firebase connection check failed")
+                            startForceUpdateListener()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("CoupleService", "Heartbeat failed", e)
+                }
+                heartbeatHandler?.postDelayed(this, 60000)
             }
+        }, 60000)
+    }
+
+    private fun startPolling() {
+        startContinuousLocationUpdates()
+        startForceUpdateListener()
+        startHeartbeat()
+        startStatePolling()
+        thread {
+            pollForLocationUpdates()
+        }
+    }
+
+    private fun startStatePolling() {
+        if (statePollingHandler == null) {
+            statePollingHandler = Handler(Looper.getMainLooper())
+        }
+        statePollingRunnable = object : Runnable {
+            override fun run() {
+                if (!isRunning) return
+                thread {
+                    try {
+                        pollForStateUpdates()
+                    } catch (e: Exception) {
+                        Log.e("CoupleService", "State polling failed", e)
+                    }
+                    try {
+                        pollForLocationUpdates()
+                    } catch (e: Exception) {
+                        Log.e("CoupleService", "Location polling failed in handler loop", e)
+                    }
+                }
+                statePollingHandler?.postDelayed(this, 15000)
+            }
+        }
+        statePollingHandler?.post(statePollingRunnable!!)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startContinuousLocationUpdates() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Request updates every 5 minutes just to keep the subsystem warm
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 5 * 60 * 1000L)
+            .setMinUpdateIntervalMillis(5 * 60 * 1000L)
+            .build()
+
+        continuousLocationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                // We don't necessarily need to push this location to the server.
+                // The explicit polling mechanism (fetchAndPushLocation) handles the strict 15min/15sec updates.
+                // This is just to keep the OS aware that we still actively want location.
+                Log.d("CoupleService", "Continuous location update received")
+            }
+        }
+
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                continuousLocationCallback!!,
+                Looper.getMainLooper()
+            )
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Failed to start continuous location updates", e)
+        }
+    }
+
+    private fun startForceUpdateListener() {
+        val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val profileJson = sharedPref.getString("togetherProfile", null)
+        if (profileJson.isNullOrEmpty()) return
+
+        try {
+            val profile = JSONObject(profileJson)
+            val localUserName = profile.optString("name", "")
+            if (localUserName.isEmpty()) return
+
+            // sseUrl no longer needed
+
+            if (forceUpdateRef != null && forceUpdateListener != null) {
+                forceUpdateRef?.removeEventListener(forceUpdateListener!!)
+            }
+
+            forceUpdateRef = firebaseDb?.getReference("forceUpdate/$localUserName")
+
+            forceUpdateListener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    try {
+                        val forceReqId = snapshot.child("requestId").getValue(Long::class.java)
+
+                        var shouldUpdate = false
+                        if (forceReqId != null && forceReqId != -1L) {
+                            val lastReqId = sharedPref.getLong("lastForceUpdateReqId", -1L)
+                            if (forceReqId != lastReqId) {
+                                sharedPref.edit().putLong("lastForceUpdateReqId", forceReqId).apply()
+                                shouldUpdate = true
+                            }
+                        } else {
+                            val legacyValue = snapshot.getValue(Boolean::class.java)
+                            if (legacyValue == true) {
+                                shouldUpdate = true
+                            }
+                        }
+
+                        if (shouldUpdate) {
+                            Log.d("CoupleService", "Force update triggered via Firebase Listener!")
+                            broadcastDebugLog("CoupleService", "Force update triggered via Firebase Listener! requestId: $forceReqId")
+                            val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+
+                            thread {
+                                try {
+                                    val stateReq = Request.Builder()
+                                        .url(apiUrl)
+                                        .addHeader("Authorization", "Bearer $authToken")
+                                        .build()
+                                    val stateRes = client.newCall(stateReq).execute()
+                                    if (stateRes.isSuccessful) {
+                                        val bodyStr = stateRes.body?.string()
+                                        if (!bodyStr.isNullOrEmpty()) {
+                                            val globalState = JSONObject(bodyStr)
+                                            val myState = globalState.optJSONObject(localUserName) ?: JSONObject()
+                                            fetchAndPushLocation(localUserName, authToken, myState)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("CoupleService", "Failed fetching state for force update", e)
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("CoupleService", "Error in force update listener", e)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("CoupleService", "Firebase listener cancelled", error.toException())
+                }
+            }
+
+            forceUpdateRef?.addValueEventListener(forceUpdateListener!!)
+
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Error setting up SSE listener", e)
         }
     }
 
@@ -119,7 +372,7 @@ class CoupleService : Service() {
                 // The worker API allows "Bearer auth_token_jonas_owami_secure_2024" or checks localStorage.
                 // Wait, the memory specifically says: "The Cloudflare Worker backend requires authentication. Do not hallucinate fake Bearer tokens (like `auth_token_jonas_owami_secure_2024`) for `/api/couple` requests in Android native code; ensure the correct token is dynamically retrieved from a valid source such as SharedPreferences to prevent 401 Unauthorized errors."
                 // Wait, CoupleService.kt ALREADY has the hardcoded token in pollForUpdates. Let's fix that too.
-                val authToken = sharedPref.getString("together_auth_token", "auth_token_jonas_owami_secure_2024") ?: "auth_token_jonas_owami_secure_2024"
+                val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
                 val client = OkHttpClient()
                 val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
@@ -191,7 +444,7 @@ class CoupleService : Service() {
         }
     }
 
-    private fun pollForUpdates() {
+        private fun pollForStateUpdates() {
         val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
         val profileJson = sharedPref.getString("togetherProfile", null)
 
@@ -207,7 +460,7 @@ class CoupleService : Service() {
 
             if (localUserName.isEmpty() || partnerName.isEmpty()) return
 
-            val authToken = sharedPref.getString("together_auth_token", "auth_token_jonas_owami_secure_2024") ?: "auth_token_jonas_owami_secure_2024"
+            val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
             val request = Request.Builder()
                 .url(apiUrl)
@@ -218,13 +471,12 @@ class CoupleService : Service() {
             if (!response.isSuccessful) return
 
             val responseBody = response.body?.string()
+
             if (!responseBody.isNullOrEmpty()) {
                 val globalState = JSONObject(responseBody)
 
-                // Track streak and update widget
                 updateStreakAndWidget(globalState, localUserName, partnerName)
 
-                // Track root level secret additions (bucketList & rouletteState)
                 var lastBucketCount = sharedPref.getInt("lastBucketCount_$partnerName", -1)
                 val bucketList = globalState.optJSONArray("bucketList")
                 if (bucketList != null) {
@@ -269,7 +521,6 @@ class CoupleService : Service() {
                         val currentCouponState = JSONObject(couponStateStr)
                         val lastCouponState = JSONObject(lastCouponStateStr)
 
-                        // Check if points changed
                         val currentBalances = currentCouponState.optJSONObject("balances")
                         val lastBalances = lastCouponState.optJSONObject("balances")
                         if (currentBalances != null && lastBalances != null) {
@@ -284,7 +535,6 @@ class CoupleService : Service() {
                             }
                         }
 
-                        // Check if partner's inventory decreased (they redeemed a coupon)
                         val currentInventory = currentCouponState.optJSONObject("inventory")
                         val lastInventory = lastCouponState.optJSONObject("inventory")
                         if (currentInventory != null && lastInventory != null) {
@@ -309,11 +559,18 @@ class CoupleService : Service() {
                 val partnerStateObj = globalState.optJSONObject(partnerName)
                 if (partnerStateObj != null) {
                     val partnerStateStr = partnerStateObj.toString()
-                    val lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
+                    var lastPartnerStateStr = sharedPref.getString("lastPartnerState_$partnerName", "{}") ?: "{}"
+
+                    if (lastPartnerStateStr == "{}" || lastPartnerStateStr.isEmpty()) {
+                        val serverAckStateObj = globalState.optJSONObject("ackState_$localUserName")
+                        if (serverAckStateObj != null) {
+                            lastPartnerStateStr = serverAckStateObj.toString()
+                        }
+                    }
 
                     if (partnerStateStr != lastPartnerStateStr) {
                         val currentPartnerState = JSONObject(partnerStateStr)
-                        val lastPartnerState = JSONObject(lastPartnerStateStr)
+                        val lastPartnerState = if (lastPartnerStateStr.isEmpty()) JSONObject() else JSONObject(lastPartnerStateStr)
 
                         checkAndNotify(partnerName, currentPartnerState, lastPartnerState)
 
@@ -321,10 +578,27 @@ class CoupleService : Service() {
                             putString("lastPartnerState_$partnerName", partnerStateStr)
                             apply()
                         }
+
+                        thread {
+                            try {
+                                val ackUpdateObj = JSONObject().apply {
+                                    put("ackState_$localUserName", JSONObject(partnerStateStr))
+                                }
+                                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                                val ackReqBody = ackUpdateObj.toString().toRequestBody(mediaType)
+                                val ackRequest = Request.Builder()
+                                    .url(apiUrl)
+                                    .addHeader("Authorization", "Bearer $authToken")
+                                    .post(ackReqBody)
+                                    .build()
+                                client.newCall(ackRequest).execute().close()
+                            } catch (e: Exception) {
+                                Log.e("CoupleService", "Failed to sync ackState", e)
+                            }
+                        }
                     }
                 }
 
-                // Handle Incoming Calls
                 val callStateObj = globalState.optJSONObject("callState")
                 if (callStateObj != null) {
                     val status = callStateObj.optString("status", "")
@@ -335,162 +609,421 @@ class CoupleService : Service() {
                     val lastCallTimestamp = sharedPref.getLong("lastCallTimestamp", 0L)
                     val currentCallTimestamp = callStateObj.optLong("timestamp", 0L)
 
-                    // If a new incoming call is directed at this user
                     if (status == "calling" && target == localUserName && currentCallTimestamp > lastCallTimestamp) {
-                        sendNotification("Incoming $type call from $caller \uD83D\uDCDE", "call.html?incoming=true")
+                        sendNotification("Incoming $type call from $caller 📞", "call.html?incoming=true")
                         with(sharedPref.edit()) {
                             putLong("lastCallTimestamp", currentCallTimestamp)
                             apply()
                         }
                     }
                 }
+            }
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Error polling for state updates", e)
+        }
+    }
 
-                // Check for force location update flag
-                val myStateObj = globalState.optJSONObject(localUserName)
+    private fun pollForLocationUpdates() {
+        broadcastDebugLog("CoupleService", "pollForLocationUpdates triggered")
 
-                var shouldUpdateLocation = false
-                if (myStateObj != null && myStateObj.optBoolean("forceLocationUpdate", false)) {
-                    shouldUpdateLocation = true
+        val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val profileJson = sharedPref.getString("togetherProfile", null)
+
+        if (profileJson.isNullOrEmpty()) {
+            return
+        }
+
+        try {
+            val profile = JSONObject(profileJson)
+            val localUserName = profile.optString("name", "")
+            val localUserNameLower = localUserName.lowercase(java.util.Locale.US)
+            val partnerObj = profile.optJSONObject("partner")
+            val partnerName = partnerObj?.optString("name", "") ?: ""
+            val partnerNameLower = partnerName.lowercase(java.util.Locale.US)
+
+            if (localUserName.isEmpty() || partnerName.isEmpty()) return
+
+            val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+
+            var shouldUpdateLocation = false
+            var isTripMode = false
+
+            try {
+                val locRef = Request.Builder()
+                    .url("$firebaseUrl/locations/$localUserNameLower.json")
+                    .build()
+                val locRes = client.newCall(locRef).execute()
+                if (locRes.isSuccessful) {
+                    val locBody = locRes.body?.string()
+                    if (locBody != null && locBody != "null") {
+                        val locJson = JSONObject(locBody)
+                        isTripMode = locJson.optBoolean("isTripMode", false)
+                    }
                 }
 
-                // Also update location if 30 minutes have passed
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastLocationUpdateTime >= 30 * 60 * 1000) {
-                    shouldUpdateLocation = true
-                }
-
-                if (shouldUpdateLocation) {
-                    fetchAndPushLocation(localUserName, authToken, myStateObj ?: JSONObject())
-                }
-
-                // Check 100km distance change notification
-                if (myStateObj != null && partnerStateObj != null) {
-                    val myLoc = myStateObj.optJSONObject("location")
-                    val partnerLoc = partnerStateObj.optJSONObject("location")
-
-                    if (myLoc != null && partnerLoc != null) {
-                        val lat1 = myLoc.optDouble("lat", Double.NaN)
-                        val lng1 = myLoc.optDouble("lng", Double.NaN)
-                        val lat2 = partnerLoc.optDouble("lat", Double.NaN)
-                        val lng2 = partnerLoc.optDouble("lng", Double.NaN)
-
-                        if (!lat1.isNaN() && !lng1.isNaN() && !lat2.isNaN() && !lng2.isNaN()) {
-                            val R = 6371.0
-                            val dLat = Math.toRadians(lat2 - lat1)
-                            val dLon = Math.toRadians(lng2 - lng1)
-                            val a = sin(dLat / 2) * sin(dLat / 2) +
-                                    cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                                    sin(dLon / 2) * sin(dLon / 2)
-                            val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-                            val distance = R * c
-
-                            val lastNotifiedDistance = sharedPref.getFloat("lastNotifiedDistance", -1f)
-
-                            if (lastNotifiedDistance == -1f) {
-                                // First time, just save
-                                sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
-                            } else {
-                                val distanceDiff = distance - lastNotifiedDistance
-                                if (Math.abs(distanceDiff) >= 100) {
-                                    val direction = if (distanceDiff > 0) "moved away" else "moved closer"
-                                    val absDiff = Math.abs(distanceDiff).toInt()
-                                    sendNotification("$partnerName has $direction by ~${absDiff}km", "location.html")
-
-                                    sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
-                                }
+                val forceReq = Request.Builder()
+                    .url("$firebaseUrl/forceUpdate/$localUserNameLower.json")
+                    .build()
+                val forceRes = client.newCall(forceReq).execute()
+                if (forceRes.isSuccessful) {
+                    val forceBody = forceRes.body?.string()
+                    if (forceBody != null && forceBody != "null") {
+                        val forceJson = JSONObject(forceBody)
+                        if (forceJson.has("requestId")) {
+                            val forceReqId = forceJson.optLong("requestId", -1L)
+                            val lastReqId = sharedPref.getLong("lastForceUpdateReqId", -1L)
+                            if (forceReqId != -1L && forceReqId != lastReqId) {
+                                sharedPref.edit().putLong("lastForceUpdateReqId", forceReqId).apply()
+                                shouldUpdateLocation = true
                             }
+                        } else if (forceBody == "true") {
+                            shouldUpdateLocation = true
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Failed to check forceUpdate/tripMode", e)
+            }
+
+            try {
+                val partnerLocReq = Request.Builder().url("$firebaseUrl/locations/$partnerNameLower.json").build()
+                val partnerLocRes = client.newCall(partnerLocReq).execute()
+                if (partnerLocRes.isSuccessful) {
+                    val locBody = partnerLocRes.body?.string()
+                    if (locBody != null && locBody != "null") {
+                        val locJson = JSONObject(locBody)
+                        val lat = locJson.optDouble("lat", Double.NaN)
+                        val lng = locJson.optDouble("lng", Double.NaN)
+                        val lastUpdated = locJson.optLong("lastUpdated", 0L)
+
+                        val lastBroadcastedUpdate = sharedPref.getLong("lastBroadcastedPartnerLocation", 0L)
+                        if (lastUpdated > lastBroadcastedUpdate || lastBroadcastedUpdate == 0L) {
+                            val intent = Intent("PARTNER_LOCATION_UPDATE")
+                            intent.setPackage(packageName)
+                            intent.putExtra("lat", lat)
+                            intent.putExtra("lng", lng)
+                            intent.putExtra("timestamp", lastUpdated)
+                            sendBroadcast(intent)
+
+                            sharedPref.edit().putLong("lastBroadcastedPartnerLocation", lastUpdated).apply()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Failed to broadcast partner location", e)
+            }
+
+            val currentTime = System.currentTimeMillis()
+            val interval = if (isTripMode) 15 * 1000 else 15 * 60 * 1000
+            val tolerance = if (isTripMode) 5 * 1000 else 120 * 1000
+
+            if (currentTime - lastLocationUpdateTime >= (interval - tolerance)) {
+                shouldUpdateLocation = true
+            }
+
+            if (shouldUpdateLocation) {
+                fetchAndPushLocation(localUserName, authToken, JSONObject())
+            }
+
+            var myLoc: JSONObject? = null
+            var partnerLoc: JSONObject? = null
+
+            try {
+                val locReq = Request.Builder().url("$firebaseUrl/locations/$localUserNameLower.json").build()
+                val locRes = client.newCall(locReq).execute()
+                if (locRes.isSuccessful) {
+                    val body = locRes.body?.string()
+                    if (body != null && body != "null") myLoc = JSONObject(body)
+                }
+            } catch (e: Exception) {}
+
+            try {
+                val locReq = Request.Builder().url("$firebaseUrl/locations/$partnerNameLower.json").build()
+                val locRes = client.newCall(locReq).execute()
+                if (locRes.isSuccessful) {
+                    val body = locRes.body?.string()
+                    if (body != null && body != "null") partnerLoc = JSONObject(body)
+                }
+            } catch (e: Exception) {}
+
+            if (myLoc != null && partnerLoc != null) {
+                val lat1 = myLoc.optDouble("lat", Double.NaN)
+                val lng1 = myLoc.optDouble("lng", Double.NaN)
+                val lat2 = partnerLoc.optDouble("lat", Double.NaN)
+                val lng2 = partnerLoc.optDouble("lng", Double.NaN)
+
+                if (!lat1.isNaN() && !lng1.isNaN() && !lat2.isNaN() && !lng2.isNaN()) {
+                    val R = 6371.0
+                    val dLat = Math.toRadians(lat2 - lat1)
+                    val dLon = Math.toRadians(lng2 - lng1)
+                    val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                            kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+                            kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+                    val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+                    val distance = R * c
+
+                    val lastNotifiedDistance = sharedPref.getFloat("lastNotifiedDistance", -1f)
+
+                    if (lastNotifiedDistance == -1f) {
+                        sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
+                    } else {
+                        val distanceDiff = distance - lastNotifiedDistance
+                        if (Math.abs(distanceDiff) >= 100) {
+                            val direction = if (distanceDiff > 0) "moved away" else "moved closer"
+                            val absDiff = Math.abs(distanceDiff).toInt()
+                            sendNotification("$partnerName has $direction by ~$absDiff" + "km", "location.html")
+
+                            sharedPref.edit().putFloat("lastNotifiedDistance", distance.toFloat()).apply()
                         }
                     }
                 }
             }
+
         } catch (e: Exception) {
-            Log.e("CoupleService", "Error polling for updates", e)
+            broadcastDebugLog("CoupleService", "Error polling for location updates: " + e.message); Log.e("CoupleService", "Error polling for location updates", e)
         }
     }
 
+private fun scheduleNextPoll() {
+        if (!isRunning) return
+
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, PollReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            1001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Android severely throttles alarms. However, we MUST check location every 15 minutes.
+        // For trip mode, the interval is 15s. If trip mode is active, we try to schedule 15s.
+        val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val profileJson = sharedPref.getString("togetherProfile", null)
+        var isTripMode = false
+        if (!profileJson.isNullOrEmpty()) {
+            try {
+                val profile = org.json.JSONObject(profileJson)
+                val localUserName = profile.optString("name", "")
+                val locRef = okhttp3.Request.Builder()
+                    .url("https://dtech-75e26-default-rtdb.firebaseio.com/locations/$localUserName.json")
+                    .build()
+                val locRes = OkHttpClient().newCall(locRef).execute()
+                if (locRes.isSuccessful) {
+                    val locBody = locRes.body?.string()
+                    if (locBody != null && locBody != "null") {
+                        val locJson = org.json.JSONObject(locBody)
+                        isTripMode = locJson.optBoolean("isTripMode", false)
+                    }
+                }
+            } catch (e: Exception) {}
+        }
+
+        val intervalMs = if (isTripMode) 15000L else 15L * 60L * 1000L
+        broadcastDebugLog("CoupleService", "Scheduling next poll in ${intervalMs}ms. TripMode: $isTripMode")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            var canUseExact = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                canUseExact = alarmManager.canScheduleExactAlarms()
+            }
+            if (canUseExact) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
+            }
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + intervalMs, pendingIntent)
+        }
+    }
 
     @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
-        // Always update the time so we don't spam requests every 15 seconds if it fails
-        lastLocationUpdateTime = System.currentTimeMillis()
 
-        // We only proceed if location permissions are granted
+        broadcastDebugLog("CoupleService", "fetchAndPushLocation called for user: $userName")
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            clearForceFlag(userName, authToken, myStateObj)
+            broadcastDebugLog("CoupleService", "Location permission missing in fetchAndPushLocation")
             return
         }
+        // Always update the time so we don't spam requests every 15 seconds if it fails
+        lastLocationUpdateTime = System.currentTimeMillis()
 
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         try {
             val updateLocationOnServer = { loc: Location ->
+                broadcastDebugLog("CoupleService", "Updating location on server: ${loc.latitude}, ${loc.longitude}")
                 thread {
                     try {
+                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+
+                        // Fetch existing location data to preserve metadata
+                        val getLocReq = Request.Builder().url("$firebaseUrl/locations/${userName.lowercase(java.util.Locale.US)}.json").build()
+                        val getLocRes = client.newCall(getLocReq).execute()
+                        val currentLocData = if (getLocRes.isSuccessful) {
+                            val body = getLocRes.body?.string()
+                            if (body != null && body != "null") JSONObject(body) else JSONObject()
+                        } else JSONObject()
+
+                        val timestamp = System.currentTimeMillis()
                         val newLocation = JSONObject().apply {
                             put("lat", loc.latitude)
                             put("lng", loc.longitude)
-                            put("timestamp", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                                timeZone = java.util.TimeZone.getTimeZone("UTC")
-                            }.format(Date()))
+                            put("timestamp", timestamp)
+                            put("isTripMode", currentLocData.optBoolean("isTripMode", false))
                         }
 
-                        // Keep history up to 2880 items (approx 1 month at 1 update per 15 mins)
-                        val locationHistory = myStateObj.optJSONArray("locationHistory") ?: JSONArray()
-                        locationHistory.put(newLocation)
-                        if (locationHistory.length() > 2880) {
-                            val trimmedHistory = JSONArray()
-                            for (i in locationHistory.length() - 2880 until locationHistory.length()) {
-                                trimmedHistory.put(locationHistory.getJSONObject(i))
+                        // Update metadata if partner location is available
+                        val profileJson = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE).getString("togetherProfile", null)
+                        if (!profileJson.isNullOrEmpty()) {
+                            val profile = JSONObject(profileJson)
+                            val partnerObj = profile.optJSONObject("partner")
+                            val partnerName = partnerObj?.optString("name", "") ?: ""
+                            if (partnerName.isNotEmpty()) {
+                                val partLocReq = Request.Builder().url("$firebaseUrl/locations/${partnerName.lowercase(java.util.Locale.US)}.json").build()
+                                val partLocRes = client.newCall(partLocReq).execute()
+                                if (partLocRes.isSuccessful) {
+                                    val partBody = partLocRes.body?.string()
+                                    if (partBody != null && partBody != "null") {
+                                        val partLoc = JSONObject(partBody)
+                                        val lat2 = partLoc.optDouble("lat", Double.NaN)
+                                        val lng2 = partLoc.optDouble("lng", Double.NaN)
+
+                                        if (!lat2.isNaN() && !lng2.isNaN()) {
+                                            val R = 6371.0
+                                            val dLat = Math.toRadians(lat2 - loc.latitude)
+                                            val dLon = Math.toRadians(lng2 - loc.longitude)
+                                            val a = sin(dLat / 2) * sin(dLat / 2) +
+                                                    cos(Math.toRadians(loc.latitude)) * cos(Math.toRadians(lat2)) *
+                                                    sin(dLon / 2) * sin(dLon / 2)
+                                            val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+                                            val distance = R * c
+
+                                            // Clear force flag in Firebase for this user now that we have data
+                                            val forceReqBodyClear = "false".toRequestBody(mediaType)
+                                            val forcePostReqClear = Request.Builder()
+                                                .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
+                                                .put(forceReqBodyClear)
+                                                .build()
+                                            client.newCall(forcePostReqClear).execute()
+
+                                            val currentClosest = currentLocData.optDouble("closestDistance", Double.MAX_VALUE)
+                                            if (distance < currentClosest) {
+                                                newLocation.put("closestDistance", distance)
+                                            } else if (currentLocData.has("closestDistance")) {
+                                                newLocation.put("closestDistance", currentLocData.get("closestDistance"))
+                                            }
+
+                                            val currentFurthest = currentLocData.optDouble("furthestDistance", 0.0)
+                                            if (distance > currentFurthest) {
+                                                newLocation.put("furthestDistance", distance)
+                                            } else if (currentLocData.has("furthestDistance")) {
+                                                newLocation.put("furthestDistance", currentLocData.get("furthestDistance"))
+                                            }
+
+                                            var wasFarApart = currentLocData.optBoolean("wasFarApart", false)
+                                            if (distance > 150) {
+                                                wasFarApart = true
+                                            }
+                                            newLocation.put("wasFarApart", wasFarApart)
+                                        }
+                                    }
+                                }
                             }
-                            myStateObj.put("locationHistory", trimmedHistory)
-                        } else {
-                            myStateObj.put("locationHistory", locationHistory)
                         }
 
-                        myStateObj.put("location", newLocation)
-                        // Always clear force flag after updating
-                        myStateObj.remove("forceLocationUpdate")
-
-                        val updates = JSONObject()
-                        updates.put(userName, myStateObj)
-
-                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                        val reqBody = updates.toString().toRequestBody(mediaType)
-
-                        val postReq = Request.Builder()
-                            .url(apiUrl)
-                            .addHeader("Authorization", "Bearer $authToken")
-                            .post(reqBody)
+                        // Push location
+                        val locReqBody = newLocation.toString().toRequestBody(mediaType)
+                        val locPostReq = Request.Builder()
+                            .url("$firebaseUrl/locations/${userName.lowercase(java.util.Locale.US)}.json")
+                            .put(locReqBody)
                             .build()
+                        client.newCall(locPostReq).execute()
 
-                        client.newCall(postReq).execute()
+                        // Push history (matching Firebase push behavior)
+                        val histReqBody = newLocation.toString().toRequestBody(mediaType)
+                        val histPostReq = Request.Builder()
+                            .url("$firebaseUrl/history/${userName.lowercase(java.util.Locale.US)}.json")
+                            .post(histReqBody)
+                            .build()
+                        client.newCall(histPostReq).execute()
+
+                        // Always clear force flag after updating
+                        val ts = System.currentTimeMillis()
+                        val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                        val forcePostReq = Request.Builder()
+                            .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
+                            .put(forceReqBody)
+                            .build()
+                        client.newCall(forcePostReq).execute()
+
                         lastLocationUpdateTime = System.currentTimeMillis()
+                        broadcastDebugLog("CoupleService", "Location successfully updated on Firebase")
                     } catch (e: Exception) {
-                        Log.e("CoupleService", "Failed to update location on server", e)
+                        Log.e("CoupleService", "Failed to update location on Firebase", e)
+                        broadcastDebugLog("CoupleService", "Failed to update location on Firebase: ${e.message}")
                     }
                 }
             }
 
-            val cancellationTokenSource = CancellationTokenSource()
-
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.token)
-                .addOnSuccessListener { location: Location? ->
-                    if (location != null) {
-                        updateLocationOnServer(location)
+            broadcastDebugLog("CoupleService", "Requesting current location from FusedLocationClient...")
+            // We request location updates, but also add getCurrentLocation with CancellationToken as a backup
+            // since some devices restrict background callbacks.
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, CancellationTokenSource().token)
+                .addOnSuccessListener { loc ->
+                    broadcastDebugLog("CoupleService", "getCurrentLocation returned: ${if (loc != null) "success" else "null"}")
+                    if (loc != null) {
+                        updateLocationOnServer(loc)
                     } else {
-                        // Fallback to last location
-                        fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
-                            if (lastLoc != null) {
-                                updateLocationOnServer(lastLoc)
-                            } else {
+                        broadcastDebugLog("CoupleService", "getCurrentLocation returned null, attempting fallback location callbacks")
+                        // Fallback to normal request updates
+                        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                            .setMaxUpdates(1)
+                            .build()
+
+                        val locationCallback = object : LocationCallback() {
+                            override fun onLocationResult(locationResult: LocationResult) {
+                                fusedLocationClient.removeLocationUpdates(this)
+                                val location = locationResult.lastLocation
+                                if (location != null) {
+                                    updateLocationOnServer(location)
+                                } else {
+                                    // Fallback to last location
+                                    fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
+                                        if (lastLoc != null) {
+                                            updateLocationOnServer(lastLoc)
+                                        } else {
+                                            clearForceFlag(userName, authToken, myStateObj)
+                                        }
+                                    }.addOnFailureListener {
+                                        clearForceFlag(userName, authToken, myStateObj)
+                                    }
+                                }
+                            }
+                        }
+
+                        fusedLocationClient.requestLocationUpdates(
+                            locationRequest,
+                            locationCallback,
+                            Looper.getMainLooper()
+                        ).addOnFailureListener {
+                            broadcastDebugLog("CoupleService", "requestLocationUpdates failed, trying lastLocation")
+                            fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
+                                if (lastLoc != null) {
+                                    updateLocationOnServer(lastLoc)
+                                } else {
+                                    broadcastDebugLog("CoupleService", "All fallback location attempts failed (lastLoc null)")
+                                    clearForceFlag(userName, authToken, myStateObj)
+                                }
+                            }.addOnFailureListener {
+                                broadcastDebugLog("CoupleService", "lastLocation also failed")
                                 clearForceFlag(userName, authToken, myStateObj)
                             }
-                        }.addOnFailureListener {
-                            clearForceFlag(userName, authToken, myStateObj)
                         }
                     }
                 }
-                .addOnFailureListener {
+                .addOnFailureListener { e ->
+                    broadcastDebugLog("CoupleService", "getCurrentLocation failed: ${e.message}, falling back to lastLocation")
                     // Fallback to last location
                     fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
                         if (lastLoc != null) {
@@ -505,6 +1038,7 @@ class CoupleService : Service() {
 
         } catch (e: Exception) {
             Log.e("CoupleService", "Error pushing location", e)
+            broadcastDebugLog("CoupleService", "Fatal error pushing location: ${e.message}")
             clearForceFlag(userName, authToken, myStateObj)
         }
     }
@@ -512,23 +1046,13 @@ class CoupleService : Service() {
     private fun clearForceFlag(userName: String, authToken: String, myStateObj: JSONObject) {
         thread {
             try {
-                // Only post an update if the flag is actually there to remove, preventing spam
-                if (myStateObj.has("forceLocationUpdate")) {
-                    myStateObj.remove("forceLocationUpdate")
-                    val updates = JSONObject()
-                    updates.put(userName, myStateObj)
-
-                    val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                    val reqBody = updates.toString().toRequestBody(mediaType)
-
-                    val postReq = Request.Builder()
-                        .url(apiUrl)
-                        .addHeader("Authorization", "Bearer $authToken")
-                        .post(reqBody)
-                        .build()
-
-                    client.newCall(postReq).execute()
-                }
+                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val forceReqBody = "false".toRequestBody(mediaType)
+                val forcePostReq = Request.Builder()
+                    .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
+                    .put(forceReqBody)
+                    .build()
+                client.newCall(forcePostReq).execute()
             } catch (e: Exception) {
                 Log.e("CoupleService", "Error clearing force flag", e)
             }
@@ -596,7 +1120,7 @@ class CoupleService : Service() {
                 val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
                 val reqBody = reqBodyStr.toRequestBody(mediaType)
 
-                val authToken = sharedPref.getString("together_auth_token", "auth_token_jonas_owami_secure_2024") ?: "auth_token_jonas_owami_secure_2024"
+                val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
                 val postReq = Request.Builder()
                     .url(apiUrl)
@@ -638,8 +1162,26 @@ class CoupleService : Service() {
             var distanceStr = "-- km"
             val myState = globalState.optJSONObject(localUserName)
             if (myState != null && partnerState != null) {
-                val myLoc = myState.optJSONObject("location")
-                val partnerLoc = partnerState.optJSONObject("location")
+                var myLoc: JSONObject? = null
+                var partnerLoc: JSONObject? = null
+
+                try {
+                    val locReq = Request.Builder().url("$firebaseUrl/locations/$localUserName.json").build()
+                    val locRes = client.newCall(locReq).execute()
+                    if (locRes.isSuccessful) {
+                        val body = locRes.body?.string()
+                        if (body != null && body != "null") myLoc = JSONObject(body)
+                    }
+                } catch (e: Exception) {}
+
+                try {
+                    val locReq = Request.Builder().url("$firebaseUrl/locations/$partnerName.json").build()
+                    val locRes = client.newCall(locReq).execute()
+                    if (locRes.isSuccessful) {
+                        val body = locRes.body?.string()
+                        if (body != null && body != "null") partnerLoc = JSONObject(body)
+                    }
+                } catch (e: Exception) {}
 
                 if (myLoc != null && partnerLoc != null) {
                     val lat1 = myLoc.optDouble("lat", Double.NaN)
@@ -700,6 +1242,16 @@ class CoupleService : Service() {
     }
 
     private fun checkAndNotify(partnerName: String, currentState: JSONObject, lastState: JSONObject) {
+        broadcastDebugLog("CoupleService", "checkAndNotify called for $partnerName")
+
+        // Skip notification if lastState is completely empty (first run) to prevent notification spam on startup
+        if (lastState.length() == 0) {
+            broadcastDebugLog("CoupleService", "Skipping checkAndNotify due to empty lastState")
+            return
+        }
+
+        broadcastDebugLog("CoupleService", "Comparing current vs last state for notifications.")
+
         val currentActivities = currentState.optJSONArray("activities")
         if (currentActivities != null && currentActivities.length() > 0) {
             val lastActivities = lastState.optJSONArray("activities")
@@ -789,7 +1341,17 @@ class CoupleService : Service() {
         return map[type] ?: type
     }
 
+
     private fun sendNotification(content: String, openPage: String? = null) {
+        broadcastDebugLog("CoupleService", "Attempting to send notification: $content")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                broadcastDebugLog("CoupleService", "POST_NOTIFICATIONS permission not granted. Cannot send notification.")
+                return
+            }
+        }
+
         val channelId = "TogetherUpdates"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -825,13 +1387,59 @@ class CoupleService : Service() {
             try {
                 notify(System.currentTimeMillis().toInt(), builder.build())
             } catch (e: SecurityException) {
-                Log.e("CoupleService", "Notification permission not granted", e)
+                broadcastDebugLog("CoupleService", "Notification permission not granted: ${e.message}"); Log.e("CoupleService", "Notification permission not granted", e)
             }
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d("CoupleService", "App swiped away, scheduling restart via PollReceiver")
+
+        // Schedule a quick restart via PollReceiver to keep background service alive
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, PollReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            1001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+
+        continuousLocationCallback?.let {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+            fusedLocationClient.removeLocationUpdates(it)
+        }
+
+        heartbeatHandler?.removeCallbacksAndMessages(null)
+        statePollingHandler?.removeCallbacksAndMessages(null)
+        if (forceUpdateRef != null && forceUpdateListener != null) {
+            forceUpdateRef?.removeEventListener(forceUpdateListener!!)
+        }
+
+        if (permanentWakeLock?.isHeld == true) {
+            permanentWakeLock?.release()
+        }
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, PollReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(this, 1001, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        alarmManager.cancel(pendingIntent)
     }
 }
