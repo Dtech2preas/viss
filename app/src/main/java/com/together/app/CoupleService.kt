@@ -55,11 +55,31 @@ class CoupleService : Service() {
 
     private fun broadcastDebugLog(tag: String, message: String) {
         Log.d(tag, message)
+        val fullMessage = "[$tag] $message"
         val intent = Intent("com.together.app.DEBUG_LOG")
+        intent.setPackage(packageName)
         intent.putExtra("tag", tag)
         intent.putExtra("message", message)
         intent.putExtra("timestamp", System.currentTimeMillis())
         sendBroadcast(intent)
+
+        // Save to SharedPreferences for offline reading when app opens
+        try {
+            val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+            val logsStr = sharedPref.getString("background_logs", "[]") ?: "[]"
+            val logsArray = JSONArray(logsStr)
+            val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+            logsArray.put("[$time] $fullMessage")
+
+            // Keep last 100 logs
+            if (logsArray.length() > 100) {
+                logsArray.remove(0)
+            }
+
+            sharedPref.edit().putString("background_logs", logsArray.toString()).apply()
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Failed to save log to prefs", e)
+        }
     }
 
 
@@ -266,6 +286,7 @@ class CoupleService : Service() {
 
                         if (shouldUpdate) {
                             Log.d("CoupleService", "Force update triggered via Firebase Listener!")
+                            broadcastDebugLog("CoupleService", "Force update triggered via Firebase Listener! requestId: $forceReqId")
                             val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
                             thread {
@@ -396,6 +417,7 @@ class CoupleService : Service() {
     }
 
     private fun pollForUpdates() {
+        broadcastDebugLog("CoupleService", "pollForUpdates triggered")
         // Immediately schedule the next poll to ensure it happens even if this run crashes
         scheduleNextPoll()
 
@@ -530,6 +552,8 @@ class CoupleService : Service() {
                             putString("lastPartnerState_$partnerName", partnerStateStr)
                             apply()
                         }
+                    } else {
+                        broadcastDebugLog("CoupleService", "Partner state hasn't changed. Skipping notification check.")
                     }
                 }
 
@@ -612,6 +636,7 @@ class CoupleService : Service() {
                             val lastBroadcastedUpdate = sharedPref.getLong("lastBroadcastedPartnerLocation", 0L)
                             if (lastUpdated > lastBroadcastedUpdate || lastBroadcastedUpdate == 0L) {
                                 val intent = Intent("PARTNER_LOCATION_UPDATE")
+                                intent.setPackage(packageName)
                                 intent.putExtra("lat", lat)
                                 intent.putExtra("lng", lng)
                                 intent.putExtra("timestamp", lastUpdated)
@@ -745,6 +770,7 @@ class CoupleService : Service() {
         }
 
         val intervalMs = if (isTripMode) 15000L else 15L * 60L * 1000L
+        broadcastDebugLog("CoupleService", "Scheduling next poll in ${intervalMs}ms. TripMode: $isTripMode")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             var canUseExact = true
@@ -763,22 +789,19 @@ class CoupleService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
+        broadcastDebugLog("CoupleService", "fetchAndPushLocation called for user: $userName")
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            broadcastDebugLog("CoupleService", "Location permission missing in fetchAndPushLocation")
             return
         }
         // Always update the time so we don't spam requests every 15 seconds if it fails
         lastLocationUpdateTime = System.currentTimeMillis()
 
-        // We only proceed if location permissions are granted
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            clearForceFlag(userName, authToken, myStateObj)
-            return
-        }
-
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         try {
             val updateLocationOnServer = { loc: Location ->
+                broadcastDebugLog("CoupleService", "Updating location on server: ${loc.latitude}, ${loc.longitude}")
                 thread {
                     try {
                         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
@@ -884,19 +907,24 @@ class CoupleService : Service() {
                         client.newCall(forcePostReq).execute()
 
                         lastLocationUpdateTime = System.currentTimeMillis()
+                        broadcastDebugLog("CoupleService", "Location successfully updated on Firebase")
                     } catch (e: Exception) {
                         Log.e("CoupleService", "Failed to update location on Firebase", e)
+                        broadcastDebugLog("CoupleService", "Failed to update location on Firebase: ${e.message}")
                     }
                 }
             }
 
+            broadcastDebugLog("CoupleService", "Requesting current location from FusedLocationClient...")
             // We request location updates, but also add getCurrentLocation with CancellationToken as a backup
             // since some devices restrict background callbacks.
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, CancellationTokenSource().token)
                 .addOnSuccessListener { loc ->
+                    broadcastDebugLog("CoupleService", "getCurrentLocation returned: ${if (loc != null) "success" else "null"}")
                     if (loc != null) {
                         updateLocationOnServer(loc)
                     } else {
+                        broadcastDebugLog("CoupleService", "getCurrentLocation returned null, attempting fallback location callbacks")
                         // Fallback to normal request updates
                         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
                             .setMaxUpdates(1)
@@ -928,19 +956,23 @@ class CoupleService : Service() {
                             locationCallback,
                             Looper.getMainLooper()
                         ).addOnFailureListener {
+                            broadcastDebugLog("CoupleService", "requestLocationUpdates failed, trying lastLocation")
                             fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
                                 if (lastLoc != null) {
                                     updateLocationOnServer(lastLoc)
                                 } else {
+                                    broadcastDebugLog("CoupleService", "All fallback location attempts failed (lastLoc null)")
                                     clearForceFlag(userName, authToken, myStateObj)
                                 }
                             }.addOnFailureListener {
+                                broadcastDebugLog("CoupleService", "lastLocation also failed")
                                 clearForceFlag(userName, authToken, myStateObj)
                             }
                         }
                     }
                 }
-                .addOnFailureListener {
+                .addOnFailureListener { e ->
+                    broadcastDebugLog("CoupleService", "getCurrentLocation failed: ${e.message}, falling back to lastLocation")
                     // Fallback to last location
                     fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc: Location? ->
                         if (lastLoc != null) {
@@ -955,6 +987,7 @@ class CoupleService : Service() {
 
         } catch (e: Exception) {
             Log.e("CoupleService", "Error pushing location", e)
+            broadcastDebugLog("CoupleService", "Fatal error pushing location: ${e.message}")
             clearForceFlag(userName, authToken, myStateObj)
         }
     }
@@ -1166,6 +1199,7 @@ class CoupleService : Service() {
             return
         }
 
+        broadcastDebugLog("CoupleService", "Comparing current vs last state for notifications.")
 
         val currentActivities = currentState.optJSONArray("activities")
         if (currentActivities != null && currentActivities.length() > 0) {

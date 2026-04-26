@@ -75,11 +75,16 @@ class MainActivity : AppCompatActivity() {
                 jsPayload.put("message", message)
                 jsPayload.put("timestamp", timestamp)
 
+                val jsLogStr = JSONObject.quote("[$tag] $message")
+
                 runOnUiThread {
                     webView.evaluateJavascript(
                         """
                         if (typeof window.receiveAndroidLog === 'function') {
                             window.receiveAndroidLog(${jsPayload.toString()});
+                        }
+                        if (typeof window.pushAndroidLog === 'function') {
+                            window.pushAndroidLog($jsLogStr);
                         }
                         """.trimIndent(), null
                     )
@@ -359,6 +364,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     class WebAppInterface(private val context: Context) {
+        @JavascriptInterface
+        fun getBackgroundLogs(): String {
+            val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+            val logs = sharedPref.getString("background_logs", "[]") ?: "[]"
+            // Clear after reading so we don't load same logs twice
+            sharedPref.edit().putString("background_logs", "[]").apply()
+            return logs
+        }
+
         @JavascriptInterface
         fun saveProfile(profileJson: String) {
             Log.d("WebAppInterface", "Profile saved: $profileJson")
