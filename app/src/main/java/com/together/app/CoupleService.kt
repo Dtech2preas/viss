@@ -881,7 +881,8 @@ class CoupleService : Service() {
                             .url("$firebaseUrl/locations/${userName.lowercase(java.util.Locale.US)}.json")
                             .put(locReqBody)
                             .build()
-                        client.newCall(locPostReq).execute()
+                        val locRes = client.newCall(locPostReq).execute()
+                        if (!locRes.isSuccessful) throw Exception("Failed to push location")
 
                         // Push history (matching Firebase push behavior)
                         val histReqBody = newLocation.toString().toRequestBody(mediaType)
@@ -889,7 +890,8 @@ class CoupleService : Service() {
                             .url("$firebaseUrl/history/${userName.lowercase(java.util.Locale.US)}.json")
                             .post(histReqBody)
                             .build()
-                        client.newCall(histPostReq).execute()
+                        val histRes = client.newCall(histPostReq).execute()
+                        if (!histRes.isSuccessful) throw Exception("Failed to push history")
 
                         // Always clear force flag after updating
                         val ts = System.currentTimeMillis()
@@ -902,9 +904,77 @@ class CoupleService : Service() {
 
                         lastLocationUpdateTime = System.currentTimeMillis()
                         broadcastDebugLog("CoupleService", "Location successfully updated on Firebase")
+
+                        // Process any queued offline locations
+                        try {
+                            val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+                            val offlineLocsStr = sharedPref.getString("offline_locations", "[]") ?: "[]"
+                            val offlineLocs = JSONArray(offlineLocsStr)
+
+                            if (offlineLocs.length() > 0) {
+                                broadcastDebugLog("CoupleService", "Pushing ${offlineLocs.length()} offline locations to Firebase")
+                                val remainingLocs = JSONArray()
+
+                                for (i in 0 until offlineLocs.length()) {
+                                    val offLoc = offlineLocs.optJSONObject(i)
+                                    if (offLoc != null) {
+                                        val offHistReqBody = offLoc.toString().toRequestBody(mediaType)
+                                        val offHistPostReq = Request.Builder()
+                                            .url("$firebaseUrl/history/${userName.lowercase(java.util.Locale.US)}.json")
+                                            .post(offHistReqBody)
+                                            .build()
+
+                                        try {
+                                            val offRes = client.newCall(offHistPostReq).execute()
+                                            if (!offRes.isSuccessful) {
+                                                remainingLocs.put(offLoc)
+                                            }
+                                        } catch (e: Exception) {
+                                            remainingLocs.put(offLoc)
+                                        }
+                                    }
+                                }
+
+                                sharedPref.edit().putString("offline_locations", remainingLocs.toString()).apply()
+                                if (remainingLocs.length() == 0) {
+                                    broadcastDebugLog("CoupleService", "Successfully pushed all offline locations")
+                                } else {
+                                    broadcastDebugLog("CoupleService", "Failed to push ${remainingLocs.length()} offline locations, keeping in queue")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("CoupleService", "Error processing offline locations", e)
+                        }
+
                     } catch (e: Exception) {
                         Log.e("CoupleService", "Failed to update location on Firebase", e)
-                        broadcastDebugLog("CoupleService", "Failed to update location on Firebase: ${e.message}")
+                        broadcastDebugLog("CoupleService", "Failed to update location on Firebase: ${e.message}. Saving offline.")
+
+                        try {
+                            val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+                            val offlineLocsStr = sharedPref.getString("offline_locations", "[]") ?: "[]"
+                            val offlineLocs = JSONArray(offlineLocsStr)
+
+                            val offlineLoc = JSONObject().apply {
+                                put("lat", loc.latitude)
+                                put("lng", loc.longitude)
+                                put("timestamp", System.currentTimeMillis())
+                            }
+
+                            offlineLocs.put(offlineLoc)
+
+                            // Keep maximum of 1000 logs to prevent memory issues
+                            val startIdx = if (offlineLocs.length() > 1000) offlineLocs.length() - 1000 else 0
+                            val trimmedLocs = JSONArray()
+                            for (i in startIdx until offlineLocs.length()) {
+                                trimmedLocs.put(offlineLocs.get(i))
+                            }
+
+                            sharedPref.edit().putString("offline_locations", trimmedLocs.toString()).apply()
+                            broadcastDebugLog("CoupleService", "Saved location offline. Total queued: ${trimmedLocs.length()}")
+                        } catch (offlineEx: Exception) {
+                            Log.e("CoupleService", "Failed to save offline location", offlineEx)
+                        }
                     }
                 }
             }
