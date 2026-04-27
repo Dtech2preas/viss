@@ -10,6 +10,11 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
