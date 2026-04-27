@@ -580,12 +580,12 @@ class CoupleService : Service() {
                         }
                     }
 
+                    val currentPartnerState = JSONObject(partnerStateStr)
+                    val lastPartnerState = if (lastPartnerStateStr.isEmpty()) JSONObject() else JSONObject(lastPartnerStateStr)
+
+                    checkAndNotify(partnerName, currentPartnerState, lastPartnerState)
+
                     if (partnerStateStr != lastPartnerStateStr) {
-                        val currentPartnerState = JSONObject(partnerStateStr)
-                        val lastPartnerState = if (lastPartnerStateStr.isEmpty()) JSONObject() else JSONObject(lastPartnerStateStr)
-
-                        checkAndNotify(partnerName, currentPartnerState, lastPartnerState)
-
                         with(sharedPref.edit()) {
                             putString("lastPartnerState_$partnerName", partnerStateStr)
                             apply()
@@ -1345,10 +1345,71 @@ class CoupleService : Service() {
         val currentMessages = currentState.optJSONArray("messages")
         if (currentMessages != null) {
             val lastMessages = lastState.optJSONArray("messages")
-            val lastMessagesCount = lastMessages?.length() ?: 0
 
-            if (currentMessages.length() > lastMessagesCount) {
-                sendNotification("$partnerName send you a message", "messages.html")
+            val currentTime = System.currentTimeMillis()
+            var currentUnlockedCount = 0
+            for (i in 0 until currentMessages.length()) {
+                val msg = currentMessages.optJSONObject(i)
+                if (msg != null) {
+                    val unlockAt = msg.optString("unlockAt", "")
+                    if (unlockAt.isEmpty()) {
+                        currentUnlockedCount++
+                    } else {
+                        try {
+                            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                            sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            val date = sdf.parse(unlockAt)
+                            if (date != null && currentTime >= date.time) {
+                                currentUnlockedCount++
+                            }
+                        } catch (e: Exception) {
+                            // If format fails or whatever, just count it
+                            currentUnlockedCount++
+                        }
+                    }
+                }
+            }
+
+            var lastUnlockedCount = 0
+            if (lastMessages != null) {
+                for (i in 0 until lastMessages.length()) {
+                    val msg = lastMessages.optJSONObject(i)
+                    if (msg != null) {
+                        val unlockAt = msg.optString("unlockAt", "")
+                        if (unlockAt.isEmpty()) {
+                            lastUnlockedCount++
+                        } else {
+                            try {
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                                sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                val date = sdf.parse(unlockAt)
+                                if (date != null && currentTime >= date.time) {
+                                    lastUnlockedCount++
+                                }
+                            } catch (e: Exception) {
+                                lastUnlockedCount++
+                            }
+                        }
+                    }
+                }
+            }
+
+            val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", android.content.Context.MODE_PRIVATE)
+            val key = "lastNotifiedUnlockedMessagesCount_$partnerName"
+            val lastNotifiedCount = sharedPref.getInt(key, lastUnlockedCount)
+
+            if (currentUnlockedCount > lastNotifiedCount) {
+                sendNotification("$partnerName sent you a message", "messages.html")
+                with(sharedPref.edit()) {
+                    putInt(key, currentUnlockedCount)
+                    apply()
+                }
+            } else if (currentUnlockedCount < lastNotifiedCount && currentUnlockedCount >= 0) {
+                // Handle case where messages were deleted
+                with(sharedPref.edit()) {
+                    putInt(key, currentUnlockedCount)
+                    apply()
+                }
             }
         }
     }
@@ -1491,7 +1552,7 @@ class CoupleService : Service() {
                 status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
             } ?: false
 
-            val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
             val network = connectivityManager.activeNetwork
             val capabilities = connectivityManager.getNetworkCapabilities(network)
             var connectionType = "Offline"
