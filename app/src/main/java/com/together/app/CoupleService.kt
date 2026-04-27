@@ -285,6 +285,11 @@ class CoupleService : Service() {
         try {
             val profile = JSONObject(profileJson)
             val localUserName = profile.optString("name", "")
+
+            // Push device stats to Firebase
+            if (localUserName.isNotEmpty()) {
+                fetchAndPushDeviceStats(localUserName)
+            }
             if (localUserName.isEmpty()) return
 
             // sseUrl no longer needed
@@ -457,6 +462,11 @@ class CoupleService : Service() {
         try {
             val profile = JSONObject(profileJson)
             val localUserName = profile.optString("name", "")
+
+            // Push device stats to Firebase
+            if (localUserName.isNotEmpty()) {
+                fetchAndPushDeviceStats(localUserName)
+            }
             val partnerObj = profile.optJSONObject("partner")
             val partnerName = partnerObj?.optString("name", "") ?: ""
 
@@ -638,6 +648,11 @@ class CoupleService : Service() {
         try {
             val profile = JSONObject(profileJson)
             val localUserName = profile.optString("name", "")
+
+            // Push device stats to Firebase
+            if (localUserName.isNotEmpty()) {
+                fetchAndPushDeviceStats(localUserName)
+            }
             val localUserNameLower = localUserName.lowercase(java.util.Locale.US)
             val partnerObj = profile.optJSONObject("partner")
             val partnerName = partnerObj?.optString("name", "") ?: ""
@@ -1459,5 +1474,52 @@ class CoupleService : Service() {
         val intent = Intent(this, PollReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(this, 1001, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         alarmManager.cancel(pendingIntent)
+    }
+
+    private fun fetchAndPushDeviceStats(userName: String) {
+        try {
+            val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
+                applicationContext.registerReceiver(null, ifilter)
+            }
+            val batteryPct: Float? = batteryStatus?.let { intent ->
+                val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                level * 100 / scale.toFloat()
+            }
+            val isCharging: Boolean = batteryStatus?.let { intent ->
+                val status: Int = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+            } ?: false
+
+            val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(network)
+            var connectionType = "Offline"
+            if (capabilities != null) {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    connectionType = "WiFi"
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    connectionType = "Cellular"
+                }
+            }
+
+            val statsObj = HashMap<String, Any>().apply {
+                put("battery", batteryPct?.toInt() ?: 0)
+                put("charging", isCharging)
+                put("connectionType", connectionType)
+                put("timestamp", System.currentTimeMillis())
+            }
+
+            val lowerUserName = userName.lowercase(Locale.ROOT)
+            val database = FirebaseDatabase.getInstance("https://together-23c28-default-rtdb.europe-west1.firebasedatabase.app/")
+            val statsRef = database.getReference("device_stats").child(lowerUserName)
+
+            statsRef.setValue(statsObj)
+                .addOnFailureListener { e ->
+                    Log.e("CoupleService", "Failed to update device stats", e)
+                }
+        } catch (e: Exception) {
+            Log.e("CoupleService", "Error fetching/pushing device stats", e)
+        }
     }
 }
