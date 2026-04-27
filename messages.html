@@ -323,11 +323,7 @@
                 <textarea id="dailyMessage" placeholder="Express your feelings..."></textarea>
             </div>
 
-            <div class="input-group" style="margin-top: 10px;">
-                <label>Attach Photo (Optional)</label>
-                <input type="file" id="photoInput" accept="image/*" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.2);">
-                <img id="photoPreview" style="max-width: 100px; display: none; margin-top: 10px; border-radius: 8px;" />
-            </div>
+
 
             <div class="input-group" style="margin-top: 10px;">
                 <label>Schedule for later (Optional)</label>
@@ -385,51 +381,11 @@
         }
 
         // Handle photo preview
-        let base64Photo = null;
-        document.getElementById('photoInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 500;
-                    const MAX_HEIGHT = 500;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                    } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    base64Photo = canvas.toDataURL('image/jpeg', 0.6); // Compress
-
-                    const preview = document.getElementById('photoPreview');
-                    preview.src = base64Photo;
-                    preview.style.display = 'block';
-                }
-                img.src = event.target.result;
-            }
-            reader.readAsDataURL(file);
-        });
-
         async function sendDailyMessage() {
             const messageText = document.getElementById('dailyMessage').value.trim();
 
-            if (!messageText && !base64Photo) {
-                showNotification('Please enter a message or attach a photo');
+            if (!messageText) {
+                showNotification('Please enter a message');
                 return;
             }
 
@@ -462,14 +418,11 @@
                     text: messageText,
                     timestamp: new Date().toISOString(),
                     sender: localUser.name,
-                    photo: base64Photo,
+
                     unlockAt: unlockAt
                 });
 
                 // Clear inputs
-                document.getElementById('photoInput').value = '';
-                document.getElementById('photoPreview').style.display = 'none';
-                base64Photo = null;
                 document.getElementById('scheduleDate').value = '';
 
                 if (myState.messages.length > 50) {
@@ -549,20 +502,8 @@
                     if (message.unlockAt) {
                         const unlockTime = new Date(message.unlockAt);
                         if (now < unlockTime) {
-                            if (!message.isOwn) {
-                                // Hide completely if it's a future message from partner
-                                return;
-                            } else {
-                                // Show blurred/indicator if it's our own scheduled message
-                                const messageEl = document.createElement('div');
-                                messageEl.className = 'message';
-                                messageEl.style.opacity = '0.5';
-                                messageEl.innerHTML = `
-                                    <div><strong>You:</strong> [Scheduled for ${unlockTime.toLocaleString()}]</div>
-                                `;
-                                messageHistory.appendChild(messageEl);
-                                return;
-                            }
+                            // Hide completely until unlock time, even if it is our own
+                            return;
                         }
                     }
 

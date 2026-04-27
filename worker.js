@@ -139,6 +139,44 @@ export default {
       });
     }
 
+
+    // POST /api/memories - Save a memory
+    if (request.method === 'POST' && url.pathname === '/api/memories') {
+      try {
+        const body = await request.json();
+        const existingDataStr = await env.US_KV.get('memories_jonas_owami');
+        let existingData = [];
+        if (existingDataStr) {
+            existingData = JSON.parse(existingDataStr);
+        }
+
+        // Ensure newest memories are first, but since we will render newest first, we can just push or unshift
+        existingData.unshift(body); // Add to beginning
+
+        await env.US_KV.put('memories_jonas_owami', JSON.stringify(existingData));
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        return new Response('Error processing request', { status: 500, headers: corsHeaders });
+      }
+    }
+
+    // GET /api/memories - Fetch memories
+    if (request.method === 'GET' && url.pathname === '/api/memories') {
+      const memoriesStr = await env.US_KV.get('memories_jonas_owami');
+      if (!memoriesStr) {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      return new Response(memoriesStr, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response('Not found', { status: 404, headers: corsHeaders });
   },
 };

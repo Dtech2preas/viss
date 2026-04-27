@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Together - Memories</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="global-style.css">
+    <script src="auth-check.js"></script>
+    <style>
+        .view-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        .view-container.active {
+            display: flex;
+        }
+
+        .input-group {
+            width: 100%;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.8);
+            color: #333;
+            box-sizing: border-box;
+        }
+        .input-group input::placeholder, .input-group textarea::placeholder {
+            color: #666;
+        }
+
+        .btn {
+            background: var(--gradient-bg);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        #photoPreview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            display: none;
+            margin: 10px auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Swipe View Styles */
+        .swipe-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 60vh;
+            perspective: 1000px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .memory-card {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease-out;
+            will-change: transform;
+            touch-action: none;
+        }
+
+        .memory-card img {
+            width: 100%;
+            height: 60%;
+            object-fit: cover;
+        }
+
+        .memory-info {
+            padding: 15px;
+            color: #333;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .memory-info .place {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 5px;
+        }
+
+        .memory-info .date {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .memory-info .desc {
+            font-size: 14px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .no-memories {
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            padding: 5px;
+        }
+        .mode-toggle button {
+            background: none;
+            border: none;
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .mode-toggle button.active {
+            background: rgba(255,255,255,0.8);
+            color: #d4145a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="stats.html" class="back-btn">← Back</a>
+        <h1>📸 Our Memories 📸</h1>
+
+        <div class="mode-toggle">
+            <button id="btnCreate" class="active" onclick="setMode('create')">Create Memory</button>
+            <button id="btnView" onclick="setMode('view')">View Memories</button>
+        </div>
+
+        <!-- CREATE MEMORY VIEW -->
+        <div id="createView" class="view-container active">
+            <div class="glass-panel" style="width: 100%;">
+                <div class="input-group">
+                    <label>Photo (Take or Upload)</label>
+                    <input type="file" id="photoInput" accept="image/*" capture="environment" style="background: rgba(255,255,255,0.2);">
+                    <img id="photoPreview" />
+                </div>
+
+                <div class="input-group">
+                    <label>Location / Place</label>
+                    <input type="text" id="placeInput" placeholder="Where are we?">
+                </div>
+
+                <div class="input-group">
+                    <label>Date & Time</label>
+                    <input type="datetime-local" id="dateInput">
+                </div>
+
+                <div class="input-group">
+                    <label>Description (Optional)</label>
+                    <textarea id="descInput" rows="3" placeholder="Write something about this memory..."></textarea>
+                </div>
+
+                <button class="btn" id="saveBtn" onclick="saveMemory()">Save Memory</button>
+                <div id="saveStatus" style="text-align: center; margin-top: 10px; font-weight: bold;"></div>
+            </div>
+        </div>
+
+        <!-- VIEW MEMORIES VIEW -->
+        <div id="viewView" class="view-container">
+            <div id="swipeContainer" class="swipe-container">
+                <!-- Cards will be injected here -->
+                <div class="no-memories" id="noMemoriesMsg" style="display: none;">No memories yet.<br>Create one!</div>
+                <div id="loadingMsg" style="color:white; text-align:center;">Loading memories...</div>
+            </div>
+            <div style="margin-top:20px; color:rgba(255,255,255,0.8); font-size:14px; text-align:center;">
+                Swipe left to next • Swipe right to previous
+            </div>
+        </div>
+    </div>
+
+    <script src="custom-alerts.js"></script>
+    <script src="debug-console.js"></script>
+    <script>
+        const API_URL = "https://together.preasx24.co.za";
+
+        let memoriesData = [];
+        let currentCardIndex = 0;
+        let base64Photo = null;
+
+        // Auto-fill current date/time
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const initialMode = params.get('mode');
+            if (initialMode === 'view') {
+                setMode('view');
+            } else {
+                setMode('create');
+            }
+
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('dateInput').value = now.toISOString().slice(0, 16);
+
+            // Handle photo compression
+            document.getElementById('photoInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const MAX_HEIGHT = 800;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        base64Photo = canvas.toDataURL('image/jpeg', 0.6); // Compress
+
+                        const preview = document.getElementById('photoPreview');
+                        preview.src = base64Photo;
+                        preview.style.display = 'block';
+                    }
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        function setMode(mode) {
+            document.getElementById('btnCreate').classList.remove('active');
+            document.getElementById('btnView').classList.remove('active');
+            document.getElementById('createView').classList.remove('active');
+            document.getElementById('viewView').classList.remove('active');
+
+            if (mode === 'create') {
+                document.getElementById('btnCreate').classList.add('active');
+                document.getElementById('createView').classList.add('active');
+            } else {
+                document.getElementById('btnView').classList.add('active');
+                document.getElementById('viewView').classList.add('active');
+                loadMemories();
+            }
+        }
+
+        async function saveMemory() {
+            if (!base64Photo) {
+                alert("Please add a photo!");
+                return;
+            }
+            const place = document.getElementById('placeInput').value;
+            const date = document.getElementById('dateInput').value;
+            const desc = document.getElementById('descInput').value;
+
+            if (!place || !date) {
+                alert("Please provide place and date!");
+                return;
+            }
+
+            const btn = document.getElementById('saveBtn');
+            const status = document.getElementById('saveStatus');
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+            status.innerText = "";
+
+            const memoryObj = {
+                id: Date.now().toString(),
+                photo: base64Photo,
+                place: place,
+                date: date,
+                description: desc,
+                timestamp: Date.now()
+            };
+
+            try {
+                const res = await window.authenticatedFetch(`${API_URL}/api/memories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(memoryObj)
+                });
+                if (res.ok) {
+                    status.innerText = "Memory saved successfully! 💖";
+                    status.style.color = "lightgreen";
+
+                    // Reset fields
+                    document.getElementById('photoInput').value = '';
+                    document.getElementById('photoPreview').style.display = 'none';
+                    document.getElementById('placeInput').value = '';
+                    document.getElementById('descInput').value = '';
+                    base64Photo = null;
+                } else {
+                    throw new Error("Failed");
+                }
+            } catch (err) {
+                status.innerText = "Failed to save memory!";
+                status.style.color = "#ff6b6b";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save Memory";
+                setTimeout(() => { status.innerText = ""; }, 3000);
+            }
+        }
+
+        async function loadMemories() {
+            document.getElementById('loadingMsg').style.display = 'block';
+            document.getElementById('noMemoriesMsg').style.display = 'none';
+            const container = document.getElementById('swipeContainer');
+            // Remove existing cards
+            container.querySelectorAll('.memory-card').forEach(c => c.remove());
+
+            try {
+                const res = await window.authenticatedFetch(`${API_URL}/api/memories`);
+                memoriesData = await res.json();
+
+                document.getElementById('loadingMsg').style.display = 'none';
+
+                if (!memoriesData || memoriesData.length === 0) {
+                    document.getElementById('noMemoriesMsg').style.display = 'block';
+                    return;
+                }
+
+                renderCards();
+
+            } catch (err) {
+                console.error("Error fetching memories", err);
+                document.getElementById('loadingMsg').innerText = "Error loading memories";
+            }
+        }
+
+        function renderCards() {
+            const container = document.getElementById('swipeContainer');
+            container.querySelectorAll('.memory-card').forEach(c => c.remove());
+
+            if (memoriesData.length === 0) return;
+
+            // Ensure current index is valid
+            if (currentCardIndex < 0) currentCardIndex = 0;
+            if (currentCardIndex >= memoriesData.length) currentCardIndex = memoriesData.length - 1;
+
+            // Render current card and a peek of the next/prev?
+            // Actually, let's just render the current card for simplicity of swipe logic,
+            // or render stack and manage z-index.
+
+            const mem = memoriesData[currentCardIndex];
+            const dateStr = new Date(mem.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+
+            const card = document.createElement('div');
+            card.className = 'memory-card';
+            card.innerHTML = `
+                <img src="${mem.photo}" />
+                <div class="memory-info">
+                    <div class="place"><i class="fas fa-map-marker-alt"></i> ${mem.place}</div>
+                    <div class="date"><i class="far fa-clock"></i> ${dateStr}</div>
+                    <div class="desc">${mem.description || ''}</div>
+                </div>
+            `;
+
+            container.appendChild(card);
+            setupSwipe(card);
+        }
+
+        function setupSwipe(card) {
+            let startX = 0;
+            let currentX = 0;
+            let isDragging = false;
+
+            card.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                isDragging = true;
+                card.style.transition = 'none';
+            }, {passive: true});
+
+            card.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                currentX = e.touches[0].clientX - startX;
+                card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.05}deg)`;
+            }, {passive: true});
+
+            card.addEventListener('touchend', (e) => {
+                isDragging = false;
+                card.style.transition = 'transform 0.3s ease-out';
+
+                if (currentX < -100) {
+                    // Swiped Left (Next)
+                    card.style.transform = `translateX(-1000px) rotate(-30deg)`;
+                    setTimeout(() => {
+                        currentCardIndex++;
+                        if (currentCardIndex >= memoriesData.length) {
+                            currentCardIndex = 0; // Loop back or stop
+                        }
+                        renderCards();
+                    }, 300);
+                } else if (currentX > 100) {
+                    // Swiped Right (Prev)
+                    card.style.transform = `translateX(1000px) rotate(30deg)`;
+                    setTimeout(() => {
+                        currentCardIndex--;
+                        if (currentCardIndex < 0) {
+                            currentCardIndex = memoriesData.length - 1;
+                        }
+                        renderCards();
+                    }, 300);
+                } else {
+                    // Snap back
+                    card.style.transform = `translateX(0px) rotate(0deg)`;
+                }
+                currentX = 0;
+            });
+
+            // Mouse support for testing
+            card.addEventListener('mousedown', (e) => {
+                startX = e.clientX;
+                isDragging = true;
+                card.style.transition = 'none';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                currentX = e.clientX - startX;
+                card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.05}deg)`;
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.transition = 'transform 0.3s ease-out';
+
+                if (currentX < -100) {
+                    // Swiped Left (Next)
+                    card.style.transform = `translateX(-1000px) rotate(-30deg)`;
+                    setTimeout(() => {
+                        currentCardIndex++;
+                        if (currentCardIndex >= memoriesData.length) currentCardIndex = 0;
+                        renderCards();
+                    }, 300);
+                } else if (currentX > 100) {
+                    // Swiped Right (Prev)
+                    card.style.transform = `translateX(1000px) rotate(30deg)`;
+                    setTimeout(() => {
+                        currentCardIndex--;
+                        if (currentCardIndex < 0) currentCardIndex = memoriesData.length - 1;
+                        renderCards();
+                    }, 300);
+                } else {
+                    card.style.transform = `translateX(0px) rotate(0deg)`;
+                }
+                currentX = 0;
+            });
+        }
+    </script>
+</body>
+</html>
