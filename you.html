@@ -396,60 +396,7 @@
         }
 
 
-        /* Device Stats Modal */
-        #deviceStatsModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(5px);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-        }
 
-        #deviceStatsModal.show {
-            display: flex;
-        }
-
-        .stats-box {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 350px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            position: relative;
-            animation: popIn 0.3s ease-out;
-        }
-
-        .close-stats {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #999;
-            cursor: pointer;
-            padding: 5px;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .stat-row:last-child {
-            border-bottom: none;
-        }
 
         .stat-label {
             font-weight: 500;
@@ -549,9 +496,7 @@
                 </div>
             </div>
 
-            <div class="stats-trigger" onclick="showDeviceStats()">
-                <span>📱 Partner device stats</span>
-            </div>
+
 
         </div>
     </div>
@@ -700,77 +645,7 @@
             createHearts();
         };
 
-        async function showDeviceStats() {
-            document.getElementById('deviceStatsModal').classList.add('show');
-            document.getElementById('statsLoading').style.display = 'block';
-            document.getElementById('statsContent').style.display = 'none';
-
-            try {
-                const partnerName = (togetherProfile === 'Owami') ? 'jonas' : 'owami';
-                const firebaseUrl = "https://together-23c28-default-rtdb.europe-west1.firebasedatabase.app";
-
-                const response = await fetch(`${firebaseUrl}/device_stats/${partnerName}.json`);
-                if (!response.ok) throw new Error("Failed to fetch stats");
-
-                const stats = await response.json();
-
-                document.getElementById('statsLoading').style.display = 'none';
-                document.getElementById('statsContent').style.display = 'block';
-
-                if (stats) {
-                    document.getElementById('statBattery').innerText = `${stats.battery}%`;
-                    document.getElementById('statCharging').innerText = stats.charging ? "Yes" : "No";
-                    document.getElementById('statNetwork').innerText = stats.connectionType || "Unknown";
-
-                    if (stats.timestamp) {
-                        const date = new Date(stats.timestamp);
-                        const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        document.getElementById('statLastUpdated').innerText = `Updated: ${timeString}`;
-                    } else {
-                        document.getElementById('statLastUpdated').innerText = `Updated: Unknown`;
-                    }
-                } else {
-                    document.getElementById('statBattery').innerText = "--%";
-                    document.getElementById('statCharging').innerText = "--";
-                    document.getElementById('statNetwork').innerText = "--";
-                    document.getElementById('statLastUpdated').innerText = "No data available yet";
-                }
-
-            } catch (error) {
-                console.error("Error fetching device stats:", error);
-                document.getElementById('statsLoading').innerHTML = "<p style='color: red;'>Failed to load stats</p>";
-            }
-        }
-
     </script>
-
-    <!-- Device Stats Modal -->
-    <div id="deviceStatsModal">
-        <div class="stats-box">
-            <button class="close-stats" onclick="document.getElementById('deviceStatsModal').classList.remove('show')">×</button>
-            <h2 style="font-family: 'Dancing Script', cursive; color: var(--accent-color); margin-bottom: 20px;">Partner Device</h2>
-
-            <div id="statsLoading">
-                <p>Fetching latest stats...</p>
-            </div>
-
-            <div id="statsContent" style="display: none;">
-                <div class="stat-row">
-                    <div class="stat-label"><span class="stat-icon">🔋</span> Battery</div>
-                    <div class="stat-value" id="statBattery">--%</div>
-                </div>
-                <div class="stat-row">
-                    <div class="stat-label"><span class="stat-icon">⚡</span> Charging</div>
-                    <div class="stat-value" id="statCharging">--</div>
-                </div>
-                <div class="stat-row">
-                    <div class="stat-label"><span class="stat-icon">📶</span> Network</div>
-                    <div class="stat-value" id="statNetwork">--</div>
-                </div>
-                <div style="font-size: 0.8rem; color: #999; margin-top: 15px;" id="statLastUpdated">Updated: --</div>
-            </div>
-        </div>
-    </div>
 
 </body>
 </html>

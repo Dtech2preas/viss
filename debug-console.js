@@ -1,6 +1,7 @@
 (function() {
     // Prevent multiple injections
     if (window._debugConsoleLoaded) return;
+    return; // Console hidden per user request
     window._debugConsoleLoaded = true;
 
     // Create the UI

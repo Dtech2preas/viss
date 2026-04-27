@@ -19,6 +19,16 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import android.net.Uri
+import android.webkit.ValueCallback
+import android.app.Activity
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import android.provider.MediaStore
+import android.os.Environment
+import java.io.File
+import androidx.core.content.FileProvider
+
+
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
@@ -33,7 +43,42 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
+
     private lateinit var webView: WebView
+
+    private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+
+    private var photoUri: Uri? = null
+
+
+    private val fileChooserLauncher = registerForActivityResult(StartActivityForResult()) { result ->
+        if (fileUploadCallback == null) return@registerForActivityResult
+
+        var results: Array<Uri>? = null
+        if (result.resultCode == Activity.RESULT_OK) {
+            val intent = result.data
+            if (intent == null || intent.data == null) {
+                // If intent is null or intent.data is null, it might be the camera returning the image we gave it the URI for
+                if (photoUri != null) {
+                    results = arrayOf(photoUri!!)
+                }
+            } else {
+                val dataString = intent.dataString
+                if (dataString != null) {
+                    results = arrayOf(Uri.parse(dataString))
+                } else if (intent.clipData != null) {
+                    val numSelectedFiles = intent.clipData!!.itemCount
+                    results = Array(numSelectedFiles) { i ->
+                        intent.clipData!!.getItemAt(i).uri
+                    }
+                }
+            }
+        }
+        fileUploadCallback?.onReceiveValue(results)
+        fileUploadCallback = null
+        photoUri = null
+    }
+
 
     private val partnerLocationReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -167,6 +212,62 @@ class MainActivity : AppCompatActivity() {
         webSettings.setGeolocationEnabled(true)
 
         webView.webChromeClient = object : WebChromeClient() {
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                fileUploadCallback?.onReceiveValue(null)
+                fileUploadCallback = filePathCallback
+
+                var takePictureIntent: Intent? = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                if (takePictureIntent?.resolveActivity(packageManager) != null) {
+                    var photoFile: File? = null
+                    try {
+                        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+                        photoFile = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+
+                        takePictureIntent.putExtra("PhotoPath", photoFile.absolutePath)
+                    } catch (ex: Exception) {
+                        Log.e("MainActivity", "Unable to create Image File", ex)
+                    }
+
+                    if (photoFile != null) {
+                        photoUri = FileProvider.getUriForFile(
+                            this@MainActivity,
+                            "com.together.app.fileprovider",
+                            photoFile
+                        )
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+                    } else {
+                        takePictureIntent = null
+                    }
+                } else {
+                    takePictureIntent = null
+                }
+
+                val contentSelectionIntent = Intent(Intent.ACTION_GET_CONTENT)
+                contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE)
+                contentSelectionIntent.type = "image/*"
+
+                val intentArray: Array<Intent> = if (takePictureIntent != null) arrayOf(takePictureIntent) else emptyArray()
+
+                val chooserIntent = Intent(Intent.ACTION_CHOOSER)
+                chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent)
+                chooserIntent.putExtra(Intent.EXTRA_TITLE, "Select an action")
+                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray)
+
+                try {
+                    fileChooserLauncher.launch(chooserIntent)
+                    return true
+                } catch (e: Exception) {
+                    fileUploadCallback = null
+                    return false
+                }
+            }
+
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String,
                 callback: GeolocationPermissions.Callback
