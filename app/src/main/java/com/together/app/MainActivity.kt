@@ -145,7 +145,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Log.d("MainActivity", "Background location denied")
             }
-            checkBatteryOptimization()
+            checkBatteryOptimizationAndAuthenticate()
         }
 
     // Register the permissions callback for multiple permissions
@@ -161,14 +161,14 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Please select 'Allow all the time' for background updates.", Toast.LENGTH_LONG).show()
                     requestBackgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
-                    checkBatteryOptimization()
+                    checkBatteryOptimizationAndAuthenticate()
                 }
             } else {
-                checkBatteryOptimization()
+                checkBatteryOptimizationAndAuthenticate()
             }
         }
 
-    private fun checkBatteryOptimization() {
+    private fun checkBatteryOptimizationAndAuthenticate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             if (!pm.isIgnoringBatteryOptimizations(packageName)) {
@@ -181,6 +181,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        // Authentication now happens after all permissions are processed
+        authenticateUser()
     }
 
     @SuppressLint("SetJavaScriptEnabled", "UnspecifiedRegisterReceiverFlag")
@@ -355,8 +357,8 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidBridge")
 
         // Authenticate before loading URL
-        authenticateUser()
-    }
+        }
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -459,10 +461,10 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Please select 'Allow all the time' for reliable background tracking.", Toast.LENGTH_LONG).show()
                     requestBackgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
-                    checkBatteryOptimization()
+                    checkBatteryOptimizationAndAuthenticate()
                 }
             } else {
-                checkBatteryOptimization()
+                checkBatteryOptimizationAndAuthenticate()
             }
         }
     }
