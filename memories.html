@@ -160,6 +160,37 @@
             background: rgba(255,255,255,0.8);
             color: #d4145a;
         }
+
+        /* Full screen image popup */
+        .fullscreen-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .fullscreen-overlay img {
+            max-width: 95%;
+            max-height: 90%;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+        .fullscreen-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 10000;
+        }
+
     </style>
 </head>
 <body>
@@ -177,7 +208,7 @@
             <div class="glass-panel" style="width: 100%;">
                 <div class="input-group">
                     <label>Photo (Take or Upload)</label>
-                    <input type="file" id="photoInput" accept="image/*" capture="environment" style="background: rgba(255,255,255,0.2);">
+                    <input type="file" id="photoInput" accept="image/*" style="background: rgba(255,255,255,0.2);">
                     <img id="photoPreview" />
                 </div>
 
@@ -282,6 +313,8 @@
             document.getElementById('btnCreate').classList.remove('active');
             document.getElementById('btnView').classList.remove('active');
             document.getElementById('createView').classList.remove('active');
+            document.querySelector('.back-btn').style.display = 'block';
+            document.querySelector('.mode-toggle').style.display = 'flex';
             document.getElementById('viewView').classList.remove('active');
 
             if (mode === 'create') {
@@ -290,6 +323,8 @@
             } else {
                 document.getElementById('btnView').classList.add('active');
                 document.getElementById('viewView').classList.add('active');
+                document.querySelector('.back-btn').style.display = 'none';
+                document.querySelector('.mode-toggle').style.display = 'none';
                 loadMemories();
             }
         }
@@ -398,7 +433,7 @@
             const card = document.createElement('div');
             card.className = 'memory-card';
             card.innerHTML = `
-                <img src="${mem.photo}" />
+                <img src="${mem.photo}" onclick="openFullscreen('${mem.photo}')" style="cursor: pointer;" />
                 <div class="memory-info">
                     <div class="place"><i class="fas fa-map-marker-alt"></i> ${mem.place}</div>
                     <div class="date"><i class="far fa-clock"></i> ${dateStr}</div>
@@ -408,6 +443,18 @@
 
             container.appendChild(card);
             setupSwipe(card);
+        }
+
+
+        function openFullscreen(src) {
+            const overlay = document.getElementById('fullscreenOverlay');
+            const img = document.getElementById('fullscreenImage');
+            img.src = src;
+            overlay.style.display = 'flex';
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreenOverlay').style.display = 'none';
         }
 
         function setupSwipe(card) {
@@ -499,5 +546,12 @@
             });
         }
     </script>
+
+    <!-- Fullscreen Image Overlay -->
+    <div id="fullscreenOverlay" class="fullscreen-overlay" onclick="closeFullscreen()">
+        <span class="fullscreen-close" onclick="closeFullscreen()">×</span>
+        <img id="fullscreenImage" src="" />
+    </div>
+
 </body>
 </html>
