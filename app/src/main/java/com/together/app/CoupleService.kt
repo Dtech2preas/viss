@@ -94,7 +94,6 @@ class CoupleService : Service() {
     private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
     private var isRunning = false
     private val client = OkHttpClient()
-    private var permanentWakeLock: PowerManager.WakeLock? = null
     private var forceUpdateListener: ValueEventListener? = null
     private var firebaseDb: FirebaseDatabase? = null
     private var forceUpdateRef: com.google.firebase.database.DatabaseReference? = null
@@ -112,14 +111,6 @@ class CoupleService : Service() {
     @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForegroundService()
-
-        // Acquire permanent wake lock if we don't have it
-        if (permanentWakeLock == null || permanentWakeLock?.isHeld != true) {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            permanentWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Together:PermanentWakeLock")
-            // No timeout, keeping it forever to guarantee background updates
-            permanentWakeLock?.acquire()
-        }
 
         if (!isRunning) {
             isRunning = true
@@ -1528,9 +1519,6 @@ class CoupleService : Service() {
             forceUpdateRef?.removeEventListener(forceUpdateListener!!)
         }
 
-        if (permanentWakeLock?.isHeld == true) {
-            permanentWakeLock?.release()
-        }
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, PollReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(this, 1001, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
