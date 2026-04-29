@@ -23,6 +23,7 @@ export default {
 
     // Hardcoded single couple key for Jonas and Owami
     const COUPLE_KEY = 'couple_jonas_owami';
+    const COUPLE_VERSION_KEY = 'couple_jonas_owami_version';
 
     // Helper to deep merge objects
     function isObject(item) {
@@ -115,12 +116,35 @@ export default {
         const mergedData = mergeDeep({}, existingData, body);
 
         await env.US_KV.put(COUPLE_KEY, JSON.stringify(mergedData));
+
+        // Increment version to signal state change
+        const currentVersionStr = await env.US_KV.get(COUPLE_VERSION_KEY);
+        let currentVersion = 0;
+        if (currentVersionStr) {
+            currentVersion = parseInt(currentVersionStr, 10);
+            if (isNaN(currentVersion)) currentVersion = 0;
+        }
+        await env.US_KV.put(COUPLE_VERSION_KEY, (currentVersion + 1).toString());
+
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (error) {
         return new Response('Error processing request', { status: 500, headers: corsHeaders });
       }
+    }
+
+    // GET /api/couple/check - Lightweight endpoint to check version
+    if (request.method === 'GET' && url.pathname === '/api/couple/check') {
+      const versionStr = await env.US_KV.get(COUPLE_VERSION_KEY);
+      let version = 0;
+      if (versionStr) {
+        version = parseInt(versionStr, 10);
+        if (isNaN(version)) version = 0;
+      }
+      return new Response(JSON.stringify({ version }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // GET /api/couple - Fetch the shared couple data

@@ -246,6 +246,7 @@ class CoupleService : Service() {
         // Request updates every 5 minutes just to keep the subsystem warm
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 5 * 60 * 1000L)
             .setMinUpdateIntervalMillis(5 * 60 * 1000L)
+            .setMinUpdateDistanceMeters(50.0f)
             .build()
 
         continuousLocationCallback = object : LocationCallback() {
@@ -465,6 +466,36 @@ class CoupleService : Service() {
 
             val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
+            // Check version before fetching full state
+            var serverVersionToSave = -1
+            var shouldFetchFullState = true
+            try {
+                val checkRequest = Request.Builder()
+                    .url("$apiUrl/check")
+                    .addHeader("Authorization", "Bearer $authToken")
+                    .build()
+                val checkResponse = client.newCall(checkRequest).execute()
+                if (checkResponse.isSuccessful) {
+                    val checkBody = checkResponse.body?.string()
+                    if (!checkBody.isNullOrEmpty()) {
+                        val checkJson = JSONObject(checkBody)
+                        val serverVersion = checkJson.optInt("version", 0)
+                        val localVersion = sharedPref.getInt("couple_state_version", -1)
+                        if (serverVersion == localVersion) {
+                            // Version hasn't changed, skip full state fetch
+                            shouldFetchFullState = false
+                        }
+                        serverVersionToSave = serverVersion
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CoupleService", "Failed to check state version", e)
+            }
+
+            if (!shouldFetchFullState) {
+                return
+            }
+
             val request = Request.Builder()
                 .url(apiUrl)
                 .addHeader("Authorization", "Bearer $authToken")
@@ -474,6 +505,11 @@ class CoupleService : Service() {
             if (!response.isSuccessful) return
 
             val responseBody = response.body?.string()
+
+            // Update local version only after a successful full state fetch
+            if (serverVersionToSave != -1) {
+                sharedPref.edit().putInt("couple_state_version", serverVersionToSave).apply()
+            }
 
             if (!responseBody.isNullOrEmpty()) {
                 val globalState = JSONObject(responseBody)
@@ -806,10 +842,46 @@ class CoupleService : Service() {
 
         try {
             val updateLocationOnServer = { loc: Location ->
-                broadcastDebugLog("CoupleService", "Updating location on server: ${loc.latitude}, ${loc.longitude}")
-                thread {
-                    try {
-                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+                val lastLat = sharedPref.getFloat("last_uploaded_lat", 0f).toDouble()
+                val lastLng = sharedPref.getFloat("last_uploaded_lng", 0f).toDouble()
+
+                // Calculate distance if we have a previous location
+                var shouldUpload = true
+                if (lastLat != 0.0 && lastLng != 0.0) {
+                    val lastLocationObj = Location("").apply {
+                        latitude = lastLat
+                        longitude = lastLng
+                    }
+                    val distanceMoved = loc.distanceTo(lastLocationObj)
+
+                    if (distanceMoved < 50.0f) {
+                        shouldUpload = false
+                        broadcastDebugLog("CoupleService", "Skipping upload, moved only ${String.format(Locale.US, "%.1f", distanceMoved)}m (< 50m)")
+
+                        // We must still clear the force flag so it doesn't get stuck trying to force update forever
+                        thread {
+                            try {
+                                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                                val ts = System.currentTimeMillis()
+                                val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                                val forcePostReq = Request.Builder()
+                                    .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
+                                    .put(forceReqBody)
+                                    .build()
+                                client.newCall(forcePostReq).execute()
+                            } catch (e: Exception) {
+                                Log.e("CoupleService", "Error clearing force flag", e)
+                            }
+                        }
+                    }
+                }
+
+                if (shouldUpload) {
+                    broadcastDebugLog("CoupleService", "Updating location on server: ${loc.latitude}, ${loc.longitude}")
+                    thread {
+                        try {
+                            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
 
                         // Fetch existing location data to preserve metadata
                         val getLocReq = Request.Builder().url("$firebaseUrl/locations/${userName.lowercase(java.util.Locale.US)}.json").build()
@@ -904,17 +976,23 @@ class CoupleService : Service() {
                         val histRes = client.newCall(histPostReq).execute()
                         if (!histRes.isSuccessful) throw Exception("Failed to push history")
 
-                        // Always clear force flag after updating
-                        val ts = System.currentTimeMillis()
-                        val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
-                        val forcePostReq = Request.Builder()
-                            .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
-                            .put(forceReqBody)
-                            .build()
-                        client.newCall(forcePostReq).execute()
+                            // Always clear force flag after updating
+                            val ts = System.currentTimeMillis()
+                            val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                            val forcePostReq = Request.Builder()
+                                .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
+                                .put(forceReqBody)
+                                .build()
+                            client.newCall(forcePostReq).execute()
 
-                        lastLocationUpdateTime = System.currentTimeMillis()
-                        broadcastDebugLog("CoupleService", "Location successfully updated on Firebase")
+                            // Save new last location locally
+                            sharedPref.edit()
+                                .putFloat("last_uploaded_lat", loc.latitude.toFloat())
+                                .putFloat("last_uploaded_lng", loc.longitude.toFloat())
+                                .apply()
+
+                            lastLocationUpdateTime = System.currentTimeMillis()
+                            broadcastDebugLog("CoupleService", "Location successfully updated on Firebase")
 
                         // Process any queued offline locations
                         try {
@@ -946,45 +1024,46 @@ class CoupleService : Service() {
                                     }
                                 }
 
-                                sharedPref.edit().putString("offline_locations", remainingLocs.toString()).apply()
-                                if (remainingLocs.length() == 0) {
-                                    broadcastDebugLog("CoupleService", "Successfully pushed all offline locations")
-                                } else {
-                                    broadcastDebugLog("CoupleService", "Failed to push ${remainingLocs.length()} offline locations, keeping in queue")
+                                    sharedPref.edit().putString("offline_locations", remainingLocs.toString()).apply()
+                                    if (remainingLocs.length() == 0) {
+                                        broadcastDebugLog("CoupleService", "Successfully pushed all offline locations")
+                                    } else {
+                                        broadcastDebugLog("CoupleService", "Failed to push ${remainingLocs.length()} offline locations, keeping in queue")
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                Log.e("CoupleService", "Error processing offline locations", e)
                             }
+
                         } catch (e: Exception) {
-                            Log.e("CoupleService", "Error processing offline locations", e)
-                        }
+                            Log.e("CoupleService", "Failed to update location on Firebase", e)
+                            broadcastDebugLog("CoupleService", "Failed to update location on Firebase: ${e.message}. Saving offline.")
 
-                    } catch (e: Exception) {
-                        Log.e("CoupleService", "Failed to update location on Firebase", e)
-                        broadcastDebugLog("CoupleService", "Failed to update location on Firebase: ${e.message}. Saving offline.")
-
-                        try {
-                            val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
-                            val offlineLocsStr = sharedPref.getString("offline_locations", "[]") ?: "[]"
+                            try {
+                                val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+                                val offlineLocsStr = sharedPref.getString("offline_locations", "[]") ?: "[]"
                             val offlineLocs = JSONArray(offlineLocsStr)
 
-                            val offlineLoc = JSONObject().apply {
-                                put("lat", loc.latitude)
-                                put("lng", loc.longitude)
-                                put("timestamp", System.currentTimeMillis())
+                                val offlineLoc = JSONObject().apply {
+                                    put("lat", loc.latitude)
+                                    put("lng", loc.longitude)
+                                    put("timestamp", System.currentTimeMillis())
+                                }
+
+                                offlineLocs.put(offlineLoc)
+
+                                // Keep maximum of 1000 logs to prevent memory issues
+                                val startIdx = if (offlineLocs.length() > 1000) offlineLocs.length() - 1000 else 0
+                                val trimmedLocs = JSONArray()
+                                for (i in startIdx until offlineLocs.length()) {
+                                    trimmedLocs.put(offlineLocs.get(i))
+                                }
+
+                                sharedPref.edit().putString("offline_locations", trimmedLocs.toString()).apply()
+                                broadcastDebugLog("CoupleService", "Saved location offline. Total queued: ${trimmedLocs.length()}")
+                            } catch (offlineEx: Exception) {
+                                Log.e("CoupleService", "Failed to save offline location", offlineEx)
                             }
-
-                            offlineLocs.put(offlineLoc)
-
-                            // Keep maximum of 1000 logs to prevent memory issues
-                            val startIdx = if (offlineLocs.length() > 1000) offlineLocs.length() - 1000 else 0
-                            val trimmedLocs = JSONArray()
-                            for (i in startIdx until offlineLocs.length()) {
-                                trimmedLocs.put(offlineLocs.get(i))
-                            }
-
-                            sharedPref.edit().putString("offline_locations", trimmedLocs.toString()).apply()
-                            broadcastDebugLog("CoupleService", "Saved location offline. Total queued: ${trimmedLocs.length()}")
-                        } catch (offlineEx: Exception) {
-                            Log.e("CoupleService", "Failed to save offline location", offlineEx)
                         }
                     }
                 }
@@ -1071,7 +1150,8 @@ class CoupleService : Service() {
         thread {
             try {
                 val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val forceReqBody = "false".toRequestBody(mediaType)
+                val ts = System.currentTimeMillis()
+                val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
                 val forcePostReq = Request.Builder()
                     .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
                     .put(forceReqBody)
