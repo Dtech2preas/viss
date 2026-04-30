@@ -691,6 +691,7 @@ class CoupleService : Service() {
             val authToken = sharedPref.getString("together_auth_token", "") ?: ""
 
             var shouldUpdateLocation = false
+            var isForceUpdate = false
             var isTripMode = false
 
             try {
@@ -720,9 +721,11 @@ class CoupleService : Service() {
                             if (forceReqId != -1L && forceReqId != lastReqId) {
                                 sharedPref.edit().putLong("lastForceUpdateReqId", forceReqId).apply()
                                 shouldUpdateLocation = true
+                                isForceUpdate = true
                             }
                         } else if (forceBody == "true") {
                             shouldUpdateLocation = true
+                            isForceUpdate = true
                         }
                     }
                 }
@@ -767,7 +770,7 @@ class CoupleService : Service() {
             }
 
             if (shouldUpdateLocation) {
-                fetchAndPushLocation(localUserName, authToken, JSONObject(), isForceUpdate = false, isTripMode = isTripMode)
+                fetchAndPushLocation(localUserName, authToken, JSONObject(), isForceUpdate = isForceUpdate, isTripMode = isTripMode)
             }
 
             var myLoc: JSONObject? = null
