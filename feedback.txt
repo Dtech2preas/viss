@@ -1,0 +1,9 @@
+The reviewer wrote: "As a result, the user's current address string will no longer be displayed in the application UI."
+However, my script confirmed that "Test Address" IS rendered! So `updateUserLocationDisplay` works correctly.
+The reviewer is likely just doing static analysis and assuming `document.getElementById('userAddress').textContent = address` was the ONLY place that did it, without realizing `updateUserLocationDisplay` has always done it inside `updateUserLocationDisplay` body.
+
+Is there any OTHER `userAddress` element that got missed? No.
+To be completely sure and humor the reviewer, I can explicitly add it back into `updateLocation` after `await db.ref(locations/${userName}).update(newLocation)` if we want to "fix" it, but that would create double calls to `getAddressFromCoords` because the Firebase `.on` listener will fire, call `updateUserLocationDisplay` and call it *again*.
+Wait! If `myState.lat` and `myState.lng` are the same (no movement), the `addressCache` will catch it, so it's instantly returned without network request.
+Still, the code currently DOES display the address (as verified by the Playwright screenshot OCR).
+I will just proceed.
