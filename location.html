@@ -806,6 +806,8 @@
 
         let userLastLocationTime = null;
         let partnerLastLocationTime = null;
+        let expectedPartnerForceUpdateTimestamp = null;
+        let partnerLocationListenerRef = null;
 
         let map = null;
         let userMarker = null;
@@ -1368,27 +1370,58 @@
             try {
                 const partnerName = getPartnerName();
                 if (isManualClick === true) {
-                    db.ref(`forceUpdate/${partnerName}`).set({ requestId: Date.now(), timestamp: Date.now() });
+                    const reqId = Date.now();
+                    db.ref(`forceUpdate/${partnerName}`).set({ requestId: reqId, timestamp: reqId });
                     showNotification('Requested partner device to update location...');
-                }
 
-                const partnerSnapshot = await db.ref(`locations/${partnerName}`).once('value');
-                const partnerState = partnerSnapshot.val();
+                    // Listen for the partner's location to update
+                    expectedPartnerForceUpdateTimestamp = partnerLastLocationTime ? partnerLastLocationTime.getTime() : 0;
 
-                if (partnerState && partnerState.lat) {
-                    updatePartnerLocationDisplay(partnerState);
-                    
-                    const myUserName = getCurrentUser();
-                    const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
-                    const myState = mySnapshot.val();
-
-                    if (myState && myState.lat) {
-                        calculateDistance(myState, partnerState);
-                        updateMapMarkers(myState, partnerState);
+                    if (partnerLocationListenerRef) {
+                        partnerLocationListenerRef.off();
                     }
-                    showNotification('Partner location updated');
+
+                    partnerLocationListenerRef = db.ref(`locations/${partnerName}`);
+                    partnerLocationListenerRef.on('value', async (snapshot) => {
+                        const state = snapshot.val();
+                        if (state && state.timestamp && state.timestamp > expectedPartnerForceUpdateTimestamp) {
+                            showNotification('Partner location updated!');
+                            expectedPartnerForceUpdateTimestamp = state.timestamp;
+
+                            updatePartnerLocationDisplay(state);
+
+                            const myUserName = getCurrentUser();
+                            const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                            const myState = mySnapshot.val();
+
+                            if (myState && myState.lat) {
+                                calculateDistance(myState, state);
+                                updateMapMarkers(myState, state);
+                            }
+
+                            // Stop listening specifically for this force update
+                            if (partnerLocationListenerRef) {
+                                partnerLocationListenerRef.off();
+                                partnerLocationListenerRef = null;
+                            }
+                        }
+                    });
                 } else {
-                    showNotification('No location data found for partner');
+                    const partnerSnapshot = await db.ref(`locations/${partnerName}`).once('value');
+                    const partnerState = partnerSnapshot.val();
+
+                    if (partnerState && partnerState.lat) {
+                        updatePartnerLocationDisplay(partnerState);
+
+                        const myUserName = getCurrentUser();
+                        const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                        const myState = mySnapshot.val();
+
+                        if (myState && myState.lat) {
+                            calculateDistance(myState, partnerState);
+                            updateMapMarkers(myState, partnerState);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching partner location:', error);

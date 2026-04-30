@@ -857,22 +857,27 @@ class CoupleService : Service() {
                     val distanceMoved = loc.distanceTo(lastLocationObj)
 
                     if (distanceMoved < 50.0f) {
-                        shouldUpload = false
-                        broadcastDebugLog("CoupleService", "Skipping upload, moved only ${String.format(Locale.US, "%.1f", distanceMoved)}m (< 50m)")
+                        if (isForceUpdate) {
+                            broadcastDebugLog("CoupleService", "isForceUpdate=true: Bypassing < 50m check (moved ${String.format(Locale.US, "%.1f", distanceMoved)}m)")
+                            shouldUpload = true
+                        } else {
+                            shouldUpload = false
+                            broadcastDebugLog("CoupleService", "Skipping upload, moved only ${String.format(Locale.US, "%.1f", distanceMoved)}m (< 50m)")
 
-                        // We must still clear the force flag so it doesn't get stuck trying to force update forever
-                        thread {
-                            try {
-                                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                                val ts = System.currentTimeMillis()
-                                val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
-                                val forcePostReq = Request.Builder()
-                                    .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
-                                    .put(forceReqBody)
-                                    .build()
-                                client.newCall(forcePostReq).execute()
-                            } catch (e: Exception) {
-                                Log.e("CoupleService", "Error clearing force flag", e)
+                            // We must still clear the force flag so it doesn't get stuck trying to force update forever
+                            thread {
+                                try {
+                                    val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                                    val ts = System.currentTimeMillis()
+                                    val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                                    val forcePostReq = Request.Builder()
+                                        .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
+                                        .put(forceReqBody)
+                                        .build()
+                                    client.newCall(forcePostReq).execute()
+                                } catch (e: Exception) {
+                                    Log.e("CoupleService", "Error clearing force flag", e)
+                                }
                             }
                         }
                     }
