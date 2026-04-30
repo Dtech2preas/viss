@@ -328,7 +328,8 @@ class CoupleService : Service() {
                                         if (!bodyStr.isNullOrEmpty()) {
                                             val globalState = JSONObject(bodyStr)
                                             val myState = globalState.optJSONObject(localUserName) ?: JSONObject()
-                                            fetchAndPushLocation(localUserName, authToken, myState)
+
+                                            fetchAndPushLocation(localUserName, authToken, myState, isForceUpdate = true, isTripMode = false)
                                         }
                                     }
                                 } catch (e: Exception) {
@@ -766,7 +767,7 @@ class CoupleService : Service() {
             }
 
             if (shouldUpdateLocation) {
-                fetchAndPushLocation(localUserName, authToken, JSONObject())
+                fetchAndPushLocation(localUserName, authToken, JSONObject(), isForceUpdate = false, isTripMode = isTripMode)
             }
 
             var myLoc: JSONObject? = null
@@ -828,9 +829,9 @@ class CoupleService : Service() {
         }
     }
 
-    private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject) {
+    private fun fetchAndPushLocation(userName: String, authToken: String, myStateObj: JSONObject, isForceUpdate: Boolean = false, isTripMode: Boolean = false) {
 
-        broadcastDebugLog("CoupleService", "fetchAndPushLocation called for user: $userName")
+        broadcastDebugLog("CoupleService", "fetchAndPushLocation called for user: $userName (isForceUpdate=$isForceUpdate, isTripMode=$isTripMode)")
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             broadcastDebugLog("CoupleService", "Location permission missing in fetchAndPushLocation")
             return
@@ -848,7 +849,7 @@ class CoupleService : Service() {
 
                 // Calculate distance if we have a previous location
                 var shouldUpload = true
-                if (lastLat != 0.0 && lastLng != 0.0) {
+                if (!isForceUpdate && lastLat != 0.0 && lastLng != 0.0) {
                     val lastLocationObj = Location("").apply {
                         latitude = lastLat
                         longitude = lastLng
@@ -1069,10 +1070,16 @@ class CoupleService : Service() {
                 }
             }
 
-            broadcastDebugLog("CoupleService", "Requesting current location from FusedLocationClient...")
+            val locationPriority = if (isForceUpdate || isTripMode) {
+                Priority.PRIORITY_HIGH_ACCURACY
+            } else {
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY
+            }
+
+            broadcastDebugLog("CoupleService", "Requesting current location from FusedLocationClient (Priority: $locationPriority)...")
             // We request location updates, but also add getCurrentLocation with CancellationToken as a backup
             // since some devices restrict background callbacks.
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, CancellationTokenSource().token)
+            fusedLocationClient.getCurrentLocation(locationPriority, CancellationTokenSource().token)
                 .addOnSuccessListener { loc ->
                     broadcastDebugLog("CoupleService", "getCurrentLocation returned: ${if (loc != null) "success" else "null"}")
                     if (loc != null) {
@@ -1080,7 +1087,7 @@ class CoupleService : Service() {
                     } else {
                         broadcastDebugLog("CoupleService", "getCurrentLocation returned null, attempting fallback location callbacks")
                         // Fallback to normal request updates
-                        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                        val locationRequest = LocationRequest.Builder(locationPriority, 1000)
                             .setMaxUpdates(1)
                             .build()
 
