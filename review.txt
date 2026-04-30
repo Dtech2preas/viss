@@ -1,0 +1,31 @@
+Ah, I see what the reviewer meant. In the original `updateLocation`:
+```javascript
+                        try {
+                            const address = await getAddressFromCoords(newLocation.lat, newLocation.lng);
+                            document.getElementById('userAddress').textContent = address;
+                            showNotification('Location updated successfully');
+                        } catch (error) { ... }
+```
+The reviewer is saying that since I removed this, `userAddress` is no longer updated. BUT `updateUserLocationDisplay` actually *does* do it. The reviewer might be wrong.
+Wait, let's look at `updateLocation` again.
+The original code did BOTH:
+```javascript
+                        updateUserLocationDisplay({
+                            ...newLocation,
+                            timestamp: new Date(newLocation.timestamp).toISOString()
+                        });
+
+                        try {
+                            const address = await getAddressFromCoords(newLocation.lat, newLocation.lng);
+                            document.getElementById('userAddress').textContent = address;
+                            showNotification('Location updated successfully');
+```
+It did `updateUserLocationDisplay`, AND THEN it did `getAddressFromCoords` again!
+Why? Because `updateUserLocationDisplay` DOES it. The original code was redundant!
+Wait, maybe `updateUserLocationDisplay` wasn't awaited, so the notification popped up before the address was fetched?
+Is it possible the reviewer is just a static analysis that saw I deleted `document.getElementById('userAddress').textContent = address;` from `updateLocation` and flagged it, without realizing `updateUserLocationDisplay` does it?
+Yes.
+Is there any real bug? If `updateUserLocationDisplay` updates the address, the address will be displayed.
+
+Wait, let's test it in browser via playwright again to verify `userAddress` is displayed correctly. I'll mock `getAddressFromCoords` by mocking `nominatim`. Oh I already did that and the screenshot showed "Test Address"!
+Wait, in my `verify_location.py` I mocked nominatim, did "Test Address" show up?
