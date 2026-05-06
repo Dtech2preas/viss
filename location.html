@@ -1018,19 +1018,39 @@
             }
             if (partnerLastLocationTime) {
                 const diffMs = now - partnerLastLocationTime;
-                document.getElementById('partnerLastUpdated').textContent = `Updated: ${formatTimeDiff(diffMs)}`;
+                document.getElementById('partnerLastUpdated').textContent = `Updated: ${formatTimeDiff(diffMs, true)}`;
             }
         }
 
-        function formatTimeDiff(ms) {
+        function formatTimeDiff(ms, isPartner = false) {
             const secs = Math.floor(ms / 1000);
-            if (secs < 60) return "Just now";
-            const mins = Math.floor(secs / 60);
-            if (mins < 60) return `${mins} min${mins !== 1 ? 's' : ''} ago`;
-            const hours = Math.floor(mins / 60);
-            if (hours < 24) return `${hours} hr${hours !== 1 ? 's' : ''} ago`;
-            const days = Math.floor(hours / 24);
-            return `${days} day${days !== 1 ? 's' : ''} ago`;
+            let timeStr = "";
+            if (secs < 60) {
+                timeStr = "Just now";
+            } else {
+                const mins = Math.floor(secs / 60);
+                if (mins < 60) {
+                    timeStr = `${mins} min${mins !== 1 ? 's' : ''} ago`;
+                } else {
+                    const hours = Math.floor(mins / 60);
+                    if (hours < 24) {
+                        timeStr = `${hours} hr${hours !== 1 ? 's' : ''} ago`;
+                    } else {
+                        const days = Math.floor(hours / 24);
+                        timeStr = `${days} day${days !== 1 ? 's' : ''} ago`;
+                    }
+                }
+            }
+            if (isPartner) {
+                if (secs > 1800) {
+                    return `Delayed (Offline) - ${timeStr}`;
+                } else if (secs > 120) {
+                    return `Cached - ${timeStr}`;
+                } else {
+                    return `Live - ${timeStr}`;
+                }
+            }
+            return timeStr;
         }
 
         function setupIntervals() {

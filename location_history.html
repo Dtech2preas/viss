@@ -220,6 +220,45 @@
             }
         }
 
+        // Smooth path interpolation function
+        // Smooth path interpolation function using Chaikin's algorithm
+        function smoothPath(points, iterations=3) {
+            if (points.length < 3) return points;
+
+            let smoothed = [...points];
+            for (let k = 0; k < iterations; k++) {
+                const nextSmoothed = [];
+                nextSmoothed.push(smoothed[0]); // Keep the first point
+
+                for (let i = 0; i < smoothed.length - 1; i++) {
+                    const p1 = smoothed[i];
+                    const p2 = smoothed[i + 1];
+
+                    if (typeof p1.lat !== 'number' || typeof p1.lng !== 'number' ||
+                        typeof p2.lat !== 'number' || typeof p2.lng !== 'number') {
+                        continue;
+                    }
+
+                    const pA = {
+                        lat: 0.75 * p1.lat + 0.25 * p2.lat,
+                        lng: 0.75 * p1.lng + 0.25 * p2.lng,
+                        timestamp: p1.timestamp + 0.25 * (p2.timestamp - p1.timestamp)
+                    };
+                    const pB = {
+                        lat: 0.25 * p1.lat + 0.75 * p2.lat,
+                        lng: 0.25 * p1.lng + 0.75 * p2.lng,
+                        timestamp: p1.timestamp + 0.75 * (p2.timestamp - p1.timestamp)
+                    };
+
+                    nextSmoothed.push(pA);
+                    nextSmoothed.push(pB);
+                }
+                nextSmoothed.push(smoothed[smoothed.length - 1]); // Keep the last point
+                smoothed = nextSmoothed;
+            }
+            return smoothed;
+        }
+
         function setTimeframe(tf, targetElement = null) {
             document.querySelectorAll('.controls .btn').forEach(b => b.classList.remove('active'));
             if (targetElement) {
@@ -228,11 +267,15 @@
 
             const cutoff = getCutoffTime(tf);
 
-            const myFiltered = allData.mine.filter(p => p.timestamp >= cutoff);
-            const partnerFiltered = allData.partner.filter(p => p.timestamp >= cutoff);
+            let myFiltered = allData.mine.filter(p => p.timestamp >= cutoff);
+            let partnerFiltered = allData.partner.filter(p => p.timestamp >= cutoff);
 
             document.getElementById('myPoints').textContent = myFiltered.length;
             document.getElementById('partnerPoints').textContent = partnerFiltered.length;
+
+            // Apply smoothing
+            myFiltered = smoothPath(myFiltered, 3);
+            partnerFiltered = smoothPath(partnerFiltered, 3);
 
             drawPaths(myFiltered, partnerFiltered);
         }

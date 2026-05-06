@@ -229,7 +229,7 @@ class CoupleService : Service() {
                         Log.e("CoupleService", "Location polling failed in handler loop", e)
                     }
                 }
-                statePollingHandler?.postDelayed(this, 15000)
+                statePollingHandler?.postDelayed(this, 30000)
             }
         }
         statePollingHandler?.post(statePollingRunnable!!)
@@ -769,10 +769,6 @@ class CoupleService : Service() {
                 shouldUpdateLocation = true
             }
 
-            if (shouldUpdateLocation) {
-                fetchAndPushLocation(localUserName, authToken, JSONObject(), isForceUpdate = isForceUpdate, isTripMode = isTripMode)
-            }
-
             var myLoc: JSONObject? = null
             var partnerLoc: JSONObject? = null
 
@@ -793,6 +789,15 @@ class CoupleService : Service() {
                     if (body != null && body != "null") partnerLoc = JSONObject(body)
                 }
             } catch (e: Exception) {}
+
+            // We DO NOT do a naive stationary detection here based on myLoc because myLoc is just the *last uploaded* location from Firebase.
+            // If we compare myLoc to lastLat/lastLng (which is ALSO the last uploaded location), the distance is 0.
+            // We rely on the 50m check INSIDE updateLocationOnServer, which calculates distance based on the NEW raw gps data.
+            // But to support the user's specific 15m requirement, we can tweak the upload distance block inside fetchAndPushLocation later.
+
+            if (shouldUpdateLocation) {
+                fetchAndPushLocation(localUserName, authToken, JSONObject(), isForceUpdate = isForceUpdate, isTripMode = isTripMode)
+            }
 
             if (myLoc != null && partnerLoc != null) {
                 val lat1 = myLoc.optDouble("lat", Double.NaN)
@@ -859,13 +864,14 @@ class CoupleService : Service() {
                     }
                     val distanceMoved = loc.distanceTo(lastLocationObj)
 
-                    if (distanceMoved < 50.0f) {
+                    // Use 15m instead of 50m for stationary detection as per user requirement
+                    if (distanceMoved < 15.0f) {
                         if (isForceUpdate) {
-                            broadcastDebugLog("CoupleService", "isForceUpdate=true: Bypassing < 50m check (moved ${String.format(Locale.US, "%.1f", distanceMoved)}m)")
+                            broadcastDebugLog("CoupleService", "isForceUpdate=true: Bypassing < 15m check (moved ${String.format(Locale.US, "%.1f", distanceMoved)}m)")
                             shouldUpload = true
                         } else {
                             shouldUpload = false
-                            broadcastDebugLog("CoupleService", "Skipping upload, moved only ${String.format(Locale.US, "%.1f", distanceMoved)}m (< 50m)")
+                            broadcastDebugLog("CoupleService", "Skipping upload, moved only ${String.format(Locale.US, "%.1f", distanceMoved)}m (< 15m)")
 
                             // We must still clear the force flag so it doesn't get stuck trying to force update forever
                             thread {
@@ -1078,7 +1084,17 @@ class CoupleService : Service() {
                 }
             }
 
-            val locationPriority = if (isForceUpdate || isTripMode) {
+            // Dynamically check internet connectivity
+            val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(network)
+            val isOffline = capabilities == null ||
+                            (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                             !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                             !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                             !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+
+            val locationPriority = if (isForceUpdate || isTripMode || isOffline) {
                 Priority.PRIORITY_HIGH_ACCURACY
             } else {
                 Priority.PRIORITY_BALANCED_POWER_ACCURACY
