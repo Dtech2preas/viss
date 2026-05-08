@@ -92,6 +92,7 @@ class CoupleService : Service() {
 
     private val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
     private val firebaseUrl = "https://dtech-75e26-default-rtdb.firebaseio.com"
+    private val appSecret = "together_forever_secure_2024_access"
     private var isRunning = false
     private val client = OkHttpClient()
     private var forceUpdateListener: ValueEventListener? = null
@@ -878,7 +879,7 @@ class CoupleService : Service() {
                                 try {
                                     val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
                                     val ts = System.currentTimeMillis()
-                                    val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                                    val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts,\"app_secret\":\"$appSecret\"}".toRequestBody(mediaType)
                                     val forcePostReq = Request.Builder()
                                         .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
                                         .put(forceReqBody)
@@ -912,6 +913,7 @@ class CoupleService : Service() {
                             put("lng", loc.longitude)
                             put("timestamp", timestamp)
                             put("isTripMode", currentLocData.optBoolean("isTripMode", false))
+                            put("app_secret", appSecret)
                         }
 
                         // Update metadata if partner location is available
@@ -941,7 +943,12 @@ class CoupleService : Service() {
                                             val distance = R * c
 
                                             // Clear force flag in Firebase for this user now that we have data
-                                            val forceReqBodyClear = "false".toRequestBody(mediaType)
+                                            val forceUpdateObj = JSONObject().apply {
+                                                put("requestId", -1)
+                                                put("timestamp", System.currentTimeMillis())
+                                                put("app_secret", appSecret)
+                                            }
+                                            val forceReqBodyClear = forceUpdateObj.toString().toRequestBody(mediaType)
                                             val forcePostReqClear = Request.Builder()
                                                 .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
                                                 .put(forceReqBodyClear)
@@ -993,7 +1000,7 @@ class CoupleService : Service() {
 
                             // Always clear force flag after updating
                             val ts = System.currentTimeMillis()
-                            val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                            val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts,\"app_secret\":\"$appSecret\"}".toRequestBody(mediaType)
                             val forcePostReq = Request.Builder()
                                 .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
                                 .put(forceReqBody)
@@ -1182,7 +1189,7 @@ class CoupleService : Service() {
             try {
                 val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
                 val ts = System.currentTimeMillis()
-                val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts}".toRequestBody(mediaType)
+                val forceReqBody = "{\"requestId\":-1,\"timestamp\":$ts,\"app_secret\":\"$appSecret\"}".toRequestBody(mediaType)
                 val forcePostReq = Request.Builder()
                     .url("$firebaseUrl/forceUpdate/${userName.lowercase(java.util.Locale.US)}.json")
                     .put(forceReqBody)
@@ -1668,6 +1675,7 @@ class CoupleService : Service() {
                 put("charging", isCharging)
                 put("connectionType", connectionType)
                 put("timestamp", System.currentTimeMillis())
+                put("app_secret", appSecret)
             }
 
             val lowerUserName = userName.lowercase(Locale.ROOT)
