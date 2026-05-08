@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "locations": {
+      "$username": {
+        ".read": "true",
+        ".write": "newData.child('app_secret').val() === 'together_forever_secure_2024_access'",
+        ".validate": "newData.hasChildren(['lat', 'lng', 'timestamp'])"
+      }
+    },
+    "history": {
+      "$username": {
+        ".read": "true",
+        "$pushid": {
+          ".write": "newData.child('app_secret').val() === 'together_forever_secure_2024_access'",
+          ".validate": "newData.hasChildren(['lat', 'lng', 'timestamp'])"
+        }
+      }
+    },
+    "forceUpdate": {
+      "$username": {
+        ".read": "true",
+        ".write": "newData.child('app_secret').val() === 'together_forever_secure_2024_access'"
+      }
+    },
+    "device_stats": {
+      "$username": {
+        ".read": "true",
+        ".write": "newData.child('app_secret').val() === 'together_forever_secure_2024_access'"
+      }
+    }
+  }
+}

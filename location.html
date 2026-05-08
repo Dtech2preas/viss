@@ -802,6 +802,7 @@
         let globalState = {};
         let autoUpdateInterval = null;
         let myLocationInterval = null; // Interval for tracking my location
+        const APP_SECRET = 'together_forever_secure_2024_access';
         let timerInterval = null;
 
         let userLastLocationTime = null;
@@ -984,9 +985,10 @@
                 // Listen for force update flag
                 const forceUpdateRef = db.ref(`forceUpdate/${myUserName}`);
                 forceUpdateRef.on('value', (snapshot) => {
-                    if (snapshot.val() === true || (snapshot.val() && snapshot.val().requestId !== -1)) {
+                const val = snapshot.val();
+                if (val === true || (val && val.requestId !== -1)) {
                         // Clear the flag and trigger location fetch
-                        forceUpdateRef.set({ requestId: -1, timestamp: Date.now() });
+                    forceUpdateRef.set({ requestId: -1, timestamp: Date.now(), app_secret: APP_SECRET });
                         updateLocation();
                     }
                 });
@@ -1284,7 +1286,8 @@
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
                             timestamp: Date.now(),
-                            isTripMode: isTripMode
+                            isTripMode: isTripMode,
+                            app_secret: APP_SECRET
                         };
 
                         const userName = getCurrentUser();
@@ -1330,7 +1333,7 @@
                 const partnerName = getPartnerName();
                 if (isManualClick === true) {
                     const reqId = Date.now();
-                    db.ref(`forceUpdate/${partnerName}`).set({ requestId: reqId, timestamp: reqId });
+                    db.ref(`forceUpdate/${partnerName}`).set({ requestId: reqId, timestamp: reqId, app_secret: APP_SECRET });
                     showNotification('Requested partner device to update location...');
 
                     // Listen for the partner's location to update
@@ -1503,6 +1506,7 @@
                     if (updated) {
                         try {
                             const userName = getCurrentUser();
+                            updates.app_secret = APP_SECRET;
                             await db.ref(`locations/${userName}`).update(updates);
                         } catch (error) {
                             console.error('Error saving distance data', error);
@@ -1568,6 +1572,7 @@
             if (updated) {
                 try {
                     const userName = getCurrentUser();
+                    updates.app_secret = APP_SECRET;
                     await db.ref(`locations/${userName}`).update(updates);
                 } catch (error) {
                     console.error('Error saving distance data', error);
