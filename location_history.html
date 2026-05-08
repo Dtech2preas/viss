@@ -138,6 +138,8 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
 
     <script>
+        const firebaseSecretPath = localStorage.getItem('firebase_secret_path') || 'default_fallback';
+
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
 
         // Firebase Configuration
@@ -206,11 +208,11 @@
                 const partnerName = getPartnerFromLocalStorage();
 
                 // Fetch from Firebase
-                const myHistorySnapshot = await db.ref(`history/${myUserName}`).once('value');
+                const myHistorySnapshot = await db.ref(`history/${firebaseSecretPath}/${myUserName}`).once('value');
                 const myHistory = myHistorySnapshot.val() || {};
                 allData.mine = Object.values(myHistory);
 
-                const partnerHistorySnapshot = await db.ref(`history/${partnerName}`).once('value');
+                const partnerHistorySnapshot = await db.ref(`history/${firebaseSecretPath}/${partnerName}`).once('value');
                 const partnerHistory = partnerHistorySnapshot.val() || {};
                 allData.partner = Object.values(partnerHistory);
 

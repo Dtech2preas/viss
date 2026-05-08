@@ -56,7 +56,7 @@ export default {
         let authDataStr = await env.US_KV.get('auth_answers');
         let authAnswers = {
           q1: 'owami',
-          q2: 'jonas',
+          q2: 'seakwa',
           q3: '41',
           q4: 'red and blue'
         };

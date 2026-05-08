@@ -781,6 +781,8 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
+        const firebaseSecretPath = localStorage.getItem('firebase_secret_path') || 'default_fallback';
+
         const API_URL = "https://shrill-base-9781.dtechxpreas.workers.dev";
 
         // Firebase Configuration
@@ -933,7 +935,7 @@
             const partnerName = getPartnerName();
 
             // Set up listener for My Location
-            db.ref(`locations/${myUserName}`).on('value', (snapshot) => {
+            db.ref(`locations/${firebaseSecretPath}/${myUserName}`).on('value', (snapshot) => {
                 const myState = snapshot.val() || {};
 
                 if (!globalState[myUserName]) globalState[myUserName] = {};
@@ -963,7 +965,7 @@
 
             // Set up listener for Partner Location
             if (partnerName) {
-                db.ref(`locations/${partnerName}`).on('value', (snapshot) => {
+                db.ref(`locations/${firebaseSecretPath}/${partnerName}`).on('value', (snapshot) => {
                     const partnerState = snapshot.val();
                     if (partnerState && partnerState.lat && partnerState.lng) {
                         if (!globalState[partnerName]) globalState[partnerName] = {};
@@ -993,7 +995,7 @@
             }
 
             // Set up listener for History
-            db.ref(`history/${myUserName}`).limitToLast(5).on('value', (snapshot) => {
+            db.ref(`history/${firebaseSecretPath}/${myUserName}`).limitToLast(5).on('value', (snapshot) => {
                 const historyData = snapshot.val() || {};
                 const historyArray = Object.values(historyData).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                 updateLocationHistory(historyArray);
@@ -1236,7 +1238,7 @@
             // period = '24h', 'week', 'month'
             const cutoffTime = getCutoffTime(period);
             const partnerName = getPartnerName();
-            const historyRef = db.ref(`history/${partnerName}`);
+            const historyRef = db.ref(`history/${firebaseSecretPath}/${partnerName}`);
             const snapshot = await historyRef.once('value');
             const history = snapshot.val() || {};
 
@@ -1290,8 +1292,8 @@
                         const userName = getCurrentUser();
 
                         // Using update allows us to modify only these fields, preserving closestDistance, etc.
-                        await db.ref(`locations/${userName}`).update(newLocation);
-                        await db.ref(`history/${userName}`).push(newLocation);
+                        await db.ref(`locations/${firebaseSecretPath}/${userName}`).update(newLocation);
+                        await db.ref(`history/${firebaseSecretPath}/${userName}`).push(newLocation);
                         
                         showNotification('Location updated successfully');
                         // The .on('value') listener will handle updating UI, maps, history, and distances.
@@ -1340,7 +1342,7 @@
                         partnerLocationListenerRef.off();
                     }
 
-                    partnerLocationListenerRef = db.ref(`locations/${partnerName}`);
+                    partnerLocationListenerRef = db.ref(`locations/${firebaseSecretPath}/${partnerName}`);
                     partnerLocationListenerRef.on('value', async (snapshot) => {
                         const state = snapshot.val();
                         if (state && state.timestamp && state.timestamp > expectedPartnerForceUpdateTimestamp) {
@@ -1350,7 +1352,7 @@
                             updatePartnerLocationDisplay(state);
 
                             const myUserName = getCurrentUser();
-                            const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                            const mySnapshot = await db.ref(`locations/${firebaseSecretPath}/${myUserName}`).once('value');
                             const myState = mySnapshot.val();
 
                             if (myState && myState.lat) {
@@ -1366,14 +1368,14 @@
                         }
                     });
                 } else {
-                    const partnerSnapshot = await db.ref(`locations/${partnerName}`).once('value');
+                    const partnerSnapshot = await db.ref(`locations/${firebaseSecretPath}/${partnerName}`).once('value');
                     const partnerState = partnerSnapshot.val();
 
                     if (partnerState && partnerState.lat) {
                         updatePartnerLocationDisplay(partnerState);
 
                         const myUserName = getCurrentUser();
-                        const mySnapshot = await db.ref(`locations/${myUserName}`).once('value');
+                        const mySnapshot = await db.ref(`locations/${firebaseSecretPath}/${myUserName}`).once('value');
                         const myState = mySnapshot.val();
 
                         if (myState && myState.lat) {
@@ -1503,7 +1505,7 @@
                     if (updated) {
                         try {
                             const userName = getCurrentUser();
-                            await db.ref(`locations/${userName}`).update(updates);
+                            await db.ref(`locations/${firebaseSecretPath}/${userName}`).update(updates);
                         } catch (error) {
                             console.error('Error saving distance data', error);
                         }
@@ -1568,7 +1570,7 @@
             if (updated) {
                 try {
                     const userName = getCurrentUser();
-                    await db.ref(`locations/${userName}`).update(updates);
+                    await db.ref(`locations/${firebaseSecretPath}/${userName}`).update(updates);
                 } catch (error) {
                     console.error('Error saving distance data', error);
                 }

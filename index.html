@@ -252,6 +252,14 @@
     <script>
         const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
 
+        async function generateHash(q1, q2, q3) {
+            const rawString = `${q1.toLowerCase().trim()}_${q2.toLowerCase().trim()}_${q3.toLowerCase().trim()}`;
+            const msgBuffer = new TextEncoder().encode(rawString);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         document.getElementById('auth-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -280,6 +288,11 @@
 
                 if (data.success && data.token) {
                     localStorage.setItem('together_auth_token', data.token);
+
+                    // Generate secret hash and save it
+                    const secretHash = await generateHash(answers.q1, answers.q2, answers.q3);
+                    localStorage.setItem('firebase_secret_path', secretHash);
+
                     window.location.href = 'you.html';
                 } else {
                     errorDiv.textContent = data.message || 'Incorrect answers. Please try again.';
