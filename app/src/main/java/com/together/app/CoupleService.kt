@@ -315,6 +315,7 @@ class CoupleService : Service() {
                             Log.d("CoupleService", "Force update triggered via Firebase Listener!")
                             broadcastDebugLog("CoupleService", "Force update triggered via Firebase Listener! requestId: $forceReqId")
                             val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+                            val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
 
                             thread {
                                 try {
@@ -373,6 +374,7 @@ class CoupleService : Service() {
                 // Wait, the memory specifically says: "The Cloudflare Worker backend requires authentication. Do not hallucinate fake Bearer tokens (like `auth_token_jonas_owami_secure_2024`) for `/api/couple` requests in Android native code; ensure the correct token is dynamically retrieved from a valid source such as SharedPreferences to prevent 401 Unauthorized errors."
                 // Wait, CoupleService.kt ALREADY has the hardcoded token in pollForUpdates. Let's fix that too.
                 val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+                            val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
 
                 val client = OkHttpClient()
                 val apiUrl = "https://shrill-base-9781.dtechxpreas.workers.dev/api/couple"
@@ -466,6 +468,7 @@ class CoupleService : Service() {
             if (localUserName.isEmpty() || partnerName.isEmpty()) return
 
             val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+                            val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
 
             // Check version before fetching full state
             var serverVersionToSave = -1
@@ -689,6 +692,7 @@ class CoupleService : Service() {
             if (localUserName.isEmpty() || partnerName.isEmpty()) return
 
             val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+                            val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
 
             var shouldUpdateLocation = false
             var isForceUpdate = false
@@ -696,7 +700,7 @@ class CoupleService : Service() {
 
             try {
                 val locRef = Request.Builder()
-                    .url("$firebaseUrl/locations/$localUserNameLower.json")
+                    .url("$firebaseUrl/locations/$firebaseSecretPath/$localUserNameLower.json")
                     .build()
                 val locRes = client.newCall(locRef).execute()
                 if (locRes.isSuccessful) {
@@ -734,7 +738,7 @@ class CoupleService : Service() {
             }
 
             try {
-                val partnerLocReq = Request.Builder().url("$firebaseUrl/locations/$partnerNameLower.json").build()
+                val partnerLocReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/$partnerNameLower.json").build()
                 val partnerLocRes = client.newCall(partnerLocReq).execute()
                 if (partnerLocRes.isSuccessful) {
                     val locBody = partnerLocRes.body?.string()
@@ -773,7 +777,7 @@ class CoupleService : Service() {
             var partnerLoc: JSONObject? = null
 
             try {
-                val locReq = Request.Builder().url("$firebaseUrl/locations/$localUserNameLower.json").build()
+                val locReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/$localUserNameLower.json").build()
                 val locRes = client.newCall(locReq).execute()
                 if (locRes.isSuccessful) {
                     val body = locRes.body?.string()
@@ -782,7 +786,7 @@ class CoupleService : Service() {
             } catch (e: Exception) {}
 
             try {
-                val locReq = Request.Builder().url("$firebaseUrl/locations/$partnerNameLower.json").build()
+                val locReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/$partnerNameLower.json").build()
                 val locRes = client.newCall(locReq).execute()
                 if (locRes.isSuccessful) {
                     val body = locRes.body?.string()
@@ -852,6 +856,7 @@ class CoupleService : Service() {
         try {
             val updateLocationOnServer = { loc: Location ->
                 val sharedPref = applicationContext.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+                val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
                 val lastLat = sharedPref.getFloat("last_uploaded_lat", 0f).toDouble()
                 val lastLng = sharedPref.getFloat("last_uploaded_lng", 0f).toDouble()
 
@@ -899,7 +904,7 @@ class CoupleService : Service() {
                             val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
 
                         // Fetch existing location data to preserve metadata
-                        val getLocReq = Request.Builder().url("$firebaseUrl/locations/${userName.lowercase(java.util.Locale.US)}.json").build()
+                        val getLocReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/${userName.lowercase(java.util.Locale.US)}.json").build()
                         val getLocRes = client.newCall(getLocReq).execute()
                         val currentLocData = if (getLocRes.isSuccessful) {
                             val body = getLocRes.body?.string()
@@ -921,7 +926,7 @@ class CoupleService : Service() {
                             val partnerObj = profile.optJSONObject("partner")
                             val partnerName = partnerObj?.optString("name", "") ?: ""
                             if (partnerName.isNotEmpty()) {
-                                val partLocReq = Request.Builder().url("$firebaseUrl/locations/${partnerName.lowercase(java.util.Locale.US)}.json").build()
+                                val partLocReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/${partnerName.lowercase(java.util.Locale.US)}.json").build()
                                 val partLocRes = client.newCall(partLocReq).execute()
                                 if (partLocRes.isSuccessful) {
                                     val partBody = partLocRes.body?.string()
@@ -976,7 +981,7 @@ class CoupleService : Service() {
                         // Push location
                         val locReqBody = newLocation.toString().toRequestBody(mediaType)
                         val locPostReq = Request.Builder()
-                            .url("$firebaseUrl/locations/${userName.lowercase(java.util.Locale.US)}.json")
+                            .url("$firebaseUrl/locations/$firebaseSecretPath/${userName.lowercase(java.util.Locale.US)}.json")
                             .put(locReqBody)
                             .build()
                         val locRes = client.newCall(locPostReq).execute()
@@ -985,7 +990,7 @@ class CoupleService : Service() {
                         // Push history (matching Firebase push behavior)
                         val histReqBody = newLocation.toString().toRequestBody(mediaType)
                         val histPostReq = Request.Builder()
-                            .url("$firebaseUrl/history/${userName.lowercase(java.util.Locale.US)}.json")
+                            .url("$firebaseUrl/history/$firebaseSecretPath/${userName.lowercase(java.util.Locale.US)}.json")
                             .post(histReqBody)
                             .build()
                         val histRes = client.newCall(histPostReq).execute()
@@ -1024,7 +1029,7 @@ class CoupleService : Service() {
                                     if (offLoc != null) {
                                         val offHistReqBody = offLoc.toString().toRequestBody(mediaType)
                                         val offHistPostReq = Request.Builder()
-                                            .url("$firebaseUrl/history/${userName.lowercase(java.util.Locale.US)}.json")
+                                            .url("$firebaseUrl/history/$firebaseSecretPath/${userName.lowercase(java.util.Locale.US)}.json")
                                             .post(offHistReqBody)
                                             .build()
 
@@ -1256,6 +1261,7 @@ class CoupleService : Service() {
                 val reqBody = reqBodyStr.toRequestBody(mediaType)
 
                 val authToken = sharedPref.getString("together_auth_token", "") ?: ""
+                val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
 
                 val postReq = Request.Builder()
                     .url(apiUrl)
@@ -1299,9 +1305,10 @@ class CoupleService : Service() {
             if (myState != null && partnerState != null) {
                 var myLoc: JSONObject? = null
                 var partnerLoc: JSONObject? = null
+                val firebaseSecretPath = sharedPref.getString("firebase_secret_path", "") ?: ""
 
                 try {
-                    val locReq = Request.Builder().url("$firebaseUrl/locations/$localUserName.json").build()
+                    val locReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/$localUserName.json").build()
                     val locRes = client.newCall(locReq).execute()
                     if (locRes.isSuccessful) {
                         val body = locRes.body?.string()
@@ -1310,7 +1317,7 @@ class CoupleService : Service() {
                 } catch (e: Exception) {}
 
                 try {
-                    val locReq = Request.Builder().url("$firebaseUrl/locations/$partnerName.json").build()
+                    val locReq = Request.Builder().url("$firebaseUrl/locations/$firebaseSecretPath/$partnerName.json").build()
                     val locRes = client.newCall(locReq).execute()
                     if (locRes.isSuccessful) {
                         val body = locRes.body?.string()

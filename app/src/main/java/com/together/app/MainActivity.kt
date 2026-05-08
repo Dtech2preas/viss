@@ -320,6 +320,9 @@ class MainActivity : AppCompatActivity() {
                             if (key === 'together_auth_token' && window.AndroidBridge) {
                                 window.AndroidBridge.saveAuthToken(value);
                             }
+                            if (key === 'firebase_secret_path' && window.AndroidBridge) {
+                                window.AndroidBridge.saveFirebaseSecretPath(value);
+                            }
                         };
 
                         // Check on load in case it's already set
@@ -331,10 +334,15 @@ class MainActivity : AppCompatActivity() {
                         if (token && window.AndroidBridge) {
                             window.AndroidBridge.saveAuthToken(token);
                         }
+                        var firebaseSecret = localStorage.getItem('firebase_secret_path');
+                        if (firebaseSecret && window.AndroidBridge) {
+                            window.AndroidBridge.saveFirebaseSecretPath(firebaseSecret);
+                        }
 
                         // Polling fallback in case localStorage was written before injection
                         var lastProfile = profile;
                         var lastToken = token;
+                        var lastFirebaseSecret = firebaseSecret;
                         setInterval(function() {
                             var currentProfile = localStorage.getItem('togetherProfile');
                             if (currentProfile && currentProfile !== lastProfile && window.AndroidBridge) {
@@ -345,6 +353,11 @@ class MainActivity : AppCompatActivity() {
                             if (currentToken && currentToken !== lastToken && window.AndroidBridge) {
                                 lastToken = currentToken;
                                 window.AndroidBridge.saveAuthToken(currentToken);
+                            }
+                            var currentFirebaseSecret = localStorage.getItem('firebase_secret_path');
+                            if (currentFirebaseSecret && currentFirebaseSecret !== lastFirebaseSecret && window.AndroidBridge) {
+                                lastFirebaseSecret = currentFirebaseSecret;
+                                window.AndroidBridge.saveFirebaseSecretPath(currentFirebaseSecret);
                             }
                         }, 2000);
                     })();
@@ -508,6 +521,16 @@ class MainActivity : AppCompatActivity() {
             val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
             with(sharedPref.edit()) {
                 putString("together_auth_token", token)
+                apply()
+            }
+        }
+
+        @JavascriptInterface
+        fun saveFirebaseSecretPath(secretPath: String) {
+            Log.d("WebAppInterface", "Firebase secret path saved")
+            val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+            with(sharedPref.edit()) {
+                putString("firebase_secret_path", secretPath)
                 apply()
             }
         }
