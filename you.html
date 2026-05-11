@@ -11,15 +11,12 @@
     <style>
         :root {
             --primary-color: #ff7eb9;
-            --secondary-color: #bb86fc;
+            --secondary-color: #7e57c2;
             --accent-color: #ff4d8d;
-            --bg-color: #0f0f1e;
-            --card-bg: #1a1a2e;
-            --text-color: #e0dcec;
-            --muted-text: #a8a4b4;
-            --gradient: linear-gradient(135deg, #ff4d8d 0%, #bb86fc 100%);
-            --soft-shadow: 0 15px 35px rgba(0,0,0,0.25);
-            --border-subtle: 1px solid rgba(255,255,255,0.05);
+            --light-color: #fff5f9;
+            --dark-color: #3a2846;
+            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --soft-shadow: 0 15px 35px rgba(126, 87, 194, 0.08);
         }
 
         * {
@@ -30,13 +27,12 @@
 
         body {
             font-family: 'Montserrat', sans-serif;
-            background: #0f0f1e;
-            color: var(--text-color);
+            background: linear-gradient(135deg, #fef6fb 0%, #f3e9ff 100%);
+            color: var(--dark-color);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background-image: radial-gradient(circle at 20% 30%, rgba(255,77,141,0.08) 0%, transparent 50%),
-                              radial-gradient(circle at 80% 70%, rgba(187,134,252,0.08) 0%, transparent 50%);
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffb6d9' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
 
         .container {
@@ -66,7 +62,7 @@
         h1 {
             font-family: 'Dancing Script', cursive;
             font-size: 4rem;
-            background: linear-gradient(135deg, #ff7eb9, #bb86fc);
+            background: linear-gradient(135deg, #7e57c2, #ff4d8d);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -76,12 +72,12 @@
 
         .subtitle {
             font-size: 1.1rem;
-            color: var(--muted-text);
+            color: #6d5b7b;
             letter-spacing: 1px;
         }
 
         .section {
-            background: var(--card-bg);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
             border-radius: 28px;
             padding: 30px;
@@ -90,11 +86,11 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            border: var(--border-subtle);
+            border: 1px solid rgba(255, 255, 255, 0.6);
         }
 
         .section:hover {
-            box-shadow: 0 25px 45px rgba(0,0,0,0.4);
+            box-shadow: 0 25px 40px rgba(126, 87, 194, 0.12);
             transform: translateY(-2px);
         }
 
@@ -125,28 +121,27 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
+            color: var(--dark-color);
             font-size: 1.2rem;
             text-align: center;
-            color: var(--text-color);
         }
 
         input {
             width: 100%;
             padding: 15px;
-            border: 2px solid #2a2a3e;
+            border: 2px solid #e6d4f7;
             border-radius: 14px;
             font-family: 'Montserrat', sans-serif;
             font-size: 1rem;
             transition: all 0.3s ease;
             text-align: center;
-            background: #0f0f1e;
-            color: var(--text-color);
+            background: white;
         }
 
         input:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px rgba(255,126,185,0.15);
+            box-shadow: 0 0 0 4px rgba(255, 126, 185, 0.15);
         }
 
         .btn-group {
@@ -174,18 +169,18 @@
             margin: 0 auto;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 8px 20px rgba(187,134,252,0.3);
+            box-shadow: 0 8px 20px rgba(126, 87, 194, 0.25);
         }
 
         .btn.outline {
-            background: transparent;
+            background: white;
             color: var(--primary-color);
             border: 2px solid var(--primary-color);
             box-shadow: none;
         }
 
         .btn.outline:hover {
-            background: rgba(255,126,185,0.1);
+            background: #fff0f7;
         }
 
         .btn::after {
@@ -195,7 +190,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.15);
             transform: rotate(30deg);
             transition: all 0.5s ease;
             opacity: 0;
@@ -208,26 +203,26 @@
 
         .btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 14px 28px rgba(187,134,252,0.4);
+            box-shadow: 0 14px 28px rgba(126, 87, 194, 0.35);
         }
 
         .btn:active {
             transform: translateY(0);
         }
 
-        /* ---------- Journey Strip (dark version, 80% height reduction) ---------- */
+        /* ---------- Journey Strip (80% height reduction) ---------- */
         .journey-strip {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            background: #1e1e32;
+            background: white;
             border-radius: 20px;
             padding: 12px 20px;
             margin: 25px 0 15px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 20px rgba(126, 87, 194, 0.07);
             transition: all 0.3s ease;
-            border: 1px solid rgba(255,77,141,0.25);
+            border: 1px solid rgba(255, 126, 185, 0.2);
             cursor: pointer;
             max-width: 100%;
             flex-wrap: wrap;
@@ -237,7 +232,7 @@
 
         .journey-strip:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 25px rgba(255,77,141,0.15);
+            box-shadow: 0 12px 25px rgba(126, 87, 194, 0.12);
             border-color: var(--primary-color);
         }
 
@@ -268,7 +263,7 @@
 
         .journey-strip .sub-text {
             font-size: 0.85rem;
-            color: var(--muted-text);
+            color: #7b6b8a;
         }
 
         /* ---------- Featured Cards ---------- */
@@ -280,14 +275,14 @@
         }
 
         .feature-card {
-            background: #1e1e32;
+            background: white;
             border-radius: 24px;
             padding: 25px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 1px solid transparent;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 25px rgba(166, 94, 166, 0.06);
             position: relative;
             overflow: hidden;
         }
@@ -295,7 +290,7 @@
         .feature-card:hover {
             transform: translateY(-4px);
             border-color: var(--primary-color);
-            box-shadow: 0 20px 35px rgba(255,77,141,0.15);
+            box-shadow: 0 20px 35px rgba(166, 94, 166, 0.12);
         }
 
         .feature-icon {
@@ -312,19 +307,19 @@
         .feature-card h3 {
             font-size: 1.3rem;
             margin-bottom: 8px;
-            color: var(--text-color);
+            color: var(--secondary-color);
             font-weight: 600;
         }
 
         .feature-card p {
             font-size: 0.9rem;
-            color: var(--muted-text);
+            color: #6d5b7b;
         }
 
         /* Featured Study card */
         .featured-study {
-            background: #1a2332;
-            border-color: rgba(79,172,254,0.3);
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebf5ff 100%);
+            border-color: #4facfe;
             margin-bottom: 20px;
         }
 
@@ -333,17 +328,16 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: var(--card-bg);
+            background: white;
             padding: 15px 25px;
             border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             transform: translateY(120px);
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
             z-index: 1000;
             border-left: 5px solid var(--accent-color);
             font-weight: 500;
-            color: var(--text-color);
         }
 
         #notification.show {
@@ -362,7 +356,7 @@
             border-radius: 20px;
             font-size: 2rem;
             font-family: 'Dancing Script', cursive;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
             opacity: 0;
             visibility: hidden;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -384,39 +378,36 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(15,15,30,0.8);
-            backdrop-filter: blur(8px);
+            background: rgba(58, 40, 70, 0.3);
+            backdrop-filter: blur(5px);
             align-items: center;
             justify-content: center;
             z-index: 3000;
         }
 
         .custom-modal-content {
-            background: var(--card-bg);
+            background: white;
             border-radius: 28px;
             padding: 30px;
             max-width: 350px;
             width: 90%;
-            box-shadow: 0 30px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 30px 50px rgba(0,0,0,0.15);
             text-align: center;
-            border: 1px solid rgba(255,255,255,0.1);
         }
 
         .custom-modal-text {
             font-size: 1.1rem;
             margin-bottom: 20px;
-            color: var(--text-color);
+            color: var(--dark-color);
         }
 
         .custom-modal-input {
             width: 100%;
             padding: 14px;
-            border: 2px solid #2a2a3e;
+            border: 2px solid #e6d4f7;
             border-radius: 12px;
             font-size: 1rem;
             text-align: center;
-            background: #0f0f1e;
-            color: var(--text-color);
         }
 
         .custom-modal-buttons {
@@ -436,8 +427,8 @@
         }
 
         .custom-modal-btn.cancel {
-            background: #2a2a3e;
-            color: var(--text-color);
+            background: #f0e6f6;
+            color: #333;
         }
 
         .custom-modal-btn.confirm {
@@ -541,24 +532,24 @@
             <p class="subtitle">Celebrating our love, every day</p>
         </header>
 
-        <!-- User Selection -->
+        <!-- User Selection (hidden after login) -->
         <div class="section" id="questions-section">
             <h2>Let's Get Started</h2>
-            <p style="text-align: center; margin-bottom: 20px; font-size: 1.2rem; color: var(--muted-text);">Who are you?</p>
+            <p style="text-align: center; margin-bottom: 20px; font-size: 1.2rem; color: var(--dark-color);">Who are you?</p>
             <div class="btn-group" style="flex-direction: column; gap: 15px;">
                 <button class="btn" onclick="selectUser('Jonas', 'Owami')">I am Jonas</button>
                 <button class="btn" onclick="selectUser('Owami', 'Jonas')">I am Owami</button>
             </div>
         </div>
 
-        <!-- Main Dashboard -->
+        <!-- Main Dashboard (hidden initially) -->
         <div class="section" id="features-menu" style="display:none;">
             <div class="welcome-message">
                 <h2>Welcome, <span id="welcome-name"></span>!</h2>
-                <p style="color: var(--muted-text);">What would you like to share with your love today?</p>
+                <p>What would you like to share with your love today?</p>
             </div>
 
-            <!-- Our Journey strip (80% height reduced, now the first card) -->
+            <!-- Our Journey strip (now the first card, 80% height reduced) -->
             <div class="journey-strip" onclick="navigateTo('milestones.html')" id="journey-strip">
                 <div class="icon">✨</div>
                 <div class="content">
@@ -575,7 +566,7 @@
                 <p>Track your focus time and reach your goals</p>
             </div>
 
-            <!-- Remaining cards -->
+            <!-- Remaining feature cards -->
             <div class="features-grid">
                 <div class="feature-card" onclick="navigateTo('mood.html')">
                     <div class="feature-icon">😊</div>
@@ -655,7 +646,7 @@
 
         function createHearts() {
             const heartsContainer = document.getElementById('hearts');
-            const colors = ['#ff7eb9', '#ff4d8d', '#d42d6e', '#bb86fc'];
+            const colors = ['#ff7eb9', '#ff4d8d', '#d42d6e', '#7e57c2'];
 
             for (let i = 0; i < 15; i++) {
                 const heart = document.createElement('div');
@@ -667,7 +658,7 @@
                 heart.style.top = `${Math.random() * 100}vh`;
                 heart.style.animation = `fall ${Math.random() * 10 + 10}s linear infinite`;
                 heart.style.animationDelay = `${Math.random() * 5}s`;
-                heart.style.opacity = `${Math.random() * 0.3 + 0.05}`;
+                heart.style.opacity = `${Math.random() * 0.5 + 0.1}`;
                 heart.style.background = colors[Math.floor(Math.random() * colors.length)];
                 heartsContainer.appendChild(heart);
             }
