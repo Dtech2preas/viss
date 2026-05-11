@@ -453,6 +453,12 @@
             </div>
             
             <div class="features-grid" style="margin-top: 0;">
+                <div class="feature-card" onclick="navigateTo('milestones.html')" style="background: linear-gradient(135deg, #fff5f9 0%, #ffe6f0 100%); border-color: var(--accent-color);">
+                    <div class="feature-icon" style="color: var(--accent-color);">✨</div>
+                    <h3 style="color: var(--secondary-color);">Our Journey</h3>
+                    <p>View our milestones and special dates</p>
+                </div>
+
                 <div class="feature-card" onclick="navigateTo('mood.html')">
                     <div class="feature-icon">😊</div>
                     <h3>Mood Tracker</h3>
@@ -495,44 +501,6 @@
                     <p>Our special secret place</p>
                 </div>
             </div>
-
-            <!-- Milestones Section -->
-            <div class="section" id="milestones-section" style="margin-top: 30px;">
-                <h2>Our Journey</h2>
-                <div class="features-grid" style="margin-top: 20px;">
-                    <div class="feature-card" style="cursor: default;">
-                        <div class="feature-icon">❤️</div>
-                        <h3 id="stat-together">...</h3>
-                        <p>Days Together</p>
-                    </div>
-                    <div class="feature-card" style="cursor: default;">
-                        <div class="feature-icon">💬</div>
-                        <h3 id="stat-talking">...</h3>
-                        <p>Days Since We First Talked</p>
-                    </div>
-                    <div class="feature-card" style="cursor: default;">
-                        <div class="feature-icon">🥂</div>
-                        <h3 id="stat-anniversary">...</h3>
-                        <p>Days Until Anniversary</p>
-                    </div>
-                    <div class="feature-card" style="cursor: default;">
-                        <div class="feature-icon">👑</div>
-                        <h3 id="stat-jonas-bday">...</h3>
-                        <p>Days Until Jonas's B-Day</p>
-                    </div>
-                    <div class="feature-card" style="cursor: default;">
-                        <div class="feature-icon">👸</div>
-                        <h3 id="stat-owami-bday">...</h3>
-                        <p>Days Until Owami's B-Day</p>
-                    </div>
-                    <div class="feature-card" style="cursor: default;">
-                        <div class="feature-icon">🎂</div>
-                        <h3 id="stat-ages">...</h3>
-                        <p>Our Ages</p>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
     
@@ -674,69 +642,10 @@
             }, 3000);
         }
 
-        function calculateMilestones() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Normalize to midnight
-
-            // Hardcoded dates
-            const firstDate = new Date('2024-09-21T00:00:00');
-            const talkingDate = new Date('2023-12-12T00:00:00');
-            const jonasBday = new Date('2005-06-20T00:00:00');
-            const owamiBday = new Date('2006-08-01T00:00:00');
-
-            const msPerDay = 1000 * 60 * 60 * 24;
-
-            // 1. Days Together (since Sept 21, 2024)
-            const daysTogether = Math.floor((today - firstDate) / msPerDay);
-            document.getElementById('stat-together').textContent = daysTogether > 0 ? daysTogether : 0;
-
-            // 2. Days Since Talking (since Dec 12, 2023)
-            const daysTalking = Math.floor((today - talkingDate) / msPerDay);
-            document.getElementById('stat-talking').textContent = daysTalking > 0 ? daysTalking : 0;
-
-            // 3. Days Until Anniversary (Next Sept 21)
-            let nextAnniversary = new Date(today.getFullYear(), 8, 21); // Month is 0-indexed (8 = Sept)
-            if (today > nextAnniversary) {
-                nextAnniversary.setFullYear(today.getFullYear() + 1);
-            }
-            const daysUntilAnniversary = Math.ceil((nextAnniversary - today) / msPerDay);
-            document.getElementById('stat-anniversary').textContent = daysUntilAnniversary;
-
-            // 4. Days Until Jonas B-Day (Next June 20)
-            let nextJonasBday = new Date(today.getFullYear(), 5, 20); // 5 = June
-            if (today > nextJonasBday) {
-                nextJonasBday.setFullYear(today.getFullYear() + 1);
-            }
-            const daysUntilJonas = Math.ceil((nextJonasBday - today) / msPerDay);
-            document.getElementById('stat-jonas-bday').textContent = daysUntilJonas;
-
-            // 5. Days Until Owami B-Day (Next Aug 1)
-            let nextOwamiBday = new Date(today.getFullYear(), 7, 1); // 7 = Aug
-            if (today > nextOwamiBday) {
-                nextOwamiBday.setFullYear(today.getFullYear() + 1);
-            }
-            const daysUntilOwami = Math.ceil((nextOwamiBday - today) / msPerDay);
-            document.getElementById('stat-owami-bday').textContent = daysUntilOwami;
-
-            // 6. Ages
-            function getAge(birthDate) {
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                    age--;
-                }
-                return age;
-            }
-            const jonasAge = getAge(jonasBday);
-            const owamiAge = getAge(owamiBday);
-            document.getElementById('stat-ages').textContent = `Jonas: ${jonasAge} | Owami: ${owamiAge}`;
-        }
-
         // Intercept global gist fetching (we will change this in a later step for other files, but here we just manage state)
         window.onload = function() {
             checkExistingProfile();
             createHearts();
-            calculateMilestones();
         };
 
     </script>
