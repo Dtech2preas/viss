@@ -18,7 +18,7 @@
     container.style.fontSize = '12px';
     container.style.zIndex = '999999';
     container.style.borderRadius = '8px';
-    container.style.display = 'flex';
+    container.style.display = 'none'; // Hidden by default
     container.style.flexDirection = 'column';
     container.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
     container.style.overflow = 'hidden';
@@ -290,6 +290,15 @@
         } catch (error) {
             console.error(`[NET] Fetch Error: ${method} ${url} - ${error.message}`);
             throw error;
+        }
+    };
+
+    // Function to toggle console visibility
+    window.toggleDebugConsole = function() {
+        if (container.style.display === 'none') {
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
         }
     };
 
