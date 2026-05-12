@@ -21,7 +21,7 @@
             height: 100vh;
             overflow: hidden;
             font-family: 'Raleway', sans-serif;
-            background: linear-gradient(135deg, #ffdde1, #ee9ca7, #ffdde1);
+            /* bg handled by global */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -77,21 +77,21 @@
         .finale-text {
             font-family: 'Parisienne', cursive;
             font-size: 6rem;
-            color: #fff;
+            color: var(--dark-color);
             text-shadow: 0 0 20px rgba(255, 0, 0, 0.7), 
                          0 0 40px rgba(255, 20, 147, 0.7),
                          0 0 60px rgba(255, 105, 180, 0.7);
             animation: pulse 3s infinite alternate, float 6s infinite ease-in-out;
             margin-bottom: 40px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             border-radius: 20px;
             backdrop-filter: blur(5px);
         }
         
         .credit {
             font-size: 2rem;
-            color: #fff;
+            color: var(--dark-color);
             text-shadow: 0 0 15px rgba(255, 20, 147, 0.8);
             opacity: 0;
             transition: opacity 3s ease;
@@ -110,7 +110,7 @@
         .particle {
             position: absolute;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
+            background: var(--card-bg);
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
             z-index: 1;
             pointer-events: none;
@@ -142,7 +142,7 @@
             z-index: 4;
             opacity: 0;
             font-size: 16px;
-            color: #fff;
+            color: var(--dark-color);
             text-shadow: 0 0 8px gold;
             animation: sparkleAnim 4s ease-in-out infinite;
             pointer-events: none;
@@ -250,6 +250,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+    <link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <div class="background-animation" id="background-animation"></div>

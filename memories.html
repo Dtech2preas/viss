@@ -34,7 +34,7 @@
             padding: 10px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.8);
-            background: rgba(255,255,255,0.8);
+            background: var(--card-bg);
             color: #333;
             box-sizing: border-box;
         }
@@ -44,7 +44,7 @@
 
         .btn {
             background: var(--gradient-bg);
-            color: white;
+            color: var(--dark-color);
             border: none;
             padding: 12px 20px;
             border-radius: 25px;
@@ -87,7 +87,7 @@
             position: absolute;
             width: 90%;
             height: 90%;
-            background: white;
+            background: var(--card-bg);
             border-radius: 15px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             overflow: hidden;
@@ -132,7 +132,7 @@
         }
 
         .no-memories {
-            color: white;
+            color: var(--dark-color);
             font-size: 18px;
             text-align: center;
             margin-top: 50px;
@@ -142,7 +142,7 @@
             display: flex;
             justify-content: center;
             margin-bottom: 20px;
-            background: rgba(255,255,255,0.2);
+            background: var(--card-bg);
             border-radius: 25px;
             padding: 5px;
         }
@@ -157,7 +157,7 @@
             transition: background 0.3s;
         }
         .mode-toggle button.active {
-            background: rgba(255,255,255,0.8);
+            background: var(--card-bg);
             color: #d4145a;
         }
 
@@ -185,7 +185,7 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            color: white;
+            color: var(--dark-color);
             font-size: 30px;
             cursor: pointer;
             z-index: 10000;
@@ -208,7 +208,7 @@
             <div class="glass-panel" style="width: 100%;">
                 <div class="input-group">
                     <label>Photo (Take or Upload)</label>
-                    <input type="file" id="photoInput" accept="image/*" style="background: rgba(255,255,255,0.2);">
+                    <input type="file" id="photoInput" accept="image/*" style="background: var(--card-bg);">
                     <img id="photoPreview" />
                 </div>
 
@@ -237,7 +237,7 @@
             <div id="swipeContainer" class="swipe-container">
                 <!-- Cards will be injected here -->
                 <div class="no-memories" id="noMemoriesMsg" style="display: none;">No memories yet.<br>Create one!</div>
-                <div id="loadingMsg" style="color:white; text-align:center;">Loading memories...</div>
+                <div id="loadingMsg" style="color: var(--dark-color); text-align:center;">Loading memories...</div>
             </div>
             <div style="margin-top:20px; color:rgba(255,255,255,0.8); font-size:14px; text-align:center;">
                 Swipe left to next • Swipe right to previous

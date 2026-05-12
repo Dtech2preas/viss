@@ -9,28 +9,13 @@
     <title>Coupons - Together Forever</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #ff7eb9;
-            --secondary-color: #7e57c2;
-            --accent-color: #ff4d8d;
-            --light-color: #fff5f9;
-            --dark-color: #3a2846;
-            --success-color: #4CAF50;
-            --warning-color: #ff9800;
-            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        }
+
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
-        }
+    /* handled by global css */
+}
 
         .container { max-width: 800px; margin: 0 auto; padding: 20px; width: 100%; }
 
@@ -47,7 +32,7 @@
         .subtitle { font-size: 1rem; color: var(--dark-color); opacity: 0.8; }
 
         .section {
-            background: white; border-radius: 20px; padding: 30px; margin-bottom: 20px;
+            background: var(--card-bg); border-radius: 20px; padding: 30px; margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(166, 94, 166, 0.1); position: relative;
         }
 
@@ -60,56 +45,56 @@
 
         .award-points { display: flex; gap: 10px; margin-top: 15px; align-items: center; justify-content: center; }
         .award-points input { width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; text-align: center; font-family: 'Montserrat'; font-weight: bold;}
-        .btn { background: var(--gradient); color: white; border: none; padding: 10px 20px; border-radius: 50px; cursor: pointer; font-family: 'Montserrat'; font-weight: 600; transition: transform 0.2s; }
+        .btn { background: var(--gradient); color: var(--dark-color); border: none; padding: 10px 20px; border-radius: 50px; cursor: pointer; font-family: 'Montserrat'; font-weight: 600; transition: transform 0.2s; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,126,185,0.4); }
 
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
         .tab { padding: 10px 20px; border-radius: 20px; cursor: pointer; background: #eee; font-weight: 500; transition: 0.3s; flex: 1; text-align: center; }
-        .tab.active { background: var(--secondary-color); color: white; }
+        .tab.active { background: var(--secondary-color); color: var(--dark-color); }
 
         .coupon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
         .coupon-card {
-            background: #fff; border: 2px dashed var(--primary-color); border-radius: 15px; padding: 20px;
+            background: var(--card-bg); border: 2px dashed var(--primary-color); border-radius: 15px; padding: 20px;
             text-align: center; position: relative; transition: 0.3s; overflow: hidden;
         }
-        .coupon-card::before, .coupon-card::after { content: ''; position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: 50%; transform: translateY(-50%); border: 2px dashed var(--primary-color); }
+        .coupon-card::before, .coupon-card::after { content: ''; position: absolute; width: 20px; height: 20px; background: var(--card-bg); border-radius: 50%; top: 50%; transform: translateY(-50%); border: 2px dashed var(--primary-color); }
         .coupon-card::before { left: -12px; border-right: none; }
         .coupon-card::after { right: -12px; border-left: none; }
         .coupon-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
 
-        .coupon-price { background: var(--accent-color); color: white; display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
+        .coupon-price { background: var(--accent-color); color: var(--dark-color); display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
         .coupon-title { font-size: 1.1rem; font-weight: 600; color: var(--dark-color); margin-bottom: 15px; min-height: 45px;}
-        .btn-buy { background: var(--success-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
+        .btn-buy { background: var(--success-color); color: var(--dark-color); border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
         .btn-buy:disabled { background: #ccc; cursor: not-allowed; }
 
         .inventory-list { display: flex; flex-direction: column; gap: 10px; }
         .inventory-item { display: flex; justify-content: space-between; align-items: center; background: #fdfbfd; padding: 15px; border-radius: 10px; border: 1px solid #e6d4f7; }
-        .btn-redeem { background: var(--warning-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-redeem { background: var(--warning-color); color: var(--dark-color); border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
         .add-proposal { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #fdfbfd; padding: 15px; border-radius: 10px; border: 1px dashed #e6d4f7; }
         .input-group { display: flex; gap: 10px; }
         .add-proposal input[type="text"] { flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Montserrat'; }
         .add-proposal input[type="number"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Montserrat'; }
 
-        .proposal-item { background: white; border: 1px solid #eee; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
+        .proposal-item { background: var(--card-bg); border: 1px solid #eee; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
         .negotiate-area { display: flex; gap: 10px; align-items: center; margin-top: 5px; padding-top: 10px; border-top: 1px solid #eee; }
         .negotiate-area input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
         .action-btns { display: flex; gap: 5px; }
-        .btn-accept { background: var(--success-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
-        .btn-edit { background: var(--warning-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-accept { background: var(--success-color); color: var(--dark-color); border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-edit { background: var(--warning-color); color: var(--dark-color); border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
 
         .loader { text-align: center; padding: 20px; }
 
         /* Certificate Modal */
-        .certificate { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 1001; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb911' /%3E%3C/svg%3E"); }
-        .cert-inner { border: 10px solid #f9e5ec; padding: 40px 20px; border-radius: 10px; max-width: 600px; width: 100%; position: relative; background: rgba(255,255,255,0.9); box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .certificate { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--card-bg); z-index: 1001; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb911' /%3E%3C/svg%3E"); }
+        .cert-inner { border: 10px solid #f9e5ec; padding: 40px 20px; border-radius: 10px; max-width: 600px; width: 100%; position: relative; background: var(--card-bg); box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
         .cert-header { font-family: 'Dancing Script', cursive; font-size: 3rem; color: #ff7eb9; margin-bottom: 10px; }
         .cert-sub { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 30px; }
-        .cert-body { font-size: 1.2rem; line-height: 1.8; color: var(--dark-color); margin-bottom: 30px; }
+        .cert-body { font-size: 1.2rem; line-height: 1.8; /* color handled by global */ margin-bottom: 30px; }
         .cert-task { font-size: 1.8rem; color: var(--accent-color); font-weight: bold; margin: 20px 0; border-bottom: 2px dashed #ff7eb9; padding-bottom: 10px; display: inline-block; }
         .cert-footer { font-size: 0.9rem; color: #666; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; justify-content: space-between;}
         .cert-close { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 2rem; color: #aaa; cursor: pointer; }
-        .cert-btn { margin-top: 20px; background: var(--gradient); color: white; border: none; padding: 12px 30px; border-radius: 50px; cursor: pointer; font-size: 1.1rem; font-family: 'Montserrat'; font-weight: bold;}
+        .cert-btn { margin-top: 20px; background: var(--gradient); color: var(--dark-color); border: none; padding: 12px 30px; border-radius: 50px; cursor: pointer; font-size: 1.1rem; font-family: 'Montserrat'; font-weight: bold;}
 
         .toaster {
             position: fixed;
@@ -117,7 +102,7 @@
             left: 50%;
             transform: translate(-50%, -50%) scale(0.8);
             background: #4CAF50;
-            color: white;
+            color: var(--dark-color);
             padding: 20px 40px;
             border-radius: 15px;
             font-size: 1.5rem;
@@ -157,7 +142,7 @@
             font-family: 'Montserrat', sans-serif;
         }
         .custom-modal-content {
-            background: #fff5f9;
+            background: var(--card-bg);5f9;
             padding: 25px;
             border-radius: 20px;
             text-align: center;
@@ -176,7 +161,7 @@
         }
         .custom-modal-btn {
             background: linear-gradient(45deg, #ff7eb9, #ff65a3);
-            color: white;
+            color: var(--dark-color);
             border: none;
             padding: 10px 25px;
             border-radius: 50px;

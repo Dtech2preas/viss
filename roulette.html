@@ -9,28 +9,13 @@
     <title>Weekly Roulette - Together Forever</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #ff7eb9;
-            --secondary-color: #7e57c2;
-            --accent-color: #ff4d8d;
-            --light-color: #fff5f9;
-            --dark-color: #3a2846;
-            --success-color: #4CAF50;
-            --warning-color: #ff9800;
-            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        }
+
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
-        }
+    /* handled by global css */
+}
 
         .container { max-width: 800px; margin: 0 auto; padding: 20px; width: 100%; }
 
@@ -47,7 +32,7 @@
         .subtitle { font-size: 1rem; color: var(--dark-color); opacity: 0.8; }
 
         .section {
-            background: white; border-radius: 20px; padding: 30px; margin-bottom: 20px;
+            background: var(--card-bg); border-radius: 20px; padding: 30px; margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(166, 94, 166, 0.1); position: relative;
         }
 
@@ -67,7 +52,7 @@
         .legend-color { width: 15px; height: 15px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
 
         .btn-spin {
-            background: var(--gradient); color: white; border: none; padding: 15px 40px; font-size: 1.2rem;
+            background: var(--gradient); color: var(--dark-color); border: none; padding: 15px 40px; font-size: 1.2rem;
             border-radius: 50px; font-family: 'Montserrat', sans-serif; font-weight: 600; cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s; text-transform: uppercase; letter-spacing: 2px;
         }
@@ -80,7 +65,7 @@
         }
 
         .result-box {
-            display: none; background: linear-gradient(135deg, #fff 0%, #fff5f9 100%);
+            display: none; background: var(--card-bg);
             border: 2px solid var(--primary-color); padding: 20px; border-radius: 15px;
             text-align: center; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
@@ -93,27 +78,27 @@
         .input-group { display: flex; gap: 10px; }
         .add-proposal input[type="text"] { flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Montserrat'; }
         .add-proposal input[type="number"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Montserrat'; }
-        .btn-small { background: var(--secondary-color); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-family: 'Montserrat'; font-weight: 500; }
+        .btn-small { background: var(--secondary-color); color: var(--dark-color); border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-family: 'Montserrat'; font-weight: 500; }
         .btn-small:hover { opacity: 0.9; }
 
         .proposal-list { display: flex; flex-direction: column; gap: 15px; }
         .proposal-item {
-            background: white; border: 1px solid #eee; border-radius: 10px; padding: 15px;
+            background: var(--card-bg); border: 1px solid #eee; border-radius: 10px; padding: 15px;
             display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         .proposal-header { display: flex; justify-content: space-between; align-items: center; }
         .proposal-task { font-weight: 600; font-size: 1.1rem; }
         .proposal-meta { font-size: 0.8rem; color: #888; }
         .proposal-status { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
-        .status-pending { background: #fff3e0; color: #e65100; }
+        .status-pending { background: var(--card-bg);3e0; color: #e65100; }
         .status-accepted { background: #e8f5e9; color: #2e7d32; }
 
         .negotiate-area { display: flex; gap: 10px; align-items: center; margin-top: 5px; padding-top: 10px; border-top: 1px solid #eee; }
         .negotiate-area input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
 
         .action-btns { display: flex; gap: 5px; }
-        .btn-accept { background: var(--success-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
-        .btn-edit { background: var(--warning-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-accept { background: var(--success-color); color: var(--dark-color); border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-edit { background: var(--warning-color); color: var(--dark-color); border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
 
         .loader { text-align: center; padding: 20px; }
 
@@ -122,16 +107,16 @@
         .user-status { display: flex; align-items: center; gap: 8px; font-weight: 500; }
         .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #ccc; }
         .status-dot.online { background: var(--success-color); box-shadow: 0 0 8px var(--success-color); }
-        .btn-online { background: var(--primary-color); color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; font-family: 'Montserrat'; transition: 0.3s; }
+        .btn-online { background: var(--primary-color); color: var(--dark-color); border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; font-family: 'Montserrat'; transition: 0.3s; }
         .btn-online:hover { background: var(--accent-color); }
 
         /* Certificate Modal */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
-        .certificate { background: white; padding: 40px; border-radius: 10px; text-align: center; max-width: 600px; width: 100%; position: relative; border: 15px solid #fdfbfd; box-shadow: 0 0 0 2px #d4af37, inset 0 0 0 2px #d4af37; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23d4af3711' /%3E%3C/svg%3E"); cursor: pointer; transition: transform 0.3s; }
+        .certificate { background: var(--card-bg); padding: 40px; border-radius: 10px; text-align: center; max-width: 600px; width: 100%; position: relative; border: 15px solid #fdfbfd; box-shadow: 0 0 0 2px #d4af37, inset 0 0 0 2px #d4af37; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23d4af3711' /%3E%3C/svg%3E"); cursor: pointer; transition: transform 0.3s; }
         .certificate.fullscreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; max-width: none; border-radius: 0; display: flex; flex-direction: column; justify-content: center; z-index: 1001; }
         .cert-header { font-family: 'Dancing Script', cursive; font-size: 2.5rem; color: #d4af37; margin-bottom: 5px; }
         .cert-sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 30px; }
-        .cert-body { font-size: 1.2rem; line-height: 1.8; color: var(--dark-color); margin-bottom: 40px; font-weight: 500; }
+        .cert-body { font-size: 1.2rem; line-height: 1.8; /* color handled by global */ margin-bottom: 40px; font-weight: 500; }
         .cert-task { display: block; font-size: 1.8rem; color: var(--accent-color); font-weight: 700; margin: 20px 0; border-bottom: 2px dashed #d4af37; padding-bottom: 10px; display: inline-block;}
         .cert-footer { display: flex; justify-content: space-between; font-size: 0.9rem; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
         .cert-close { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 1.5rem; color: #888; cursor: pointer; }
@@ -146,6 +131,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+    <link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <!-- Certificate Modal -->
@@ -416,7 +402,7 @@
                 // Show last result if in cooldown
                 if (rouletteState.lastResult) {
                     resultBox.style.display = 'block';
-                    document.getElementById('resultTask').innerHTML = `<b>${rouletteState.lastResult.task}</b><br><small style="font-size:0.8rem;color:#888;">Spun by ${rouletteState.lastResult.spinner}</small><br><button onclick="showCertificate()" style="margin-top:10px;background:var(--primary-color);color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">View Certificate</button>`;
+                    document.getElementById('resultTask').innerHTML = `<b>${rouletteState.lastResult.task}</b><br><small style="font-size:0.8rem;color:#888;">Spun by ${rouletteState.lastResult.spinner}</small><br><button onclick="showCertificate()" style="margin-top:10px;background:var(--primary-color);color: var(--dark-color);border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">View Certificate</button>`;
                 } else {
                     resultBox.style.display = 'none';
                 }

@@ -18,8 +18,8 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1f1c2c 0%, #928dab 100%);
-            color: #fff;
+            /* bg handled by global */
+            /* color handled by global */
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -33,9 +33,9 @@
         }
 
         .back-btn {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
             border: none;
-            color: white;
+            color: var(--dark-color);
             width: 40px;
             height: 40px;
             border-radius: 50%;
@@ -48,7 +48,7 @@
         }
 
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: var(--card-bg);
         }
 
         h1 {
@@ -155,7 +155,7 @@
             height: 60px;
             border-radius: 50%;
             border: none;
-            color: white;
+            color: var(--dark-color);
             font-size: 1.5rem;
             cursor: pointer;
             display: flex;
@@ -165,11 +165,11 @@
         }
 
         .btn-mic, .btn-video {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
         }
 
         .btn-mic:hover, .btn-video:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: var(--card-bg);
         }
 
         .btn-mic.muted, .btn-video.muted {
@@ -201,13 +201,14 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
-            color: white;
+            color: var(--dark-color);
             padding: 10px 20px;
             border-radius: 20px;
             z-index: 1000;
             display: none;
         }
     </style>
+    <link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <div class="toast" id="toast">Connecting...</div>

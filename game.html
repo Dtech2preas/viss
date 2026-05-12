@@ -17,8 +17,8 @@
         }
         
         body {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            color: #fff;
+            /* bg handled by global */
+            /* color handled by global */
             min-height: 100vh;
             padding: 20px;
         }
@@ -33,7 +33,7 @@
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             border-radius: 15px;
             backdrop-filter: blur(10px);
         }
@@ -60,9 +60,9 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             border: none;
-            color: white;
+            color: var(--dark-color);
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -72,12 +72,12 @@
         }
         
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
             transform: translateY(-2px);
         }
         
         .card {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 20px;
@@ -104,7 +104,7 @@
         }
         
         .game-card {
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-bg);
             padding: 25px;
             border-radius: 15px;
             text-align: center;
@@ -113,7 +113,7 @@
         }
         
         .game-card:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: var(--card-bg);
             transform: translateY(-5px);
         }
         
@@ -153,18 +153,18 @@
         .option {
             padding: 15px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-bg);
             cursor: pointer;
             transition: all 0.3s ease;
         }
         
         .option:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: var(--card-bg);
         }
         
         .btn {
             background: #ff4b90;
-            color: white;
+            color: var(--dark-color);
             border: none;
             padding: 12px 20px;
             border-radius: 50px;
@@ -191,7 +191,7 @@
             bottom: 20px;
             right: 20px;
             background: #ff4b90;
-            color: white;
+            color: var(--dark-color);
             padding: 15px 25px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
