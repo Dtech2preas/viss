@@ -17,8 +17,8 @@
         }
 
         body {
-            background: linear-gradient(135deg, #d4145a 0%, #fbb03b 100%);
-            color: #fff;
+            /* background handled by global-style.css */
+            /* color handled by global */
             min-height: 100vh;
             padding: 20px;
             display: flex;
@@ -36,7 +36,7 @@
             text-align: center;
             margin-bottom: 30px;
             padding: 30px 20px;
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-bg);
             border-radius: 20px;
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
@@ -55,7 +55,7 @@
 
         h1 i {
             margin-right: 15px;
-            color: #fff;
+            color: var(--dark-color);
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
         }
 
@@ -76,9 +76,9 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
             border: none;
-            color: white;
+            color: var(--dark-color);
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -89,13 +89,13 @@
         }
 
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: var(--card-bg);
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-bg);
             border-radius: 20px;
             padding: 25px;
             margin-bottom: 25px;
@@ -114,13 +114,13 @@
 
         .card-title i {
             margin-right: 12px;
-            color: #fff;
+            color: var(--dark-color);
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
         }
 
         .btn {
-            background: rgba(255, 255, 255, 0.25);
-            color: white;
+            background: var(--card-bg);
+            color: var(--dark-color);
             border: none;
             padding: 14px 25px;
             border-radius: 50px;
@@ -139,7 +139,7 @@
         }
 
         .btn:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: var(--card-bg);
             transform: translateY(-3px);
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
         }
@@ -152,7 +152,7 @@
         }
 
         .activity-item {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
             padding: 20px;
             border-radius: 15px;
             text-align: center;
@@ -164,7 +164,7 @@
         }
 
         .activity-item:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: var(--card-bg);
             transform: translateY(-5px) scale(1.03);
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
@@ -182,7 +182,7 @@
         .activity-log {
             padding: 15px;
             margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             border-radius: 12px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
             border-left: 3px solid rgba(255, 255, 255, 0.3);
@@ -200,7 +200,7 @@
             bottom: 20px;
             right: 20px;
             background: rgba(212, 20, 90, 0.9);
-            color: white;
+            color: var(--dark-color);
             padding: 15px 25px;
             border-radius: 12px;
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
@@ -221,7 +221,7 @@
         .user-card {
             flex: 1;
             min-width: 200px;
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-bg);
             padding: 20px;
             border-radius: 15px;
             text-align: center;
@@ -233,12 +233,12 @@
         }
 
         .user-card:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: var(--card-bg);
             transform: translateY(-3px);
         }
 
         .user-card.selected {
-            background: rgba(255, 255, 255, 0.3);
+            background: var(--card-bg);
             border: 2px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
         }
@@ -251,7 +251,7 @@
         .status-bar {
             display: flex;
             align-items: center;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             padding: 12px 18px;
             border-radius: 10px;
             margin-top: 20px;
@@ -282,7 +282,7 @@
 
         .selected-user-display {
             padding: 18px;
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-bg);
             border-radius: 15px;
             margin: 15px 0;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -411,9 +411,9 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px; display: flex; gap: 10px; padding: 15px; background: rgba(255,255,255,0.5); border-radius: 12px;">
+            <div style="margin-top: 20px; display: flex; gap: 10px; padding: 15px; background: var(--card-bg); border-radius: 12px;">
                 <input type="text" id="customActivityInput" placeholder="Or type a custom activity..." style="flex: 1; padding: 12px; border: 2px solid #ff7eb9; border-radius: 8px; font-size: 1rem; outline: none;">
-                <button onclick="shareCustomActivity()" style="background: linear-gradient(135deg, #ff7eb9, #7e57c2); color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">Send</button>
+                <button onclick="shareCustomActivity()" style="background: linear-gradient(135deg, #ff7eb9, #7e57c2); color: var(--dark-color); border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">Send</button>
             </div>
         </div>
 

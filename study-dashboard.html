@@ -10,16 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary-color: #ff7eb9;
-            --secondary-color: #7e57c2;
-            --accent-color: #ff4d8d;
-            --light-color: #fff5f9;
-            --dark-color: #3a2846;
-            --gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            --study-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --partner-gradient: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-        }
+
 
         * {
             margin: 0;
@@ -28,14 +19,8 @@
         }
 
         body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50L0 25L50 0L100 25L50 50Z' fill='%23ff7eb922' /%3E%3C/svg%3E");
-        }
+    /* handled by global css */
+}
 
         .container {
             max-width: 900px;
@@ -49,7 +34,7 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: white;
+            background: var(--card-bg);
             color: var(--secondary-color);
             border: none;
             padding: 10px 20px;
@@ -90,7 +75,7 @@
         }
 
         .dashboard-section {
-            background: white;
+            background: var(--card-bg);
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
@@ -126,7 +111,7 @@
         }
 
         .toggle-btn {
-            background: white;
+            background: var(--card-bg);
             border: 2px solid #e6d4f7;
             color: var(--dark-color);
             padding: 10px 20px;
@@ -140,7 +125,7 @@
 
         .toggle-btn.active {
             background: var(--study-gradient);
-            color: white;
+            color: var(--dark-color);
             border-color: transparent;
             box-shadow: 0 5px 15px rgba(79, 172, 254, 0.3);
         }
@@ -159,7 +144,7 @@
 
         .chart-type-btn.active {
             background: var(--secondary-color);
-            color: white;
+            color: var(--dark-color);
             border-color: var(--secondary-color);
         }
 
@@ -229,7 +214,7 @@
 
         .timeframe-btn.active {
             background: var(--secondary-color);
-            color: white;
+            color: var(--dark-color);
             border-color: var(--secondary-color);
         }
 
@@ -281,6 +266,7 @@
         }
     </style>
 <script src="custom-alerts.js"></script>
+    <link rel="stylesheet" href="global-style.css">
 </head>
 <body>
     <a href="study.html" class="back-btn">← Timer</a>

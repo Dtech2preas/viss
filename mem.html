@@ -17,7 +17,7 @@
 
     body {
       font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      /* bg handled by global */
       color: #333;
       min-height: 100vh;
       padding: 20px;
@@ -28,7 +28,7 @@
     }
 
     .container {
-      background-color: rgba(255, 255, 255, 0.95);
+      background-color: var(--card-bg);
       border-radius: 20px;
       box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
       padding: 30px;
@@ -79,7 +79,7 @@
 
     .startBtn {
       background-color: #4a2c82;
-      color: white;
+      color: var(--dark-color);
       border: none;
       cursor: pointer;
       font-weight: 600;
@@ -109,7 +109,7 @@
 
     .flip-counter {
       background-color: #4a2c82;
-      color: white;
+      color: var(--dark-color);
       padding: 10px 20px;
       border-radius: 8px;
       font-weight: 600;
@@ -118,7 +118,7 @@
 
     .matches-counter {
       background-color: #28a745;
-      color: white;
+      color: var(--dark-color);
       padding: 10px 20px;
       border-radius: 8px;
       font-weight: 600;
@@ -136,7 +136,7 @@
 
     .card {
       height: 90px;
-      background: #fff;
+      background: var(--card-bg);
       border-radius: 8px;
       cursor: pointer;
       perspective: 1000px;
@@ -176,7 +176,7 @@
 
     .card-front {
       background: linear-gradient(135deg, #4a2c82 0%, #667eea 100%);
-      color: white;
+      color: var(--dark-color);
     }
 
     .card-front::after {
@@ -184,7 +184,7 @@
     }
 
     .card-back {
-      background-color: #fff;
+      background: var(--card-bg);
       color: #333;
       transform: rotateY(180deg);
     }
@@ -233,7 +233,7 @@
     }
 
     .status-warning {
-      background-color: #fff3cd;
+      background: var(--card-bg);3cd;
       color: #856404;
     }
 
@@ -260,7 +260,7 @@
     }
 
     .limit-reached {
-      background-color: #fff3cd;
+      background: var(--card-bg);3cd;
       color: #856404;
       padding: 20px;
       border-radius: 12px;

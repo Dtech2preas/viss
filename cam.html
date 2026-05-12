@@ -9,14 +9,14 @@
 <title>My Diary Book for Owami</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Georgia', serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%); transition: background 3s ease; }
-#book-container { width: 95vw; max-width: 800px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; position: relative; background: #fffaf5; border: 1px solid #e6c9a8; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 0 60px rgba(255, 182, 193, 0.3) inset; border-radius: 8px; transition: all 0.5s ease; z-index: 2; }
+body { font-family: 'Georgia', serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; /* bg handled by global */ transition: background 3s ease; }
+#book-container { width: 95vw; max-width: 800px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--card-bg);af5; border: 1px solid #e6c9a8; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 0 60px rgba(255, 182, 193, 0.3) inset; border-radius: 8px; transition: all 0.5s ease; z-index: 2; }
 #page-content { flex: 1; white-space: pre-wrap; font-size: 9pt; line-height: 1.6; overflow-y: auto; padding: 20px; text-align: left; font-family: 'Georgia', serif; background-image: linear-gradient(rgba(0,0,0,0.03) 0.1em, transparent 0.1em), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ffb6c1' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); background-size: 100% 1.6em, 200px 200px; background-position: 0 1.4em, 0 0; transition: all 0.5s ease; position: relative; z-index: 1; }
 /* Style for detected links */
 .diary-link { color: #c44569; text-decoration: underline; cursor: pointer; font-weight: bold; }
 .diary-link:hover { color: #b33761; text-decoration: underline; }
-.nav-buttons { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 55px; min-height: 55px; border-top: 1px solid #f2d9c9; background: linear-gradient(to bottom, #fffaf5 0%, #f9e6d8 100%); transition: all 0.5s ease; z-index: 2; }
-button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Georgia', serif; height: 36px; background: #c44569; color: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transition: all 0.3s ease; position: relative; overflow: hidden; }
+.nav-buttons { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 55px; min-height: 55px; border-top: 1px solid #f2d9c9; background: var(--card-bg); transition: all 0.5s ease; z-index: 2; }
+button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Georgia', serif; height: 36px; background: #c44569; color: var(--dark-color); box-shadow: 0 3px 8px rgba(0,0,0,0.15); transition: all 0.3s ease; position: relative; overflow: hidden; }
 button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(196, 69, 105, 0.3); background: #b33761; }
 button:disabled { cursor: not-allowed; opacity: 0.5; }
 #page-indicator { font-size: 14px; font-style: italic; font-weight: bold; color: #c44569; transition: all 0.5s ease; opacity: 0.8; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
@@ -29,26 +29,26 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* Password Modal */
 .password-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-.password-content { background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%); padding: 35px; border-radius: 12px; text-align: center; width: 90%; max-width: 500px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); border: 2px solid #ff9e9e; position: relative; overflow: hidden; }
+.password-content { background: var(--card-bg); padding: 35px; border-radius: 12px; text-align: center; width: 90%; max-width: 500px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); border: 2px solid #ff9e9e; position: relative; overflow: hidden; }
 .password-content::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ff9e9e' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); z-index: -1; }
 .password-title { font-size: 28px; color: #c44569; margin-bottom: 20px; font-variant: small-caps; }
 .password-text { font-size: 17px; color: #8d6363; margin-bottom: 20px; line-height: 1.5; }
-.password-input { padding: 14px 18px; border: 2px solid #ff9e9e; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 25px; background: rgba(255, 255, 255, 0.9); text-align: center; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.password-input { padding: 14px 18px; border: 2px solid #ff9e9e; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 25px; background: var(--card-bg); text-align: center; transition: all 0.3s ease; font-family: 'Georgia', serif; }
 .password-input:focus { outline: none; border-color: #c44569; box-shadow: 0 0 15px rgba(196, 69, 105, 0.4); }
-.password-btn { background: #c44569; color: white; border: none; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.password-btn { background: #c44569; color: var(--dark-color); border: none; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; transition: all 0.3s ease; font-family: 'Georgia', serif; }
 .password-btn:hover { background: #b33761; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(196, 69, 105, 0.4); }
 .password-error { color: #ff5252; margin-top: 15px; font-style: italic; display: none; }
 
 /* Validation Modal */
 .validation-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
 .validation-modal.active { opacity: 1; pointer-events: all; }
-.validation-content { background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%); padding: 35px; border-radius: 12px; text-align: center; width: 90%; max-width: 500px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); border: 2px solid #ff9e9e; position: relative; overflow: hidden; }
+.validation-content { background: var(--card-bg); padding: 35px; border-radius: 12px; text-align: center; width: 90%; max-width: 500px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); border: 2px solid #ff9e9e; position: relative; overflow: hidden; }
 .validation-content::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill='%23ff9e9e' fill-opacity='0.1' d='M20,30 Q30,15 40,30 T60,30 T40,30 T20,30Z'/%3E%3C/svg%3E"); z-index: -1; }
 .validation-title { font-size: 28px; color: #c44569; margin-bottom: 20px; font-variant: small-caps; }
 .validation-text { font-size: 17px; color: #8d6363; margin-bottom: 20px; line-height: 1.5; }
-.validation-input { padding: 14px 18px; border: 2px solid #ff9e9e; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 25px; background: rgba(255, 255, 255, 0.9); text-align: center; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.validation-input { padding: 14px 18px; border: 2px solid #ff9e9e; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 25px; background: var(--card-bg); text-align: center; transition: all 0.3s ease; font-family: 'Georgia', serif; }
 .validation-input:focus { outline: none; border-color: #c44569; box-shadow: 0 0 15px rgba(196, 69, 105, 0.4); }
-.validation-btn { background: #c44569; color: white; border: none; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; transition: all 0.3s ease; font-family: 'Georgia', serif; }
+.validation-btn { background: #c44569; color: var(--dark-color); border: none; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; transition: all 0.3s ease; font-family: 'Georgia', serif; }
 .validation-btn:hover { background: #b33761; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(196, 69, 105, 0.4); }
 .validation-error { color: #ff5252; margin-top: 15px; font-style: italic; display: none; }
 .validation-success { color: #4caf50; margin-top: 15px; font-style: italic; display: none; }
@@ -80,6 +80,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 #page-content::-webkit-scrollbar-thumb:hover { background: #d4b495; }
 </style>
 <script src="custom-alerts.js"></script>
+    <link rel="stylesheet" href="global-style.css">
 </head>
 <body>
 <!-- Password Modal -->

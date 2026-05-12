@@ -10,18 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --primary: #ff4d6d;
-      --primary-light: #ff80aa;
-      --primary-dark: #ff0066;
-      --secondary: #4d79ff;
-      --text: #333;
-      --text-light: #666;
-      --bg-light: #fff;
-      --bg-gradient: linear-gradient(135deg, #ffe6f0, #e6f7ff);
-      --shadow: 0 8px 20px rgba(0,0,0,0.1);
-      --radius: 16px;
-    }
+
     
     * {
       box-sizing: border-box;
@@ -116,7 +105,7 @@
       border-radius: 10px;
       border: 2px solid #e0e0e0;
       font-size: 1rem;
-      background: white;
+      background: var(--card-bg);
       transition: border-color 0.3s;
       min-width: 150px;
     }
@@ -138,7 +127,7 @@
     
     .btn-primary {
       background: var(--primary);
-      color: white;
+      color: var(--dark-color);
       margin-top: 10px;
       width: 100%;
     }
@@ -165,7 +154,7 @@
     }
     
     .leader-summary {
-      background: white;
+      background: var(--card-bg);
       border-radius: var(--radius);
       padding: 20px;
       text-align: center;
@@ -192,7 +181,7 @@
     }
     
     .card {
-      background: white;
+      background: var(--card-bg);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 25px;
@@ -246,7 +235,7 @@
     }
     
     .love-message {
-      background: white;
+      background: var(--card-bg);
       border-radius: var(--radius);
       padding: 20px;
       text-align: center;
@@ -276,7 +265,7 @@
       width: 100%;
       padding: 15px;
       background: var(--primary-light);
-      color: white;
+      color: var(--dark-color);
       border: none;
       border-radius: var(--radius);
       font-size: 1.1rem;

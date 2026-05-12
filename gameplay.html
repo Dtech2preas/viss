@@ -17,7 +17,7 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            /* bg handled by global */
             color: #333;
             min-height: 100vh;
             padding: 20px;
@@ -26,7 +26,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--card-bg);
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             overflow: hidden;
@@ -34,7 +34,7 @@
 
         header {
             background: #2c3e50;
-            color: white;
+            color: var(--dark-color);
             padding: 20px;
             text-align: center;
             position: relative;
@@ -58,7 +58,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             padding: 10px 15px;
             border-radius: 50px;
         }
@@ -71,7 +71,7 @@
             justify-content: center;
             align-items: center;
             font-weight: bold;
-            color: white;
+            color: var(--dark-color);
         }
 
         .user-badge.lefa .user-avatar { background: #e74c3c; }
@@ -99,7 +99,7 @@
         }
 
         .leaderboard {
-            background: white;
+            background: var(--card-bg);
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -154,7 +154,7 @@
         }
 
         .games-panel {
-            background: white;
+            background: var(--card-bg);
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -208,7 +208,7 @@
 
         .play-btn {
             background: #3498db;
-            color: white;
+            color: var(--dark-color);
             border: none;
             padding: 10px 20px;
             border-radius: 50px;
@@ -224,7 +224,7 @@
         .game-container {
             display: none;
             padding: 30px;
-            background: white;
+            background: var(--card-bg);
             border-radius: 10px;
             margin: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -242,7 +242,7 @@
 
         .back-btn {
             background: #95a5a6;
-            color: white;
+            color: var(--dark-color);
             border: none;
             padding: 10px 20px;
             border-radius: 50px;
@@ -276,7 +276,7 @@
             align-items: center;
             font-size: 2.5rem;
             font-weight: bold;
-            color: white;
+            color: var(--dark-color);
             cursor: pointer;
             border-radius: 5px;
             transition: background 0.3s;
@@ -410,7 +410,7 @@
 
         .save-btn {
             background: #2ecc71;
-            color: white;
+            color: var(--dark-color);
             border: none;
             padding: 12px 25px;
             border-radius: 50px;
@@ -435,7 +435,7 @@
             margin-top: 15px;
             padding: 10px;
             background: #2c3e50;
-            color: white;
+            color: var(--dark-color);
             border-radius: 5px;
             word-break: break-all;
         }
