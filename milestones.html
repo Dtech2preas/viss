@@ -1,287 +1,440 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Our Journey - Together Forever</title>
+
     <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="global-style.css">
+
     <script src="auth-check.js"></script>
     <script src="custom-alerts.js"></script>
-    <style>
 
+    <style>
+        :root {
+            --glass-bg: rgba(255,255,255,0.55);
+            --glass-border: rgba(255,255,255,0.35);
+
+            --shadow: 0 10px 35px rgba(255, 133, 162, 0.15);
+            --shadow-hover: 0 18px 40px rgba(255, 133, 162, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
-    /* handled by global css */
-}
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(255,192,203,0.4), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(186,104,200,0.2), transparent 35%),
+                linear-gradient(135deg, #fff7fb 0%, #fff1f6 40%, #f9f0ff 100%);
+            color: #5c5470;
+            overflow-x: hidden;
+        }
+
+        .page {
+            max-width: 1150px;
+            margin: auto;
+            padding: 20px 16px 40px;
+        }
 
         .header {
             text-align: center;
-            padding: 30px 20px;
             position: relative;
+            margin-bottom: 28px;
         }
 
         .back-btn {
             position: absolute;
-            left: 20px;
-            top: 30px;
-            background: var(--card-bg);
+            left: 0;
+            top: 10px;
+
+            width: 48px;
+            height: 48px;
+
             border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            font-size: 1.2rem;
+            border-radius: 16px;
+
+            background: rgba(255,255,255,0.65);
+            backdrop-filter: blur(12px);
+
+            font-size: 1.1rem;
+            color: #a06cd5;
+
             cursor: pointer;
-            color: var(--secondary-color);
-            transition: all 0.3s ease;
+
+            box-shadow: var(--shadow);
+
+            transition: 0.25s ease;
         }
 
         .back-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: var(--shadow-hover);
         }
 
         h1 {
             font-family: 'Dancing Script', cursive;
-            font-size: 3rem;
-            color: var(--secondary-color);
-            margin-bottom: 10px;
+            font-size: clamp(3rem, 8vw, 5rem);
+            color: #b565d9;
+            margin-bottom: 8px;
         }
 
         .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.8;
             max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 20px;
-            width: 100%;
+            margin: auto;
+            line-height: 1.7;
+            font-size: 1rem;
+            color: #8c7aa9;
         }
 
         .milestones-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
         }
 
         .milestone-card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 25px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(126, 87, 194, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            align-items: center;
-            border-top: 5px solid transparent;
+
+            padding: 22px;
+
+            border-radius: 28px;
+
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+
+            border: 1px solid var(--glass-border);
+
+            box-shadow: var(--shadow);
+
+            transition: 0.3s ease;
         }
 
         .milestone-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(126, 87, 194, 0.15);
+            box-shadow: var(--shadow-hover);
         }
 
         .milestone-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            background: var(--gradient);
-            opacity: 0.8;
+            inset: 0;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(255,255,255,0.3),
+                    transparent 45%
+                );
+
+            pointer-events: none;
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            margin-bottom: 18px;
         }
 
         .milestone-icon {
-            font-size: 3rem;
-            margin-right: 20px;
-            background: var(--light-color);
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+
+            border-radius: 20px;
+
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+
+            font-size: 1.7rem;
+
+            background: rgba(255,255,255,0.45);
+
+            box-shadow:
+                inset 0 2px 5px rgba(255,255,255,0.35),
+                0 5px 12px rgba(255,182,193,0.15);
         }
 
-        .milestone-content {
-            flex: 1;
+        .mini-tag {
+            padding: 7px 12px;
+
+            border-radius: 999px;
+
+            background: rgba(255,255,255,0.4);
+
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+
+            color: #b565d9;
         }
 
         .milestone-value {
-            font-size: 2.5rem;
+            font-size: clamp(2.2rem, 8vw, 3.5rem);
             font-weight: 700;
-            color: var(--accent-color);
+
             line-height: 1;
-            margin-bottom: 5px;
+
+            margin-bottom: 10px;
+
+            color: #ff5c8a;
+            letter-spacing: -2px;
         }
 
         .milestone-value span {
-            font-size: 1.2rem;
-            color: var(--secondary-color);
-            font-weight: 500;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0;
+
+            color: #9b7db4;
         }
 
         .milestone-label {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 5px;
+            font-size: 1.05rem;
+            font-weight: 700;
+
+            margin-bottom: 10px;
+
+            color: #7c5aa6;
         }
 
         .milestone-date {
             font-size: 0.85rem;
-            color: #888;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
+            line-height: 1.6;
 
-        .milestone-date i {
-            font-size: 0.9rem;
+            color: #9b8ab6;
         }
 
         .ages-card {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-around;
-            text-align: center;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(126, 87, 194, 0.1);
-            margin-top: 25px;
-            position: relative;
-        }
+            margin-top: 20px;
 
-        .ages-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            background: var(--gradient);
-            opacity: 0.8;
+            padding: 24px;
+
+            border-radius: 30px;
+
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+
+            border: 1px solid var(--glass-border);
+
+            box-shadow: var(--shadow);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+
+            flex-wrap: wrap;
         }
 
         .person-age {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            flex: 1;
+            min-width: 150px;
+
+            text-align: center;
         }
 
         .person-icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 2.6rem;
+            margin-bottom: 12px;
         }
 
         .person-name {
+            font-size: 1rem;
             font-weight: 600;
-            color: var(--secondary-color);
-            font-size: 1.2rem;
+
+            color: #9d79c9;
+
+            margin-bottom: 8px;
         }
 
         .person-age-val {
-            font-size: 2rem;
+            font-size: clamp(2.3rem, 7vw, 3rem);
             font-weight: 700;
-            color: var(--accent-color);
+
+            color: #ff5c8a;
         }
 
-        @media (max-width: 600px) {
+        .divider {
+            width: 1px;
+            height: 80px;
+            background: rgba(181,101,217,0.15);
+        }
+
+        @media (max-width: 768px) {
+            .page {
+                padding: 14px 12px 30px;
+            }
+
             .header {
-                padding: 20px 10px;
+                margin-bottom: 22px;
             }
+
             .back-btn {
-                top: 20px;
-                left: 10px;
+                width: 44px;
+                height: 44px;
+                border-radius: 14px;
             }
-            h1 {
-                font-size: 2.2rem;
-                margin-top: 40px;
+
+            .subtitle {
+                font-size: 0.92rem;
             }
+
             .milestones-grid {
-                grid-template-columns: 1fr;
+                gap: 14px;
             }
+
             .milestone-card {
                 padding: 20px;
+                border-radius: 24px;
             }
+
             .milestone-icon {
-                font-size: 2.5rem;
-                width: 60px;
-                height: 60px;
-                margin-right: 15px;
+                width: 54px;
+                height: 54px;
+                border-radius: 18px;
+                font-size: 1.5rem;
+            }
+
+            .ages-card {
+                gap: 18px;
+                padding: 20px;
+            }
+
+            .divider {
+                width: 70%;
+                height: 1px;
             }
         }
     </style>
 </head>
+
 <body>
 
-    <div class="header">
-        <button class="back-btn" onclick="window.location.href='you.html'">←</button>
-        <h1>Our Journey</h1>
-        <p class="subtitle">Every day with you is a beautiful milestone.</p>
-    </div>
+    <div class="page">
 
-    <div class="container">
+        <div class="header">
+            <button class="back-btn" onclick="window.location.href='you.html'">←</button>
+
+            <h1>Our Journey</h1>
+
+            <p class="subtitle">
+                Every moment together becomes another memory worth keeping forever 💕
+            </p>
+        </div>
+
         <div class="milestones-grid">
 
-            <!-- Days Together -->
+            <!-- Together -->
             <div class="milestone-card">
-                <div class="milestone-icon">❤️</div>
-                <div class="milestone-content">
-                    <div class="milestone-value" id="stat-together">... <span>Days</span></div>
-                    <div class="milestone-label">Together</div>
-                    <div class="milestone-date">📅 Sept 21, 2024 (Anniversary/First Date)</div>
+                <div class="card-top">
+                    <div class="milestone-icon">❤️</div>
+                    <div class="mini-tag">Together</div>
+                </div>
+
+                <div class="milestone-value" id="stat-together">
+                    ... <span>Days</span>
+                </div>
+
+                <div class="milestone-label">
+                    Together
+                </div>
+
+                <div class="milestone-date">
+                    📅 Sept 21, 2024 • Anniversary / First Date
                 </div>
             </div>
 
-            <!-- Days Since First Talked -->
+            <!-- First Talk -->
             <div class="milestone-card">
-                <div class="milestone-icon">💬</div>
-                <div class="milestone-content">
-                    <div class="milestone-value" id="stat-talking">... <span>Days</span></div>
-                    <div class="milestone-label">Since We First Talked</div>
-                    <div class="milestone-date">📅 Dec 12, 2023</div>
+                <div class="card-top">
+                    <div class="milestone-icon">💬</div>
+                    <div class="mini-tag">First Talk</div>
+                </div>
+
+                <div class="milestone-value" id="stat-talking">
+                    ... <span>Days</span>
+                </div>
+
+                <div class="milestone-label">
+                    Since We First Talked
+                </div>
+
+                <div class="milestone-date">
+                    📅 Dec 12, 2023
                 </div>
             </div>
 
-            <!-- Days Until Anniversary -->
-            <div class="milestone-card" style="border-top-color: #ff9a9e;">
-                <div class="milestone-icon">🥂</div>
-                <div class="milestone-content">
-                    <div class="milestone-value" id="stat-anniversary">... <span>Days</span></div>
-                    <div class="milestone-label">Until Our Next Anniversary</div>
-                    <div class="milestone-date" id="date-next-anniversary">📅 ...</div>
+            <!-- Anniversary -->
+            <div class="milestone-card">
+                <div class="card-top">
+                    <div class="milestone-icon">🥂</div>
+                    <div class="mini-tag">Anniversary</div>
+                </div>
+
+                <div class="milestone-value" id="stat-anniversary">
+                    ... <span>Days</span>
+                </div>
+
+                <div class="milestone-label">
+                    Until Our Next Anniversary
+                </div>
+
+                <div class="milestone-date" id="date-next-anniversary">
+                    📅 ...
                 </div>
             </div>
 
-            <!-- Days Until Jonas Bday -->
-            <div class="milestone-card" style="border-top-color: #a18cd1;">
-                <div class="milestone-icon">👑</div>
-                <div class="milestone-content">
-                    <div class="milestone-value" id="stat-jonas-bday">... <span>Days</span></div>
-                    <div class="milestone-label">Until Jonas's Birthday</div>
-                    <div class="milestone-date" id="date-jonas-bday">📅 ... (Born June 20, 2005)</div>
+            <!-- Jonas -->
+            <div class="milestone-card">
+                <div class="card-top">
+                    <div class="milestone-icon">👑</div>
+                    <div class="mini-tag">Birthday</div>
+                </div>
+
+                <div class="milestone-value" id="stat-jonas-bday">
+                    ... <span>Days</span>
+                </div>
+
+                <div class="milestone-label">
+                    Until Jonas's Birthday
+                </div>
+
+                <div class="milestone-date" id="date-jonas-bday">
+                    📅 ...
                 </div>
             </div>
 
-            <!-- Days Until Owami Bday -->
-            <div class="milestone-card" style="border-top-color: #fad0c4;">
-                <div class="milestone-icon">👸</div>
-                <div class="milestone-content">
-                    <div class="milestone-value" id="stat-owami-bday">... <span>Days</span></div>
-                    <div class="milestone-label">Until Owami's Birthday</div>
-                    <div class="milestone-date" id="date-owami-bday">📅 ... (Born Aug 1, 2006)</div>
+            <!-- Owami -->
+            <div class="milestone-card">
+                <div class="card-top">
+                    <div class="milestone-icon">👸</div>
+                    <div class="mini-tag">Birthday</div>
+                </div>
+
+                <div class="milestone-value" id="stat-owami-bday">
+                    ... <span>Days</span>
+                </div>
+
+                <div class="milestone-label">
+                    Until Owami's Birthday
+                </div>
+
+                <div class="milestone-date" id="date-owami-bday">
+                    📅 ...
                 </div>
             </div>
 
@@ -289,90 +442,179 @@
 
         <!-- Ages -->
         <div class="ages-card">
+
             <div class="person-age">
                 <div class="person-icon">👦🏽</div>
-                <div class="person-name">Jonas</div>
-                <div class="person-age-val" id="age-jonas">...</div>
+
+                <div class="person-name">
+                    Jonas
+                </div>
+
+                <div class="person-age-val" id="age-jonas">
+                    ...
+                </div>
             </div>
-            <div style="width: 2px; background: rgba(0,0,0,0.05); margin: 0 20px;"></div>
+
+            <div class="divider"></div>
+
             <div class="person-age">
                 <div class="person-icon">👧🏽</div>
-                <div class="person-name">Owami</div>
-                <div class="person-age-val" id="age-owami">...</div>
+
+                <div class="person-name">
+                    Owami
+                </div>
+
+                <div class="person-age-val" id="age-owami">
+                    ...
+                </div>
             </div>
+
         </div>
+
     </div>
 
     <script>
         function calculateMilestones() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Normalize to midnight
 
-            // Hardcoded dates
-            const firstDate = new Date('2024-09-21T00:00:00');
-            const talkingDate = new Date('2023-12-12T00:00:00');
-            const jonasBday = new Date('2005-06-20T00:00:00');
-            const owamiBday = new Date('2006-08-01T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const firstDate = new Date('2024-09-21');
+            const talkingDate = new Date('2023-12-12');
+
+            const jonasBday = new Date('2005-06-20');
+            const owamiBday = new Date('2006-08-01');
 
             const msPerDay = 1000 * 60 * 60 * 24;
 
-            // Date Formatting Helper
-            const formatDate = (date) => {
-                const options = { month: 'short', day: 'numeric', year: 'numeric' };
-                return date.toLocaleDateString('en-US', options);
-            };
+            function formatDate(date) {
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
 
-            // 1. Days Together (since Sept 21, 2024)
-            const daysTogether = Math.floor((today - firstDate) / msPerDay);
-            document.getElementById('stat-together').innerHTML = `${daysTogether > 0 ? daysTogether : 0} <span>Days</span>`;
+            // Together
+            const daysTogether = Math.max(
+                0,
+                Math.floor((today - firstDate) / msPerDay)
+            );
 
-            // 2. Days Since Talking (since Dec 12, 2023)
-            const daysTalking = Math.floor((today - talkingDate) / msPerDay);
-            document.getElementById('stat-talking').innerHTML = `${daysTalking > 0 ? daysTalking : 0} <span>Days</span>`;
+            document.getElementById('stat-together').innerHTML =
+                `${daysTogether} <span>Days</span>`;
 
-            // 3. Days Until Anniversary (Next Sept 21)
-            let nextAnniversary = new Date(today.getFullYear(), 8, 21); // Month is 0-indexed (8 = Sept)
+            // Talking
+            const daysTalking = Math.max(
+                0,
+                Math.floor((today - talkingDate) / msPerDay)
+            );
+
+            document.getElementById('stat-talking').innerHTML =
+                `${daysTalking} <span>Days</span>`;
+
+            // Anniversary
+            let nextAnniversary = new Date(
+                today.getFullYear(),
+                8,
+                21
+            );
+
             if (today > nextAnniversary) {
-                nextAnniversary.setFullYear(today.getFullYear() + 1);
+                nextAnniversary.setFullYear(
+                    today.getFullYear() + 1
+                );
             }
-            const daysUntilAnniversary = Math.ceil((nextAnniversary - today) / msPerDay);
-            document.getElementById('stat-anniversary').innerHTML = `${daysUntilAnniversary} <span>Days</span>`;
-            document.getElementById('date-next-anniversary').innerHTML = `📅 ${formatDate(nextAnniversary)}`;
 
-            // 4. Days Until Jonas B-Day (Next June 20)
-            let nextJonasBday = new Date(today.getFullYear(), 5, 20); // 5 = June
+            const daysUntilAnniversary = Math.ceil(
+                (nextAnniversary - today) / msPerDay
+            );
+
+            document.getElementById('stat-anniversary').innerHTML =
+                `${daysUntilAnniversary} <span>Days</span>`;
+
+            document.getElementById('date-next-anniversary').innerHTML =
+                `📅 ${formatDate(nextAnniversary)}`;
+
+            // Jonas birthday
+            let nextJonasBday = new Date(
+                today.getFullYear(),
+                5,
+                20
+            );
+
             if (today > nextJonasBday) {
-                nextJonasBday.setFullYear(today.getFullYear() + 1);
+                nextJonasBday.setFullYear(
+                    today.getFullYear() + 1
+                );
             }
-            const daysUntilJonas = Math.ceil((nextJonasBday - today) / msPerDay);
-            document.getElementById('stat-jonas-bday').innerHTML = `${daysUntilJonas} <span>Days</span>`;
-            document.getElementById('date-jonas-bday').innerHTML = `📅 Next: ${formatDate(nextJonasBday)} (Born June 20, 2005)`;
 
-            // 5. Days Until Owami B-Day (Next Aug 1)
-            let nextOwamiBday = new Date(today.getFullYear(), 7, 1); // 7 = Aug
+            const daysUntilJonas = Math.ceil(
+                (nextJonasBday - today) / msPerDay
+            );
+
+            document.getElementById('stat-jonas-bday').innerHTML =
+                `${daysUntilJonas} <span>Days</span>`;
+
+            document.getElementById('date-jonas-bday').innerHTML =
+                `📅 Next: ${formatDate(nextJonasBday)} • Born June 20, 2005`;
+
+            // Owami birthday
+            let nextOwamiBday = new Date(
+                today.getFullYear(),
+                7,
+                1
+            );
+
             if (today > nextOwamiBday) {
-                nextOwamiBday.setFullYear(today.getFullYear() + 1);
+                nextOwamiBday.setFullYear(
+                    today.getFullYear() + 1
+                );
             }
-            const daysUntilOwami = Math.ceil((nextOwamiBday - today) / msPerDay);
-            document.getElementById('stat-owami-bday').innerHTML = `${daysUntilOwami} <span>Days</span>`;
-            document.getElementById('date-owami-bday').innerHTML = `📅 Next: ${formatDate(nextOwamiBday)} (Born Aug 1, 2006)`;
 
-            // 6. Ages
+            const daysUntilOwami = Math.ceil(
+                (nextOwamiBday - today) / msPerDay
+            );
+
+            document.getElementById('stat-owami-bday').innerHTML =
+                `${daysUntilOwami} <span>Days</span>`;
+
+            document.getElementById('date-owami-bday').innerHTML =
+                `📅 Next: ${formatDate(nextOwamiBday)} • Born Aug 1, 2006`;
+
+            // Ages
             function getAge(birthDate) {
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+
+                let age =
+                    today.getFullYear() -
+                    birthDate.getFullYear();
+
+                const monthDiff =
+                    today.getMonth() -
+                    birthDate.getMonth();
+
+                if (
+                    monthDiff < 0 ||
+                    (
+                        monthDiff === 0 &&
+                        today.getDate() < birthDate.getDate()
+                    )
+                ) {
                     age--;
                 }
+
                 return age;
             }
-            document.getElementById('age-jonas').textContent = getAge(jonasBday);
-            document.getElementById('age-owami').textContent = getAge(owamiBday);
+
+            document.getElementById('age-jonas').textContent =
+                getAge(jonasBday);
+
+            document.getElementById('age-owami').textContent =
+                getAge(owamiBday);
         }
 
-        window.onload = function() {
-            calculateMilestones();
-        };
+        window.onload = calculateMilestones;
     </script>
+
 </body>
 </html>
