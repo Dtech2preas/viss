@@ -1163,8 +1163,8 @@
                     deviceHeading = 360 - event.alpha;
                 }
                 // Call update direction if locations are loaded
-                const myState = globalState && localUser ? globalState[localUser.name] : null;
-                const partnerState = globalState && localUser && localUser.partner ? globalState[localUser.partner.name] : null;
+                const myState = globalState && localUser ? globalState[getCurrentUser()] : null;
+                const partnerState = globalState && localUser && localUser.partner ? globalState[getPartnerName()] : null;
                 if(myState && myState.location && partnerState && partnerState.location) {
                     updateDirectionIndicator(myState.location, partnerState.location);
                 }
@@ -1390,8 +1390,8 @@
             document.getElementById('tripDistanceLabel').textContent = labelMap[mode] + ' Distance';
 
             // Re-calculate if locations are available
-            if (globalState[localUser.name]?.location && globalState[localUser.partner.name]?.location) {
-                calculateDistance(globalState[localUser.name].location, globalState[localUser.partner.name].location);
+            if (globalState[getCurrentUser()]?.location && globalState[getPartnerName()]?.location) {
+                calculateDistance(globalState[getCurrentUser()].location, globalState[getPartnerName()].location);
             }
         }
 
@@ -1451,7 +1451,7 @@
                     }
 
                     // Save closest/furthest
-                    const myState = globalState[localUser.name] || {};
+                    const myState = globalState[getCurrentUser()] || {};
                     let updated = false;
                     let updates = {};
 
@@ -1527,7 +1527,7 @@
                 document.getElementById('tripTime').textContent = '-- mins';
             }
 
-            const myState = globalState[localUser.name] || {};
+            const myState = globalState[getCurrentUser()] || {};
             let updated = false;
             let updates = {};
 
