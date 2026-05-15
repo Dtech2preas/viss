@@ -301,7 +301,7 @@
             return total / 1000; // convert meters to kilometers
         }
 
-        function setTimeframe(tf, targetElement = null) {
+        async function setTimeframe(tf, targetElement = null) {
             document.querySelectorAll('.controls .btn').forEach(b => b.classList.remove('active'));
             if (targetElement) {
                 targetElement.classList.add('active');
@@ -329,19 +329,86 @@
             myFiltered = smoothPath(myFiltered, 3);
             partnerFiltered = smoothPath(partnerFiltered, 3);
 
-            drawPaths(myFiltered, partnerFiltered, rawMyFiltered, rawPartnerFiltered);
+            await drawPaths(myFiltered, partnerFiltered, rawMyFiltered, rawPartnerFiltered);
         }
 
-        function drawPaths(myPoints, partnerPoints, rawMyPoints, rawPartnerPoints) {
+        const osrmHistoryCache = {};
+
+        async function getRouteSegment(p1, p2) {
+            if (!p1 || !p2) return [[p1.lat, p1.lng]];
+
+            // Calculate distance in meters
+            const distanceMeters = map.distance([p1.lat, p1.lng], [p2.lat, p2.lng]);
+
+            // Time diff in hours
+            const timeDiffMs = Math.abs(p2.timestamp - p1.timestamp);
+            const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+
+            if (timeDiffHours === 0) return [[p1.lat, p1.lng], [p2.lat, p2.lng]];
+
+            // Speed in km/h
+            const speedKmh = (distanceMeters / 1000) / timeDiffHours;
+
+            if (speedKmh >= 10 && speedKmh < 300) { // Assume car speed if >= 10km/h and < 300km/h
+                const cacheKey = `${p1.lat.toFixed(4)},${p1.lng.toFixed(4)}_${p2.lat.toFixed(4)},${p2.lng.toFixed(4)}`;
+
+                if (!osrmHistoryCache[cacheKey]) {
+                    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?overview=full&geometries=geojson`;
+                    osrmHistoryCache[cacheKey] = fetch(osrmUrl)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.routes && data.routes[0] && data.routes[0].geometry && data.routes[0].geometry.coordinates) {
+                                // OSRM returns [lng, lat], we need [lat, lng]
+                                return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                            }
+                            return null;
+                        })
+                        .catch(err => {
+                            console.error("OSRM error:", err);
+                            return null;
+                        });
+                }
+
+                try {
+                    const routeCoords = await osrmHistoryCache[cacheKey];
+                    if (routeCoords && routeCoords.length > 0) {
+                        return routeCoords;
+                    }
+                } catch(e) {
+                    console.error("Error fetching route from cache:", e);
+                }
+            }
+
+            // Fallback to straight line if speed < 10, invalid speed, or routing fails
+            return [[p1.lat, p1.lng], [p2.lat, p2.lng]];
+        }
+
+        async function drawPaths(myPoints, partnerPoints, rawMyPoints, rawPartnerPoints) {
             myLayerGroup.clearLayers();
             partnerLayerGroup.clearLayers();
 
             let bounds = [];
 
             // Helper to draw a directed line
-            function renderPath(points, rawPoints, color, group) {
+            async function renderPath(points, rawPoints, color, group) {
                 if (points.length < 2) return;
-                const latlngs = points.map(p => [p.lat, p.lng]);
+
+                let latlngs = [];
+                for (let i = 0; i < points.length - 1; i++) {
+                    const segment = await getRouteSegment(points[i], points[i+1]);
+                    // Avoid duplicating the start point of the next segment if it matches the end of the previous
+                    if (latlngs.length > 0 && segment.length > 0) {
+                        const lastPt = latlngs[latlngs.length - 1];
+                        const firstPt = segment[0];
+                        if (lastPt[0] === firstPt[0] && lastPt[1] === firstPt[1]) {
+                            segment.shift(); // Remove duplicate point
+                        }
+                    }
+                    latlngs.push(...segment);
+                }
+
+                if (latlngs.length < 2) return;
+
                 bounds.push(...latlngs);
 
                 // Using Ant Path to show movement direction
@@ -388,13 +455,13 @@
 
                 L.circleMarker([start.lat, start.lng], {radius: 5, color: '#000', fillColor: color, fillOpacity:1}).addTo(group).bindPopup(`Start: ${formatAMPM(start.timestamp)}`);
                 L.circleMarker([end.lat, end.lng], {radius: 8, color: '#fff', fillColor: color, fillOpacity:1}).addTo(group).bindPopup(`Latest: ${formatAMPM(end.timestamp)}`);
-
-                // No more intermediate markers
             }
 
             // Draw lines
-            renderPath(myPoints, rawMyPoints, 'var(--primary-color)', myLayerGroup);
-            renderPath(partnerPoints, rawPartnerPoints, 'var(--secondary-color)', partnerLayerGroup);
+            await Promise.all([
+                renderPath(myPoints, rawMyPoints, 'var(--primary-color)', myLayerGroup),
+                renderPath(partnerPoints, rawPartnerPoints, 'var(--secondary-color)', partnerLayerGroup)
+            ]);
 
             if (bounds.length > 0) {
                 map.fitBounds(bounds, {padding: [50, 50]});
