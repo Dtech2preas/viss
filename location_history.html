@@ -181,7 +181,7 @@
 
             // Use CartoDB Positron for cleaner look
             map = L.map('map').setView([0, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap &copy; CARTO'
             }).addTo(map);
 
@@ -301,6 +301,20 @@
 
                 L.circleMarker([start.lat, start.lng], {radius: 5, color: '#000', fillColor: color, fillOpacity:1}).addTo(group).bindPopup(`Start: ${new Date(start.timestamp).toLocaleString()}`);
                 L.circleMarker([end.lat, end.lng], {radius: 8, color: '#fff', fillColor: color, fillOpacity:1}).addTo(group).bindPopup(`Latest: ${new Date(end.timestamp).toLocaleString()}`);
+
+                // Add intermediate markers
+                for (let i = 1; i < points.length - 1; i++) {
+                    const p = points[i];
+                    if (p.timestamp) {
+                        L.circleMarker([p.lat, p.lng], {
+                            radius: 4,
+                            color: color,
+                            weight: 1,
+                            fillColor: '#fff',
+                            fillOpacity: 0.8
+                        }).addTo(group).bindPopup(`Time: ${new Date(p.timestamp).toLocaleString()}`);
+                    }
+                }
             }
 
             // Draw lines
