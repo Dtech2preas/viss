@@ -1568,6 +1568,22 @@
             return deg * (Math.PI/180);
         }
 
+        function formatAMPM(timestamp) {
+            const date = new Date(timestamp);
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = months[date.getMonth()];
+            const day = date.getDate();
+            const year = date.getFullYear();
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            minutes = minutes < 10 ? '0'+minutes : minutes;
+            const strTime = month + ' ' + day + ', ' + year + ', ' + hours + ':' + minutes + ' ' + ampm;
+            return strTime;
+        }
+
         function updateLocationHistory(history) {
             const historyContainer = document.getElementById('locationHistory');
             historyContainer.innerHTML = '';
@@ -1576,10 +1592,9 @@
                 const recentLocations = history.slice(-5).reverse();
 
                 recentLocations.forEach(location => {
-                    const date = new Date(location.timestamp);
                     const historyItem = document.createElement('div');
                     historyItem.className = 'location-item';
-                    historyItem.textContent = `Lat: ${location.lat.toFixed(4)}, Lng: ${location.lng.toFixed(4)} - ${date.toLocaleString()}`;
+                    historyItem.textContent = `Lat: ${location.lat.toFixed(4)}, Lng: ${location.lng.toFixed(4)} - ${formatAMPM(location.timestamp)}`;
                     historyContainer.appendChild(historyItem);
                 });
             } else {
