@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.app.AlarmManager
 import android.os.Bundle
 
 import android.database.Cursor
@@ -207,6 +208,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    intent.data = android.net.Uri.parse("package:$packageName")
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to request exact alarm permission", e)
+                }
+            }
+        }
+
+
         // Authentication now happens after all permissions are processed
         authenticateUser()
     }
