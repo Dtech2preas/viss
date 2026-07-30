@@ -7,6 +7,11 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.app.AlarmManager
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -39,7 +44,6 @@ import kotlin.math.sqrt
 import android.location.Location
 import android.os.Bundle
 import android.os.PowerManager
-import android.app.AlarmManager
 import android.os.Looper
 import android.annotation.SuppressLint
 import android.os.Handler
@@ -57,6 +61,9 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
 class CoupleService : Service() {
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var buzzListener: ValueEventListener? = null
 
     private fun broadcastDebugLog(tag: String, message: String) {
         Log.d(tag, message)
@@ -110,6 +117,14 @@ class CoupleService : Service() {
 
     @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+if (intent?.action == "UPDATE_ALARM") {
+            scheduleNativeAlarm()
+        } else if (intent?.action == "STOP_ALARM") {
+            stopRingtone()
+        } else if (intent?.action == "PLAY_ALARM") {
+            playRingtone()
+        }
+
         startForegroundService()
 
         if (!isRunning) {
@@ -204,6 +219,8 @@ class CoupleService : Service() {
     }
 
     private fun startPolling() {
+        setupBuzzListener()
+        scheduleNativeAlarm()
         startContinuousLocationUpdates()
         startForceUpdateListener()
         startHeartbeat()
@@ -515,8 +532,34 @@ class CoupleService : Service() {
                 sharedPref.edit().putInt("couple_state_version", serverVersionToSave).apply()
             }
 
-            if (!responseBody.isNullOrEmpty()) {
+if (!responseBody.isNullOrEmpty()) {
                 val globalState = JSONObject(responseBody)
+
+                // --- ALARM SYNC LOGIC ---
+                try {
+                    val alarmsObj = globalState.optJSONObject("alarms")
+                    if (alarmsObj != null) {
+                        val profileJson = sharedPref.getString("togetherProfile", "{}") ?: "{}"
+                        if (profileJson != "{}") {
+                            val myName = JSONObject(profileJson).getString("name").toLowerCase(Locale.ROOT)
+                            val myAlarm = alarmsObj.optJSONObject(myName)
+                            if (myAlarm != null) {
+                                val cloudTime = myAlarm.optString("time")
+                                val cloudEnabled = myAlarm.optBoolean("enabled")
+                                val localTime = sharedPref.getString("alarm_time", null)
+                                val localEnabled = sharedPref.getBoolean("alarm_enabled", false)
+
+                                if (cloudTime != localTime || cloudEnabled != localEnabled) {
+                                    sharedPref.edit().putString("alarm_time", cloudTime).putBoolean("alarm_enabled", cloudEnabled).apply()
+                                    scheduleNativeAlarm()
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("CoupleService", "Error parsing alarms in background", e)
+                }
+                // --- END ALARM SYNC LOGIC ---
 
                 updateStreakAndWidget(globalState, localUserName, partnerName)
 
@@ -1689,4 +1732,157 @@ class CoupleService : Service() {
             Log.e("CoupleService", "Error fetching/pushing device stats", e)
         }
     }
+
+
+    private fun setupBuzzListener() {
+        val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val profileJson = sharedPref.getString("togetherProfile", null) ?: return
+        if (profileJson == "{}") return
+        val profileObj = JSONObject(profileJson)
+        val myName = profileObj.getString("name").toLowerCase(Locale.ROOT)
+        val secretPath = sharedPref.getString("firebase_secret_path", "") ?: return
+
+        if (secretPath.isEmpty()) return
+
+        val database = com.google.firebase.database.FirebaseDatabase.getInstance("https://together-31034-default-rtdb.europe-west1.firebasedatabase.app/")
+        val buzzRef = database.getReference("buzz").child(secretPath).child(myName)
+
+        buzzListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val type = snapshot.child("type").getValue(String::class.java)
+                    triggerBuzz(type)
+                    buzzRef.removeValue()
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {
+                broadcastDebugLog("CoupleService", "Buzz listener cancelled: ${error.message}")
+            }
+        }
+        buzzRef.addValueEventListener(buzzListener!!)
+    }
+
+    private fun triggerBuzz(type: String?) {
+        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (!vibrator.hasVibrator()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (type == "miss_you") {
+                vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else if (type == "be_online") {
+                val pattern = longArrayOf(0, 500, 300, 500)
+                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+            }
+        } else {
+            if (type == "miss_you") {
+                vibrator.vibrate(1000)
+            } else if (type == "be_online") {
+                val pattern = longArrayOf(0, 500, 300, 500)
+                vibrator.vibrate(pattern, -1)
+            }
+        }
+    }
+
+    private fun scheduleNativeAlarm() {
+        val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val enabled = sharedPref.getBoolean("alarm_enabled", false)
+        val time = sharedPref.getString("alarm_time", null)
+
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, com.together.app.AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(this, 999, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+        if (!enabled || time == null || time.isEmpty()) {
+            alarmManager.cancel(pendingIntent)
+            return
+        }
+
+        try {
+            val parts = time.split(":")
+            val hour = parts[0].toInt()
+            val minute = parts[1].toInt()
+
+            val calendar = Calendar.getInstance().apply {
+                timeInMillis = System.currentTimeMillis()
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+            }
+
+            if (calendar.timeInMillis <= System.currentTimeMillis()) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                     alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                } else {
+                     alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                }
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+            }
+            broadcastDebugLog("CoupleService", "Native alarm scheduled for $time")
+        } catch (e: Exception) {
+            broadcastDebugLog("CoupleService", "Error scheduling alarm: ${e.message}")
+        }
+    }
+
+    private fun playRingtone() {
+        val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+        val uriStr = sharedPref.getString("alarm_ringtone_uri", null)
+
+        try {
+            stopRingtone()
+            mediaPlayer = MediaPlayer().apply {
+                if (uriStr != null) {
+                    setDataSource(this@CoupleService, Uri.parse(uriStr))
+                } else {
+                    val defaultUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                    setDataSource(this@CoupleService, defaultUri)
+                }
+                setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                isLooping = true
+                prepare()
+                start()
+            }
+
+            val stopIntent = Intent(this, CoupleService::class.java).apply { action = "STOP_ALARM" }
+            val stopPendingIntent = PendingIntent.getService(this, 1000, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+            val notification = NotificationCompat.Builder(this, "TogetherServiceChannel")
+                .setContentTitle("Together Alarm ⏰")
+                .setContentText("Tap to stop alarm")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setContentIntent(stopPendingIntent)
+                .setOngoing(true)
+                .setAutoCancel(true)
+                .build()
+
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(888, notification)
+
+        } catch (e: Exception) {
+            broadcastDebugLog("CoupleService", "Error playing ringtone: ${e.message}")
+        }
+    }
+
+    private fun stopRingtone() {
+        try {
+            mediaPlayer?.let {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+            mediaPlayer = null
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(888)
+        } catch (e: Exception) {
+}}
 }

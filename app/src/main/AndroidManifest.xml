@@ -59,6 +59,7 @@
                 android:resource="@xml/together_widget_info" />
         </receiver>
 
+        <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".PollReceiver" android:exported="false" />
 
         <receiver
