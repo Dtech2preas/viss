@@ -1813,14 +1813,22 @@ if (!responseBody.isNullOrEmpty()) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                     alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-                } else {
-                     alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val alarmClockInfo = AlarmManager.AlarmClockInfo(
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
             } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    } else {
+                         alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    }
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                }
             }
             broadcastDebugLog("CoupleService", "Native alarm scheduled for $time")
         } catch (e: Exception) {
@@ -1847,6 +1855,7 @@ if (!responseBody.isNullOrEmpty()) {
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
+                setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
                 isLooping = true
                 prepare()
                 start()
@@ -1855,18 +1864,39 @@ if (!responseBody.isNullOrEmpty()) {
             val stopIntent = Intent(this, CoupleService::class.java).apply { action = "STOP_ALARM" }
             val stopPendingIntent = PendingIntent.getService(this, 1000, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-            val notification = NotificationCompat.Builder(this, "TogetherServiceChannel")
+            val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val fullScreenPendingIntent = PendingIntent.getActivity(this, 1002, fullScreenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+            val alarmChannelId = "TogetherAlarmChannel"
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val name = "Together Alarms"
+                val descriptionText = "High priority alarms that wake the screen"
+                val importance = NotificationManager.IMPORTANCE_HIGH
+                val channel = NotificationChannel(alarmChannelId, name, importance).apply {
+                    description = descriptionText
+                    setBypassDnd(true)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val notification = NotificationCompat.Builder(this, alarmChannelId)
                 .setContentTitle("Together Alarm ⏰")
                 .setContentText("Tap to stop alarm")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setContentIntent(stopPendingIntent)
+                .setFullScreenIntent(fullScreenPendingIntent, true)
                 .setOngoing(true)
                 .setAutoCancel(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
 
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(888, notification)
 
         } catch (e: Exception) {
