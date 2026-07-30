@@ -208,18 +208,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (!alarmManager.canScheduleExactAlarms()) {
-                try {
-                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                    intent.data = android.net.Uri.parse("package:$packageName")
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    Log.e("MainActivity", "Failed to request exact alarm permission", e)
-                }
-            }
-        }
+
 
 
         // Authentication now happens after all permissions are processed
@@ -534,6 +523,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     class WebAppInterface(private val context: Context) {
+
+        @JavascriptInterface
+        fun hasExactAlarmPermission(): Boolean {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                return alarmManager.canScheduleExactAlarms()
+            }
+            return true
+        }
+
+        @JavascriptInterface
+        fun requestExactAlarmPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    intent.data = android.net.Uri.parse("package:${context.packageName}")
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e("WebAppInterface", "Failed to request exact alarm permission", e)
+                }
+            }
+        }
 
         @JavascriptInterface
         fun selectAlarmRingtone() {
