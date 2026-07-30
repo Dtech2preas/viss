@@ -9,17 +9,22 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+
+import android.database.Cursor
+import android.provider.OpenableColumns
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.webkit.JavascriptInterface
+
 import android.util.Log
 import android.view.View
 import android.webkit.GeolocationPermissions
-import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import android.net.Uri
 import android.webkit.ValueCallback
 import android.app.Activity
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
@@ -29,7 +34,6 @@ import java.io.File
 import androidx.core.content.FileProvider
 
 
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -42,6 +46,28 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
+
+    private val audioPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uri: Uri? = result.data?.data
+            uri?.let {
+                contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+                sharedPref.edit().putString("alarm_ringtone_uri", it.toString()).apply()
+                var displayName = "Custom Ringtone"
+                val cursor: Cursor? = contentResolver.query(it, null, null, null, null)
+                cursor?.use { c ->
+                    if (c.moveToFirst()) {
+                        val nameIndex = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex >= 0) {
+                            displayName = c.getString(nameIndex)
+                        }
+                    }
+                }
+                webView.evaluateJavascript("javascript:if(window.onRingtoneSelected){window.onRingtoneSelected('$displayName');}", null)
+            }
+        }
+    }
 
 
     private lateinit var webView: WebView
@@ -493,6 +519,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     class WebAppInterface(private val context: Context) {
+
+        @JavascriptInterface
+        fun selectAlarmRingtone() {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "audio/*"
+            }
+            (context as MainActivity).audioPickerLauncher.launch(intent)
+        }
+
+        @JavascriptInterface
+        fun rescheduleAlarms(time: String, enabled: Boolean) {
+            val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
+            sharedPref.edit().putString("alarm_time", time).putBoolean("alarm_enabled", enabled).apply()
+            val intent = Intent(context, CoupleService::class.java).apply {
+                action = "UPDATE_ALARM"
+            }
+            context.startService(intent)
+        }
         @JavascriptInterface
         fun getBackgroundLogs(): String {
             val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)

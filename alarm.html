@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alarms & Buzz - Together</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="global-style.css">
+    <script src="auth-check.js"></script>
+    <style>
+        .time-picker-container { display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px; }
+        .time-picker { font-size: 2.5rem; padding: 10px; border: 2px solid var(--primary-color); border-radius: 15px; font-family: 'Montserrat', sans-serif; color: var(--dark-color); background: rgba(255, 255, 255, 0.8); text-align: center; }
+        .toggle-container { display: flex; align-items: center; justify-content: space-between; background: var(--card-bg); padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--card-border); }
+        .toggle-label { font-weight: 600; color: var(--dark-color); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+        .partner-status { text-align: center; font-size: 0.9rem; color: var(--dark-color); margin-bottom: 20px; background: rgba(255,255,255,0.5); padding: 10px; border-radius: 10px; }
+        .buzz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .buzz-btn { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); border: none; padding: 20px; border-radius: 20px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 5px 15px rgba(255, 154, 158, 0.3); transition: transform 0.2s; text-align: center; }
+        .buzz-btn:hover { transform: scale(1.05); }
+        .buzz-btn .icon { font-size: 2rem; margin-bottom: 5px; }
+        .audio-picker-btn { width: 100%; background: white; border: 2px dashed var(--primary-color); color: var(--primary-color); padding: 15px; border-radius: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+        .audio-picker-btn:hover { background: var(--primary-color); color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='you.html'">← Back</button>
+        <h1>Alarms & Buzz</h1>
+    </div>
+    <div class="container">
+        <div class="section">
+            <h2 style="text-align: center;">Buzz Partner ⚡</h2>
+            <p style="text-align: center; font-size: 0.8rem; margin-bottom: 15px; color: #666;">Send a secret vibration directly to their phone</p>
+            <div class="buzz-grid">
+                <div class="buzz-btn" onclick="sendBuzz('miss_you')"><div class="icon">💓</div><div>I miss you<br><small>(1 Buzz)</small></div></div>
+                <div class="buzz-btn" onclick="sendBuzz('be_online')" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);"><div class="icon">📱</div><div>Please be online<br><small>(2 Buzzes)</small></div></div>
+            </div>
+        </div>
+        <div class="section">
+            <h2 style="text-align: center;">Wake Up Together ⏰</h2>
+            <div class="partner-status" id="partner-alarm-status">Loading partner's alarm status...</div>
+            <div class="time-picker-container"><input type="time" id="alarm-time" class="time-picker"></div>
+            <div class="toggle-container"><span class="toggle-label">Sync with <span id="partner-name-display">Partner</span></span><label class="switch"><input type="checkbox" id="sync-alarm-toggle" onchange="toggleSync()"><span class="slider"></span></label></div>
+            <div class="toggle-container"><span class="toggle-label">Enable Alarm</span><label class="switch"><input type="checkbox" id="enable-alarm-toggle"><span class="slider"></span></label></div>
+            <button class="audio-picker-btn" onclick="pickNativeAudio()">🎵 Select Custom Ringtone</button>
+            <div id="selected-ringtone-name" style="text-align: center; font-size: 0.8rem; color: #666; margin-bottom: 20px;">Default Ringtone Selected</div>
+            <button class="btn" style="width: 100%;" onclick="saveAlarmSettings()">Save Settings</button>
+        </div>
+    </div>
+    <div id="notification" class="notification"><span id="notificationText"></span></div>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script>
+        const localUser = JSON.parse(localStorage.getItem('togetherProfile'));
+        const userName = localUser.name.toLowerCase();
+        const partnerName = userName === 'jonas' ? 'owami' : 'jonas';
+        document.getElementById('partner-name-display').innerText = partnerName.charAt(0).toUpperCase() + partnerName.slice(1);
+        const firebaseConfig = { databaseURL: "https://together-31034-default-rtdb.europe-west1.firebasedatabase.app/" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const secretPath = localStorage.getItem('firebase_secret_path');
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            document.getElementById('notificationText').innerText = message;
+            notification.classList.add('show'); setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        function sendBuzz(type) {
+            const timestamp = Date.now();
+            if (!secretPath) { showNotification("Firebase not configured."); return; }
+            database.ref(`buzz/${secretPath}/${partnerName}`).set({ type: type, timestamp: timestamp })
+                .then(() => showNotification(`Sent buzz! ⚡`))
+                .catch(e => showNotification("Failed to send buzz."));
+        }
+
+        let currentAlarms = { jonas: null, owami: null };
+        async function loadAlarmData() {
+            try {
+                const response = await window.authenticatedFetch('/api/couple');
+                const data = await response.json();
+                if (data.alarms) {
+                    currentAlarms = data.alarms;
+                    const myAlarm = data.alarms[userName];
+                    if (myAlarm) {
+                        if (myAlarm.time) document.getElementById('alarm-time').value = myAlarm.time;
+                        document.getElementById('enable-alarm-toggle').checked = myAlarm.enabled || false;
+                        document.getElementById('sync-alarm-toggle').checked = myAlarm.synced || false;
+                    }
+                    const pAlarm = data.alarms[partnerName];
+                    const pNameCap = partnerName.charAt(0).toUpperCase() + partnerName.slice(1);
+                    if (pAlarm && pAlarm.enabled) {
+                        const syncText = pAlarm.synced ? " (Synced with you)" : "";
+                        document.getElementById('partner-alarm-status').innerHTML = `<b>${pNameCap}</b> has an alarm set for <b>${pAlarm.time}</b>${syncText}`;
+                    } else {
+                        document.getElementById('partner-alarm-status').innerHTML = `<b>${pNameCap}</b> does not have an active alarm.`;
+                    }
+                }
+            } catch (error) { console.error("Error loading alarms:", error); }
+        }
+
+        function toggleSync() {
+            const isSynced = document.getElementById('sync-alarm-toggle').checked;
+            if (isSynced && currentAlarms[partnerName] && currentAlarms[partnerName].enabled && currentAlarms[partnerName].time) {
+                document.getElementById('alarm-time').value = currentAlarms[partnerName].time;
+                showNotification(`Synced time with partner`);
+            }
+        }
+
+        async function saveAlarmSettings() {
+            const time = document.getElementById('alarm-time').value;
+            const enabled = document.getElementById('enable-alarm-toggle').checked;
+            const synced = document.getElementById('sync-alarm-toggle').checked;
+            if (enabled && !time) { showNotification("Select a time."); return; }
+            let alarmPayload = { alarms: { [userName]: { time: time, enabled: enabled, synced: synced, updatedAt: Date.now() } } };
+            if (synced && enabled && time) { alarmPayload.alarms[partnerName] = { time: time, enabled: true, synced: true, updatedAt: Date.now() }; }
+            try {
+                const response = await window.authenticatedFetch('/api/couple', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(alarmPayload) });
+                if (response.ok) {
+                    showNotification("Saved!");
+                    loadAlarmData();
+                    if (window.AndroidBridge && typeof window.AndroidBridge.rescheduleAlarms === 'function') {
+                        window.AndroidBridge.rescheduleAlarms(time, enabled);
+                    }
+                }
+            } catch (error) { showNotification("Error saving."); }
+        }
+        function pickNativeAudio() {
+            if (window.AndroidBridge && typeof window.AndroidBridge.selectAlarmRingtone === 'function') {
+                window.AndroidBridge.selectAlarmRingtone();
+            } else { showNotification("Only available in App."); }
+        }
+        function onRingtoneSelected(fileName) { document.getElementById('selected-ringtone-name').innerText = "Selected: " + fileName; }
+        loadAlarmData();
+    </script>
+    <script src="custom-alerts.js"></script>
+    <script src="birthday.js"></script>
+</body>
+</html>
