@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Alarm Logs - Together</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="global-style.css">
+    <style>
+        .log-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            border: 1px solid var(--primary-color);
+        }
+        .log-entry {
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 5px;
+        }
+        .log-entry.error {
+            color: red;
+        }
+        .log-time {
+            font-weight: bold;
+            color: #555;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-group button {
+            flex: 1;
+        }
+        .btn-clear {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='alarm.html'">← Back</button>
+        <h1>Diagnostic Logs</h1>
+    </div>
+    <div class="container">
+        <div class="section">
+            <h2 style="text-align: center;">Alarm Execution Logs</h2>
+            <div class="btn-group">
+                <button class="btn" onclick="refreshLogs()">🔄 Refresh</button>
+                <button class="btn" onclick="copyLogs()">📋 Copy Logs</button>
+                <button class="btn-clear" onclick="clearLogs()">🗑️ Clear</button>
+            </div>
+            <div id="logs-display" class="log-container">
+                Loading logs...
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"><span id="notificationText"></span></div>
+
+    <script>
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            document.getElementById('notificationText').innerText = message;
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        let rawLogsText = "";
+
+        function refreshLogs() {
+            const display = document.getElementById('logs-display');
+            if (window.AndroidBridge && typeof window.AndroidBridge.getDiagnosticAlarmLogs === 'function') {
+                try {
+                    const logsJson = window.AndroidBridge.getDiagnosticAlarmLogs();
+                    const logs = JSON.parse(logsJson);
+
+                    if (logs.length === 0) {
+                        display.innerHTML = 'No logs available yet. Set an alarm to generate logs.';
+                        rawLogsText = "No logs.";
+                        return;
+                    }
+
+                    // Sort newest first
+                    logs.reverse();
+
+                    let html = '';
+                    let rawText = '';
+
+                    logs.forEach(log => {
+                        const isError = log.exception ? true : false;
+                        const errorClass = isError ? 'error' : '';
+
+                        let entryHtml = `<div class="log-entry ${errorClass}">`;
+                        entryHtml += `<span class="log-time">${log.timestamp}</span><br>`;
+                        entryHtml += `<span>${log.message}</span>`;
+
+                        let entryText = `[${log.timestamp}] ${log.message}`;
+
+                        if (log.exception) {
+                            entryHtml += `<br><pre style="white-space: pre-wrap; word-break: break-all; margin-top:5px; background: #ffebeb; padding: 5px; border-radius: 5px;">${log.exception}</pre>`;
+                            entryText += `\nEXCEPTION: ${log.exception}`;
+                        }
+
+                        entryHtml += `</div>`;
+
+                        html += entryHtml;
+                        rawText += entryText + '\n\n';
+                    });
+
+                    display.innerHTML = html;
+                    rawLogsText = rawText;
+
+                } catch (e) {
+                    display.innerHTML = `Error parsing logs: ${e.message}`;
+                    rawLogsText = "Error parsing logs.";
+                }
+            } else {
+                display.innerHTML = "Logs are only available in the Android app.";
+                rawLogsText = "Logs not available on web.";
+            }
+        }
+
+        function copyLogs() {
+            if (!rawLogsText || rawLogsText === "No logs.") {
+                showNotification("No logs to copy.");
+                return;
+            }
+
+            navigator.clipboard.writeText(rawLogsText).then(() => {
+                showNotification("Logs copied to clipboard!");
+            }).catch(err => {
+                console.error("Failed to copy", err);
+                showNotification("Failed to copy logs.");
+            });
+        }
+
+        function clearLogs() {
+            if (window.AndroidBridge && typeof window.AndroidBridge.clearDiagnosticAlarmLogs === 'function') {
+                if(confirm("Are you sure you want to clear all diagnostic logs?")) {
+                    window.AndroidBridge.clearDiagnosticAlarmLogs();
+                    refreshLogs();
+                    showNotification("Logs cleared.");
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", refreshLogs);
+    </script>
+</body>
+</html>

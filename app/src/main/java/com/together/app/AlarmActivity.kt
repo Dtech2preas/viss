@@ -16,6 +16,7 @@ import android.graphics.Color
 class AlarmActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AlarmLogger.log(this, "AlarmActivity.onCreate() launched.")
         showWhenLockedAndTurnScreenOn()
         super.onCreate(savedInstanceState)
 
@@ -68,6 +69,7 @@ class AlarmActivity : AppCompatActivity() {
     }
 
     private fun stopAlarmAndFinish() {
+        AlarmLogger.log(this, "AlarmActivity stop button clicked.")
         val serviceIntent = Intent(this, CoupleService::class.java).apply {
             action = "STOP_ALARM"
         }
@@ -81,6 +83,7 @@ class AlarmActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        AlarmLogger.log(this, "AlarmActivity.onDestroy() called.")
         // If the activity is destroyed (e.g. swiped away), we still want to make sure the alarm stops
         val serviceIntent = Intent(this, CoupleService::class.java).apply {
             action = "STOP_ALARM"
