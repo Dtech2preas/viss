@@ -195,6 +195,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+private val exactAlarmLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        // Proceed to authentication after exact alarm request
+        authenticateUser()
+    }
+
+    private val batteryOptimizationLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        // After battery optimization, ask for exact alarm
+        checkExactAlarmAndAuthenticate()
+    }
+
     private fun checkBatteryOptimizationAndAuthenticate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -202,16 +212,32 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                     intent.data = android.net.Uri.parse("package:$packageName")
-                    startActivity(intent)
+                    batteryOptimizationLauncher.launch(intent)
+                    return // Stop here, exactAlarmLauncher will continue
                 } catch (e: Exception) {
                     Log.e("MainActivity", "Failed to request battery optimization ignore", e)
                 }
             }
         }
+        // If we didn't launch battery optimization, proceed to exact alarm
+        checkExactAlarmAndAuthenticate()
+    }
 
-
-
-        // Authentication now happens after all permissions are processed
+    private fun checkExactAlarmAndAuthenticate() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    intent.data = android.net.Uri.parse("package:$packageName")
+                    exactAlarmLauncher.launch(intent)
+                    return // Stop here, authenticateUser will be called after this returns
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to request exact alarm permission", e)
+                }
+            }
+        }
+        // If we didn't launch exact alarm, proceed to authenticate
         authenticateUser()
     }
 
@@ -523,28 +549,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     class WebAppInterface(private val context: Context) {
-
-        @JavascriptInterface
-        fun hasExactAlarmPermission(): Boolean {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                return alarmManager.canScheduleExactAlarms()
-            }
-            return true
-        }
-
-        @JavascriptInterface
-        fun requestExactAlarmPermission() {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                try {
-                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                    intent.data = android.net.Uri.parse("package:${context.packageName}")
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Log.e("WebAppInterface", "Failed to request exact alarm permission", e)
-                }
-            }
-        }
 
         @JavascriptInterface
         fun selectAlarmRingtone() {
