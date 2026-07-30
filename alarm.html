@@ -25,6 +25,8 @@
         .buzz-btn .icon { font-size: 2rem; margin-bottom: 5px; }
         .audio-picker-btn { width: 100%; background: white; border: 2px dashed var(--primary-color); color: var(--primary-color); padding: 15px; border-radius: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
         .audio-picker-btn:hover { background: var(--primary-color); color: white; }
+        .permission-btn { width: 100%; background: #ff4757; border: none; color: white; padding: 15px; border-radius: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(255, 71, 87, 0.3); display: none; }
+        .permission-btn:hover { background: #ff6b81; transform: translateY(-2px); }
     </style>
 </head>
 <body>
@@ -47,6 +49,7 @@
             <div class="time-picker-container"><input type="time" id="alarm-time" class="time-picker"></div>
             <div class="toggle-container"><span class="toggle-label">Sync with <span id="partner-name-display">Partner</span></span><label class="switch"><input type="checkbox" id="sync-alarm-toggle" onchange="toggleSync()"><span class="slider"></span></label></div>
             <div class="toggle-container"><span class="toggle-label">Enable Alarm</span><label class="switch"><input type="checkbox" id="enable-alarm-toggle"><span class="slider"></span></label></div>
+            <button id="permission-btn" class="permission-btn" onclick="requestAlarmPermission()">⚠️ Grant Alarm Permission</button>
             <button class="audio-picker-btn" onclick="pickNativeAudio()">🎵 Select Custom Ringtone</button>
             <div id="selected-ringtone-name" style="text-align: center; font-size: 0.8rem; color: #666; margin-bottom: 20px;">Default Ringtone Selected</div>
             <button class="btn" style="width: 100%;" onclick="saveAlarmSettings()">Save Settings</button>
@@ -136,6 +139,36 @@
             } else { showNotification("Only available in App."); }
         }
         function onRingtoneSelected(fileName) { document.getElementById('selected-ringtone-name').innerText = "Selected: " + fileName; }
+
+        function checkAlarmPermission() {
+            if (window.AndroidBridge && typeof window.AndroidBridge.hasExactAlarmPermission === 'function') {
+                const hasPermission = window.AndroidBridge.hasExactAlarmPermission();
+                const btn = document.getElementById('permission-btn');
+                if (!hasPermission) {
+                    btn.style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
+                }
+            }
+        }
+
+        function requestAlarmPermission() {
+            if (window.AndroidBridge && typeof window.AndroidBridge.requestExactAlarmPermission === 'function') {
+                window.AndroidBridge.requestExactAlarmPermission();
+                setTimeout(checkAlarmPermission, 2000);
+            }
+        }
+
+        // Check on load
+        document.addEventListener("DOMContentLoaded", () => {
+            checkAlarmPermission();
+        });
+
+        // Also check when window gets focus (in case they return from settings)
+        window.addEventListener("focus", () => {
+            checkAlarmPermission();
+        });
+
         loadAlarmData();
     </script>
     <script src="custom-alerts.js"></script>
