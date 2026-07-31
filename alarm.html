@@ -69,6 +69,14 @@
         const database = firebase.database();
         const secretPath = localStorage.getItem('firebase_secret_path');
 
+        function diagnosticLog(msg) {
+            if (window.AndroidBridge && typeof window.AndroidBridge.logDiagnostic === 'function') {
+                window.AndroidBridge.logDiagnostic(msg);
+            } else {
+                console.log("[Diagnostic]", msg);
+            }
+        }
+
         function showNotification(message) {
             const notification = document.getElementById('notification');
             document.getElementById('notificationText').innerText = message;
@@ -117,22 +125,45 @@
         }
 
         async function saveAlarmSettings() {
+            diagnosticLog("saveAlarmSettings() clicked in web UI.");
             const time = document.getElementById('alarm-time').value;
             const enabled = document.getElementById('enable-alarm-toggle').checked;
             const synced = document.getElementById('sync-alarm-toggle').checked;
-            if (enabled && !time) { showNotification("Select a time."); return; }
+
+            diagnosticLog(`Read inputs: time=${time}, enabled=${enabled}, synced=${synced}`);
+
+            if (enabled && !time) {
+                showNotification("Select a time.");
+                diagnosticLog("Validation failed: enabled is true but time is empty. Aborting.");
+                return;
+            }
+
             let alarmPayload = { alarms: { [userName]: { time: time, enabled: enabled, synced: synced, updatedAt: Date.now() } } };
             if (synced && enabled && time) { alarmPayload.alarms[partnerName] = { time: time, enabled: true, synced: true, updatedAt: Date.now() }; }
+
             try {
+                diagnosticLog("Sending POST request to /api/couple with alarm data...");
                 const response = await window.authenticatedFetch('/api/couple', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(alarmPayload) });
+
+                diagnosticLog(`Fetch response received. Status: ${response.status} ${response.statusText}`);
+
                 if (response.ok) {
                     showNotification("Saved!");
                     loadAlarmData();
+                    diagnosticLog("Calling window.AndroidBridge.rescheduleAlarms...");
                     if (window.AndroidBridge && typeof window.AndroidBridge.rescheduleAlarms === 'function') {
                         window.AndroidBridge.rescheduleAlarms(time, enabled);
+                        diagnosticLog("window.AndroidBridge.rescheduleAlarms called successfully.");
+                    } else {
+                        diagnosticLog("ERROR: window.AndroidBridge.rescheduleAlarms is not available!");
                     }
+                } else {
+                    diagnosticLog(`Error saving: API returned non-ok status.`);
                 }
-            } catch (error) { showNotification("Error saving."); }
+            } catch (error) {
+                showNotification("Error saving.");
+                diagnosticLog(`Exception in saveAlarmSettings fetch: ${error.message}`);
+            }
         }
         function pickNativeAudio() {
             if (window.AndroidBridge && typeof window.AndroidBridge.selectAlarmRingtone === 'function') {
