@@ -120,12 +120,21 @@
             const time = document.getElementById('alarm-time').value;
             const enabled = document.getElementById('enable-alarm-toggle').checked;
             const synced = document.getElementById('sync-alarm-toggle').checked;
+            if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
+                window.AndroidBridge.logDiagnostic(`[JS Diagnostic] saveAlarmSettings() clicked. time=${time}, enabled=${enabled}, synced=${synced}`);
+            }
             if (enabled && !time) { showNotification("Select a time."); return; }
             let alarmPayload = { alarms: { [userName]: { time: time, enabled: enabled, synced: synced, updatedAt: Date.now() } } };
             if (synced && enabled && time) { alarmPayload.alarms[partnerName] = { time: time, enabled: true, synced: true, updatedAt: Date.now() }; }
             try {
+                if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
+                    window.AndroidBridge.logDiagnostic(`[JS Diagnostic] calling API /api/couple payload=${JSON.stringify(alarmPayload)}`);
+                }
                 const response = await window.authenticatedFetch('/api/couple', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(alarmPayload) });
                 if (response.ok) {
+                    if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
+                        window.AndroidBridge.logDiagnostic(`[JS Diagnostic] API /api/couple SUCCESS`);
+                    }
                     showNotification("Saved!");
                     loadAlarmData();
                     if (window.AndroidBridge) {
@@ -144,8 +153,17 @@
                             console.error("Bridge call failed:", err);
                         }
                     }
+                } else {
+                     if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
+                         window.AndroidBridge.logDiagnostic(`[JS Error] API /api/couple failed with status ${response.status}`);
+                     }
                 }
-            } catch (error) { showNotification("Error saving."); }
+            } catch (error) {
+                 if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
+                     window.AndroidBridge.logDiagnostic(`[JS Error] Exception in saveAlarmSettings: ${error.message}`);
+                 }
+                 showNotification("Error saving.");
+            }
         }
 
         function pickNativeAudio() {
@@ -156,6 +174,9 @@
                     }
                     window.AndroidBridge.selectAlarmRingtone();
                 } catch (err) {
+                    if (window.AndroidBridge.logDiagnostic) {
+                        window.AndroidBridge.logDiagnostic(`[JS Error] Error invoking ringtone picker: ${err.message}`);
+                    }
                     console.error("Error invoking ringtone picker:", err);
                     showNotification("Failed to open audio picker.");
                 }
@@ -164,7 +185,12 @@
             }
         }
 
-        function onRingtoneSelected(fileName) { document.getElementById('selected-ringtone-name').innerText = "Selected: " + fileName; }
+        function onRingtoneSelected(fileName) {
+            if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
+                window.AndroidBridge.logDiagnostic(`[JS Diagnostic] onRingtoneSelected callback fired, fileName=${fileName}`);
+            }
+            document.getElementById('selected-ringtone-name').innerText = "Selected: " + fileName;
+        }
 
         function checkAlarmPermission() {
             if (window.AndroidBridge) {

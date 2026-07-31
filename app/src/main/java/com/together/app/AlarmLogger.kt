@@ -12,7 +12,7 @@ import java.util.Locale
 object AlarmLogger {
     private const val PREFS_NAME = "TogetherAlarmDiagnosticPrefs"
     private const val KEY_LOGS = "alarm_logs"
-    private const val MAX_LOGS = 100
+    private const val MAX_LOGS = 2000 // Increased from 100 to capture more diagnostic context
 
     fun log(context: Context, message: String, exception: Throwable? = null) {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

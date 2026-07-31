@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             val uri: Uri? = result.data?.data
             uri?.let {
+                AlarmLogger.log(this, "Ringtone selected: uri=$it")
                 contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
                 sharedPref.edit().putString("alarm_ringtone_uri", it.toString()).apply()
@@ -65,8 +66,11 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+                AlarmLogger.log(this, "Ringtone saved, displayName=$displayName")
                 webView.evaluateJavascript("javascript:if(window.onRingtoneSelected){window.onRingtoneSelected('$displayName');}", null)
             }
+        } else {
+            AlarmLogger.log(this, "Ringtone selection cancelled or failed. resultCode=${result.resultCode}")
         }
     }
 
@@ -548,11 +552,13 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun selectAlarmRingtone() {
+            AlarmLogger.log(context, "selectAlarmRingtone() ENTER.")
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "audio/*"
             }
             (context as MainActivity).audioPickerLauncher.launch(intent)
+            AlarmLogger.log(context, "selectAlarmRingtone() launched intent.")
         }
 
         @JavascriptInterface

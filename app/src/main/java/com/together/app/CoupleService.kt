@@ -544,14 +544,23 @@ if (!responseBody.isNullOrEmpty()) {
                             val myName = JSONObject(profileJson).getString("name").toLowerCase(Locale.ROOT)
                             val myAlarm = alarmsObj.optJSONObject(myName)
                             if (myAlarm != null) {
-                                val cloudTime = myAlarm.optString("time")
-                                val cloudEnabled = myAlarm.optBoolean("enabled")
+                                val cloudTime = if (myAlarm.has("time")) myAlarm.optString("time", null) else null
+                                val cloudEnabled = if (myAlarm.has("enabled")) myAlarm.optBoolean("enabled", false) else null
                                 val localTime = sharedPref.getString("alarm_time", null)
                                 val localEnabled = sharedPref.getBoolean("alarm_enabled", false)
 
-                                if (cloudTime != localTime || cloudEnabled != localEnabled) {
-                                    sharedPref.edit().putString("alarm_time", cloudTime).putBoolean("alarm_enabled", cloudEnabled).apply()
-                                    scheduleNativeAlarm("CLOUD_SYNC")
+                                AlarmLogger.log(this@CoupleService, "CLOUD_SYNC background state fetch. cloudTime=$cloudTime, cloudEnabled=$cloudEnabled. localTime=$localTime, localEnabled=$localEnabled")
+
+                                // Only override local state if cloud time actually exists (to prevent overwriting newly set alarms with old cached states lacking the property).
+                                // Or if both exist but differ.
+                                if (cloudTime != null && cloudEnabled != null) {
+                                    if (cloudTime != localTime || cloudEnabled != localEnabled) {
+                                        AlarmLogger.log(this@CoupleService, "CLOUD_SYNC state differs, updating local SharedPreferences and rescheduling alarm.")
+                                        sharedPref.edit().putString("alarm_time", cloudTime).putBoolean("alarm_enabled", cloudEnabled).apply()
+                                        scheduleNativeAlarm("CLOUD_SYNC")
+                                    }
+                                } else {
+                                     AlarmLogger.log(this@CoupleService, "CLOUD_SYNC alarm properties missing in cloud state, ignoring to avoid wiping local data.")
                                 }
                             }
                         }
@@ -1825,25 +1834,20 @@ if (!responseBody.isNullOrEmpty()) {
             AlarmLogger.log(this, "Calculated Trigger Timestamp: $triggerTimeStr")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                AlarmLogger.log(this, "Using AlarmManager.setAlarmClock API")
-                val alarmClockInfo = AlarmManager.AlarmClockInfo(
-                    calendar.timeInMillis,
-                    pendingIntent
-                )
-                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (alarmManager.canScheduleExactAlarms()) {
-                         AlarmLogger.log(this, "Using AlarmManager.setExactAndAllowWhileIdle API (Android 12+)")
-                         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-                    } else {
-                         AlarmLogger.log(this, "Using AlarmManager.setAndAllowWhileIdle API (Android 12+ missing permission)")
-                         alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-                    }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                    AlarmLogger.log(this, "Using AlarmManager.setAndAllowWhileIdle API (Android 12+ missing exact alarm permission)")
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
                 } else {
-                    AlarmLogger.log(this, "Using AlarmManager.setExactAndAllowWhileIdle API (Pre-Android 12)")
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    AlarmLogger.log(this, "Using AlarmManager.setAlarmClock API")
+                    val alarmClockInfo = AlarmManager.AlarmClockInfo(
+                        calendar.timeInMillis,
+                        pendingIntent
+                    )
+                    alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
                 }
+            } else {
+                AlarmLogger.log(this, "Using AlarmManager.setExact API (Pre-Lollipop)")
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
             }
             broadcastDebugLog("CoupleService", "Native alarm scheduled for $time")
             AlarmLogger.log(this, "Native alarm successfully scheduled for $time")
