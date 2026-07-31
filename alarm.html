@@ -83,10 +83,11 @@
                 .catch(e => showNotification("Failed to send buzz."));
         }
 
+        const API_URL = 'https://shrill-base-9781.dtechxpreas.workers.dev';
         let currentAlarms = { jonas: null, owami: null };
         async function loadAlarmData() {
             try {
-                const response = await window.authenticatedFetch('/api/couple');
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`);
                 const data = await response.json();
                 if (data.alarms) {
                     currentAlarms = data.alarms;
@@ -130,7 +131,7 @@
                 if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
                     window.AndroidBridge.logDiagnostic(`[JS Diagnostic] calling API /api/couple payload=${JSON.stringify(alarmPayload)}`);
                 }
-                const response = await window.authenticatedFetch('/api/couple', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(alarmPayload) });
+                const response = await window.authenticatedFetch(`${API_URL}/api/couple`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(alarmPayload) });
                 if (response.ok) {
                     if (window.AndroidBridge && window.AndroidBridge.logDiagnostic) {
                         window.AndroidBridge.logDiagnostic(`[JS Diagnostic] API /api/couple SUCCESS`);
