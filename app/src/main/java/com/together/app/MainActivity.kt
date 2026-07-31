@@ -574,6 +574,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun getDiagnosticAlarmLogs(): String {
+            return AlarmLogger.getLogs(context)
+        }
+
+        @JavascriptInterface
+        fun clearDiagnosticAlarmLogs() {
+            AlarmLogger.clearLogs(context)
+        }
+
+        @JavascriptInterface
         fun saveProfile(profileJson: String) {
             Log.d("WebAppInterface", "Profile saved: $profileJson")
             val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)

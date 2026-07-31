@@ -1788,13 +1788,21 @@ if (!responseBody.isNullOrEmpty()) {
         val enabled = sharedPref.getBoolean("alarm_enabled", false)
         val time = sharedPref.getString("alarm_time", null)
 
+        AlarmLogger.log(this, "scheduleNativeAlarm() called. enabled=$enabled, time=$time. Android Version: ${Build.VERSION.RELEASE}, API: ${Build.VERSION.SDK_INT}")
+
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, com.together.app.AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(this, 999, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         if (!enabled || time == null || time.isEmpty()) {
             alarmManager.cancel(pendingIntent)
+            AlarmLogger.log(this, "Alarm disabled or time empty, cancelled pending intent.")
             return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val canSchedule = alarmManager.canScheduleExactAlarms()
+            AlarmLogger.log(this, "alarmManager.canScheduleExactAlarms() = $canSchedule")
         }
 
         try {
@@ -1813,7 +1821,11 @@ if (!responseBody.isNullOrEmpty()) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
 
+            val triggerTimeStr = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(calendar.timeInMillis))
+            AlarmLogger.log(this, "Calculated Trigger Timestamp: $triggerTimeStr")
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                AlarmLogger.log(this, "Using AlarmManager.setAlarmClock API")
                 val alarmClockInfo = AlarmManager.AlarmClockInfo(
                     calendar.timeInMillis,
                     pendingIntent
@@ -1822,17 +1834,22 @@ if (!responseBody.isNullOrEmpty()) {
             } else {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (alarmManager.canScheduleExactAlarms()) {
+                         AlarmLogger.log(this, "Using AlarmManager.setExactAndAllowWhileIdle API (Android 12+)")
                          alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
                     } else {
+                         AlarmLogger.log(this, "Using AlarmManager.setAndAllowWhileIdle API (Android 12+ missing permission)")
                          alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
                     }
                 } else {
+                    AlarmLogger.log(this, "Using AlarmManager.setExactAndAllowWhileIdle API (Pre-Android 12)")
                     alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
                 }
             }
             broadcastDebugLog("CoupleService", "Native alarm scheduled for $time")
+            AlarmLogger.log(this, "Native alarm successfully scheduled for $time")
         } catch (e: Exception) {
             broadcastDebugLog("CoupleService", "Error scheduling alarm: ${e.message}")
+            AlarmLogger.log(this, "Exception scheduling alarm", e)
         }
     }
 
@@ -1840,12 +1857,16 @@ if (!responseBody.isNullOrEmpty()) {
         val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
         val uriStr = sharedPref.getString("alarm_ringtone_uri", null)
 
+        AlarmLogger.log(this, "playRingtone() called. uriStr=$uriStr")
+
         try {
             stopRingtone()
             mediaPlayer = MediaPlayer().apply {
                 if (uriStr != null) {
+                    AlarmLogger.log(this@CoupleService, "MediaPlayer setting custom URI: $uriStr")
                     setDataSource(this@CoupleService, Uri.parse(uriStr))
                 } else {
+                    AlarmLogger.log(this@CoupleService, "MediaPlayer setting default URI")
                     val defaultUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
                     setDataSource(this@CoupleService, defaultUri)
                 }
@@ -1859,6 +1880,7 @@ if (!responseBody.isNullOrEmpty()) {
                 isLooping = true
                 prepare()
                 start()
+                AlarmLogger.log(this@CoupleService, "MediaPlayer.start() successfully called")
             }
 
             val stopIntent = Intent(this, CoupleService::class.java).apply { action = "STOP_ALARM" }
@@ -1898,9 +1920,11 @@ if (!responseBody.isNullOrEmpty()) {
                 .build()
 
             notificationManager.notify(888, notification)
+            AlarmLogger.log(this, "High-priority notification shown with full-screen intent to AlarmActivity")
 
         } catch (e: Exception) {
             broadcastDebugLog("CoupleService", "Error playing ringtone: ${e.message}")
+            AlarmLogger.log(this, "Exception playing ringtone", e)
         }
     }
 

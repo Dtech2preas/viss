@@ -52,7 +52,8 @@
             <button id="permission-btn" class="permission-btn" onclick="requestAlarmPermission()">⚠️ Grant Alarm Permission</button>
             <button class="audio-picker-btn" onclick="pickNativeAudio()">🎵 Select Custom Ringtone</button>
             <div id="selected-ringtone-name" style="text-align: center; font-size: 0.8rem; color: #666; margin-bottom: 20px;">Default Ringtone Selected</div>
-            <button class="btn" style="width: 100%;" onclick="saveAlarmSettings()">Save Settings</button>
+            <button class="btn" style="width: 100%; margin-bottom: 15px;" onclick="saveAlarmSettings()">Save Settings</button>
+            <button class="btn" style="width: 100%; background: #555; color: white;" onclick="window.location.href='alarm-logs.html'">📊 View Diagnostic Logs</button>
         </div>
     </div>
     <div id="notification" class="notification"><span id="notificationText"></span></div>
