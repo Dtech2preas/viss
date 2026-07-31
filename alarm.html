@@ -128,8 +128,15 @@
                 if (response.ok) {
                     showNotification("Saved!");
                     loadAlarmData();
-                    if (window.AndroidBridge && typeof window.AndroidBridge.rescheduleAlarms === 'function') {
-                        window.AndroidBridge.rescheduleAlarms(time, enabled);
+                    if (window.AndroidBridge) {
+                        if (typeof window.AndroidBridge.logDiagnostic === 'function') {
+                            window.AndroidBridge.logDiagnostic(`Saving alarm from JS: time=${time}, enabled=${enabled}, bridgeType=${typeof window.AndroidBridge.rescheduleAlarms}`);
+                        }
+                        if (typeof window.AndroidBridge.rescheduleAlarms === 'function') {
+                            window.AndroidBridge.rescheduleAlarms(time, enabled);
+                        } else if (window.AndroidBridge.rescheduleAlarms) {
+                            window.AndroidBridge.rescheduleAlarms(time, enabled);
+                        }
                     }
                 }
             } catch (error) { showNotification("Error saving."); }

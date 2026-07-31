@@ -118,7 +118,7 @@ class CoupleService : Service() {
     @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 if (intent?.action == "UPDATE_ALARM") {
-            scheduleNativeAlarm()
+            scheduleNativeAlarm("UPDATE_ALARM")
         } else if (intent?.action == "STOP_ALARM") {
             stopRingtone()
         } else if (intent?.action == "PLAY_ALARM") {
@@ -220,7 +220,7 @@ if (intent?.action == "UPDATE_ALARM") {
 
     private fun startPolling() {
         setupBuzzListener()
-        scheduleNativeAlarm()
+        scheduleNativeAlarm("START_POLLING")
         startContinuousLocationUpdates()
         startForceUpdateListener()
         startHeartbeat()
@@ -551,7 +551,7 @@ if (!responseBody.isNullOrEmpty()) {
 
                                 if (cloudTime != localTime || cloudEnabled != localEnabled) {
                                     sharedPref.edit().putString("alarm_time", cloudTime).putBoolean("alarm_enabled", cloudEnabled).apply()
-                                    scheduleNativeAlarm()
+                                    scheduleNativeAlarm("CLOUD_SYNC")
                                 }
                             }
                         }
@@ -1783,12 +1783,12 @@ if (!responseBody.isNullOrEmpty()) {
         }
     }
 
-    private fun scheduleNativeAlarm() {
+    private fun scheduleNativeAlarm(source: String) {
         val sharedPref = getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
         val enabled = sharedPref.getBoolean("alarm_enabled", false)
         val time = sharedPref.getString("alarm_time", null)
 
-        AlarmLogger.log(this, "scheduleNativeAlarm() called. enabled=$enabled, time=$time. Android Version: ${Build.VERSION.RELEASE}, API: ${Build.VERSION.SDK_INT}")
+        AlarmLogger.log(this, "scheduleNativeAlarm() called from $source. enabled=$enabled, time=$time. Android Version: ${Build.VERSION.RELEASE}, API: ${Build.VERSION.SDK_INT}")
 
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, com.together.app.AlarmReceiver::class.java)

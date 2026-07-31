@@ -557,8 +557,11 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun rescheduleAlarms(time: String, enabled: Boolean) {
+            AlarmLogger.log(context, "rescheduleAlarms() ENTER. time=$time, enabled=$enabled")
             val sharedPref = context.getSharedPreferences("TogetherPrefs", Context.MODE_PRIVATE)
-            sharedPref.edit().putString("alarm_time", time).putBoolean("alarm_enabled", enabled).apply()
+            val ok = sharedPref.edit().putString("alarm_time", time).putBoolean("alarm_enabled", enabled).commit()
+            AlarmLogger.log(context, "rescheduleAlarms() commit=$ok")
+            AlarmLogger.log(context, "rescheduleAlarms() verify prefs time=${sharedPref.getString("alarm_time", null)} enabled=${sharedPref.getBoolean("alarm_enabled", false)}")
             val intent = Intent(context, CoupleService::class.java).apply {
                 action = "UPDATE_ALARM"
             }
@@ -576,6 +579,11 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun getDiagnosticAlarmLogs(): String {
             return AlarmLogger.getLogs(context)
+        }
+
+        @JavascriptInterface
+        fun logDiagnostic(message: String) {
+            AlarmLogger.log(context, "JS_LOG: $message")
         }
 
         @JavascriptInterface
