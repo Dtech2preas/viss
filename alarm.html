@@ -129,41 +129,70 @@
                     showNotification("Saved!");
                     loadAlarmData();
                     if (window.AndroidBridge) {
-                        if (typeof window.AndroidBridge.logDiagnostic === 'function') {
-                            window.AndroidBridge.logDiagnostic(`Saving alarm from JS: time=${time}, enabled=${enabled}, bridgeType=${typeof window.AndroidBridge.rescheduleAlarms}`);
-                        }
-                        if (typeof window.AndroidBridge.rescheduleAlarms === 'function') {
+                        try {
+                            if (window.AndroidBridge.logDiagnostic) {
+                                window.AndroidBridge.logDiagnostic(`[JS Diagnostic] Initiating rescheduleAlarms: time="${time}", enabled=${enabled}`);
+                            }
                             window.AndroidBridge.rescheduleAlarms(time, enabled);
-                        } else if (window.AndroidBridge.rescheduleAlarms) {
-                            window.AndroidBridge.rescheduleAlarms(time, enabled);
+                            if (window.AndroidBridge.logDiagnostic) {
+                                window.AndroidBridge.logDiagnostic(`[JS Diagnostic] Direct call to rescheduleAlarms executed successfully.`);
+                            }
+                        } catch (err) {
+                            if (window.AndroidBridge.logDiagnostic) {
+                                window.AndroidBridge.logDiagnostic(`[JS Error] Failed calling rescheduleAlarms: ${err.message}`);
+                            }
+                            console.error("Bridge call failed:", err);
                         }
                     }
                 }
             } catch (error) { showNotification("Error saving."); }
         }
+
         function pickNativeAudio() {
-            if (window.AndroidBridge && typeof window.AndroidBridge.selectAlarmRingtone === 'function') {
-                window.AndroidBridge.selectAlarmRingtone();
-            } else { showNotification("Only available in App."); }
+            if (window.AndroidBridge) {
+                try {
+                    if (window.AndroidBridge.logDiagnostic) {
+                        window.AndroidBridge.logDiagnostic(`[JS Diagnostic] Triggering selectAlarmRingtone`);
+                    }
+                    window.AndroidBridge.selectAlarmRingtone();
+                } catch (err) {
+                    console.error("Error invoking ringtone picker:", err);
+                    showNotification("Failed to open audio picker.");
+                }
+            } else { 
+                showNotification("Only available in App."); 
+            }
         }
+
         function onRingtoneSelected(fileName) { document.getElementById('selected-ringtone-name').innerText = "Selected: " + fileName; }
 
         function checkAlarmPermission() {
-            if (window.AndroidBridge && typeof window.AndroidBridge.hasExactAlarmPermission === 'function') {
-                const hasPermission = window.AndroidBridge.hasExactAlarmPermission();
-                const btn = document.getElementById('permission-btn');
-                if (!hasPermission) {
-                    btn.style.display = 'block';
-                } else {
-                    btn.style.display = 'none';
+            if (window.AndroidBridge) {
+                try {
+                    const hasPermission = window.AndroidBridge.hasExactAlarmPermission();
+                    const btn = document.getElementById('permission-btn');
+                    if (!hasPermission) {
+                        btn.style.display = 'block';
+                    } else {
+                        btn.style.display = 'none';
+                    }
+                } catch (err) {
+                    console.error("Error checking alarm permission:", err);
                 }
             }
         }
 
         function requestAlarmPermission() {
-            if (window.AndroidBridge && typeof window.AndroidBridge.requestExactAlarmPermission === 'function') {
-                window.AndroidBridge.requestExactAlarmPermission();
-                setTimeout(checkAlarmPermission, 2000);
+            if (window.AndroidBridge) {
+                try {
+                    if (window.AndroidBridge.logDiagnostic) {
+                        window.AndroidBridge.logDiagnostic(`[JS Diagnostic] Requesting exact alarm permission`);
+                    }
+                    window.AndroidBridge.requestExactAlarmPermission();
+                    setTimeout(checkAlarmPermission, 2000);
+                } catch (err) {
+                    console.error("Error requesting permission:", err);
+                }
             }
         }
 
