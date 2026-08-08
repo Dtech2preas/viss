@@ -13,6 +13,9 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        val gitTag = System.getenv("APP_VERSION_TAG") ?: "dev-build"
+        buildConfigField("String", "GIT_TAG", "\"${gitTag}\"")
     }
 
     buildTypes {
@@ -33,6 +36,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

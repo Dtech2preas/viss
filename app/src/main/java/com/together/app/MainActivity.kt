@@ -630,6 +630,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        @JavascriptInterface
+        fun getAppVersion(): String {
+            return BuildConfig.GIT_TAG
+        }
+
+        @JavascriptInterface
+        fun checkAppUpdate() {
+            AppUpdater.checkForUpdate(context)
+        }
+
         private fun startBackgroundWork(context: Context) {
             val serviceIntent = Intent(context, CoupleService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
