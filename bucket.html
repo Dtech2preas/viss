@@ -227,7 +227,10 @@
 
         function renderList() {
             const container = document.getElementById('list-container');
-            container.innerHTML = '';
+
+            // ⚡ Bolt Optimization: Use a local string to build HTML and assign to innerHTML once.
+            // Avoids O(n^2) DOM manipulations that cause layout thrashing.
+            let allHtml = '';
             const partnerName = userData.partner.name;
             const myName = userData.name;
 
@@ -294,8 +297,9 @@
                         </div>
                     </div>
                 `;
-                container.innerHTML += html;
+                allHtml += html;
             });
+            container.innerHTML = allHtml;
         }
     </script>
     <script src="birthday.js"></script>

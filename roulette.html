@@ -492,7 +492,10 @@
 
         function renderProposals() {
             const list = document.getElementById('proposalList');
-            list.innerHTML = '';
+
+            // ⚡ Bolt Optimization: Use a local string to build HTML and assign to innerHTML once.
+            // Avoids O(n^2) DOM manipulations that cause layout thrashing.
+            let listHtml = '';
 
             if (rouletteState.proposals.length === 0) {
                 list.innerHTML = '<div style="text-align:center;color:#888;">No proposals yet.</div>';
@@ -540,8 +543,9 @@
                 }
 
                 html += `</div>`;
-                list.innerHTML += html;
+                listHtml += html;
             });
+            list.innerHTML = listHtml;
         }
 
         // --- Roulette Wheel Logic ---
