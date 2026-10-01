@@ -450,7 +450,10 @@
 
         function renderStore() {
             const grid = document.getElementById('storeGrid');
-            grid.innerHTML = '';
+
+            // ⚡ Bolt Optimization: Use a local string to build HTML and assign to innerHTML once.
+            // Avoids O(n^2) DOM manipulations that cause layout thrashing.
+            let gridHtml = '';
 
             const myBalance = couponState.balances[userData.name] || 0;
 
@@ -461,7 +464,7 @@
                 const canAfford = myBalance >= coupon.price;
                 const dynamicTitle = coupon.title.replace('{partner}', userData.partner.name).replace('{other partner}', userData.partner.name);
 
-                grid.innerHTML += `
+                gridHtml += `
                     <div class="coupon-card">
                         <div class="coupon-price">${coupon.price} pts</div>
                         <div class="coupon-title">${dynamicTitle}</div>
@@ -471,6 +474,7 @@
                     </div>
                 `;
             });
+            grid.innerHTML = gridHtml;
         }
 
         async function buyCoupon(id, price, encodedTitle) {
@@ -525,7 +529,9 @@
 
         function renderInventory() {
             const list = document.getElementById('inventoryList');
-            list.innerHTML = '';
+
+            // ⚡ Bolt Optimization: Use a local string to build HTML and assign to innerHTML once.
+            let listHtml = '';
 
             const myInventory = couponState.inventory[userData.name] || [];
 
@@ -541,14 +547,14 @@
                 const issueDate = item.id.split('_')[0]; // The timestamp when it was bought
 
                 if (item.redeemed) {
-                    list.innerHTML += `
+                    listHtml += `
                         <div class="inventory-item" style="cursor: pointer;" onclick="viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">
                             <div style="font-weight:600; color: #aaa;">🎟️ ${dynamicTitle} (Redeemed)</div>
                             <button class="btn-redeem" style="background: var(--primary-color);" onclick="event.stopPropagation(); viewCoupon('${item.id}', '${safeTitle}', ${issueDate})">View</button>
                         </div>
                     `;
                 } else {
-                    list.innerHTML += `
+                    listHtml += `
                         <div class="inventory-item">
                             <div style="font-weight:600;">🎟️ ${dynamicTitle}</div>
                             <button class="btn-redeem" onclick="event.stopPropagation(); redeemCoupon('${item.id}')">Redeem</button>
@@ -556,6 +562,7 @@
                     `;
                 }
             });
+            list.innerHTML = listHtml;
         }
 
         function viewCoupon(inventoryId, encodedTitle, issueDateTs) {
@@ -673,7 +680,9 @@
 
         function renderProposals() {
             const list = document.getElementById('proposalsList');
-            list.innerHTML = '';
+
+            // ⚡ Bolt Optimization: Use a local string to build HTML and assign to innerHTML once.
+            let listHtml = '';
 
             if (couponState.proposed.length === 0) {
                 list.innerHTML = '<div style="text-align:center;color:#888;">No pending proposals.</div>';
@@ -709,8 +718,9 @@
 
                 html += `<button style="align-self: flex-start; margin-top:10px; background:none; border:none; color:#f44336; font-size:0.8rem; cursor:pointer; text-decoration:underline;" onclick="deleteProposal('${p.id}')">Delete Proposal</button>`;
                 html += `</div>`;
-                list.innerHTML += html;
+                listHtml += html;
             });
+            list.innerHTML = listHtml;
         }
     </script>
     <script src="birthday.js"></script>
