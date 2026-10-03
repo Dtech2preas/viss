@@ -1,0 +1,152 @@
+[
+  {
+    "repo": "Dtech2preas/viss",
+    "provider": "local",
+    "visibility": "local",
+    "created_at": "2026-10-03",
+    "last_activity": "2026-10-03",
+    "default_branch": "jules-7550836922004741294-17e9dae0",
+    "commits": 1,
+    "first_commit": "2026-10-03",
+    "last_commit": "2026-10-03",
+    "languages": {
+      "Python": 247239,
+      "HTML": 665088,
+      "Kotlin": 142269,
+      "JavaScript": 15815,
+      "CSS": 3217
+    },
+    "primary_language": "HTML",
+    "contributors": 1,
+    "human_contributors": 1,
+    "total_mrs": "",
+    "merged_mrs": "",
+    "mrs_note": "not detectable from git history",
+    "pct_simple": "",
+    "pct_standard": "",
+    "pct_rich": "",
+    "pct_automated": "",
+    "pct_other": "",
+    "avg_loc_per_mr": "",
+    "mr_sample_size": 0,
+    "source_files": 15,
+    "test_files": 0,
+    "untested_source_files": 15,
+    "pct_untested_files": 100.0,
+    "total_loc_estimate": 6826,
+    "ci_configured": "Yes",
+    "ci_systems": [
+      "GitHub Actions"
+    ],
+    "ci_config_files": 1,
+    "ci_jobs_approx": 1,
+    "ci_stages_approx": 1,
+    "ci_pipelines_total": "",
+    "ci_success_rate": "",
+    "ci_avg_duration_min": "",
+    "coverage_pct_gitlab": "",
+    "coverage_pct_github": "",
+    "coverage_pct_local": "",
+    "ci_commits": 1,
+    "test_cases": 0,
+    "assertions": 0,
+    "genuine_test_files": 0,
+    "suspicious_test_files": 0,
+    "misnamed_test_files": 0,
+    "pct_test_to_code_ratio": 0.0,
+    "pct_genuine_tests": "",
+    "suspicious_tests_detail": [],
+    "llm_commits_scanned": 1,
+    "llm_ai_commits": 0,
+    "llm_pct_commits": 0.0,
+    "llm_ai_mrs": "",
+    "llm_pct_mrs": "",
+    "ai_tool_configs": [
+      "Gemini / Jules"
+    ],
+    "ai_tool_config_files": 2,
+    "llm_code_files": 0,
+    "llm_files_scanned": 15,
+    "llm_commit_breakdown": {},
+    "llm_mr_breakdown": {},
+    "llm_combined_score": {
+      "Gemini / Jules": 1
+    },
+    "llm_evidence": [
+      {
+        "source": "config-file",
+        "llm": [
+          "Gemini / Jules"
+        ],
+        "sample": ".jules/bolt.md; .jules/sentinel.md",
+        "location": ".jules/bolt.md; .jules/sentinel.md"
+      }
+    ],
+    "llm_detected": "Yes",
+    "primary_llm": "Gemini / Jules",
+    "llm_usage_pct": "",
+    "llm_usage_basis": "tool configs only",
+    "built_by_company": "Dtech2preas",
+    "built_by_confidence": "medium",
+    "built_by_evidence": [
+      "VCS owner/organization: \"Dtech2preas\""
+    ],
+    "built_for_company": "Together",
+    "built_for_confidence": "high",
+    "built_for_evidence": [
+      "app/build.gradle.kts: bundle id \"com.together.app\"",
+      "repo/folder name: \"Dtech2preas/viss\""
+    ],
+    "license": "NONE",
+    "license_risk": "no-license (all rights reserved)",
+    "quality_files_scanned": 15,
+    "total_functions": 155,
+    "total_classes": 14,
+    "blank_ratio_pct": 10.4,
+    "total_comment_lines": 485,
+    "total_blank_lines": 710,
+    "syntax_valid_pct": 100.0,
+    "avg_line_length": 38.8,
+    "pct_long_lines": 1.2,
+    "comment_ratio_pct": 7.1,
+    "docstring_pct": 100.0,
+    "avg_func_length": 46.4,
+    "duplicate_files": 0,
+    "duplicate_pct": 0.0,
+    "secrets_found": 2,
+    "secrets_detail": [
+      {
+        "type": "Google API Key",
+        "file": "app/src/main/java/com/together/app/MyApp.kt",
+        "masked": "AIza\u2026yc"
+      },
+      {
+        "type": "Google API Key",
+        "file": "app/src/main/java/com/together/app/CoupleService.kt",
+        "masked": "AIza\u2026yc"
+      }
+    ],
+    "pii_emails": 0,
+    "eval_contamination_files": 1,
+    "eval_contamination_detail": [
+      "Script..py"
+    ],
+    "quality_score": 55.0,
+    "training_suitability": "C",
+    "quality_reasons": [
+      "2 secrets/keys found",
+      "no tests",
+      "eval-benchmark code in 1 files",
+      "no license \u2014 training use is risky"
+    ],
+    "swe_quality_score": 40.0,
+    "swe_quality_level": "Mixed",
+    "swe_quality_reasons": [
+      "CI/CD configured",
+      "no tests",
+      "healthy comment ratio (7.1%)",
+      "low code duplication",
+      "2 hardcoded secret(s) found"
+    ]
+  }
+]
